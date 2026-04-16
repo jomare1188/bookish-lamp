@@ -1,0 +1,85 @@
+Accession,Bioproject/GSA,Sample_Name,tissue,treatment,trait,genotype,soil_type,Organism
+SRR31094553,PRJNA1176579,47_NR_10N_M _3,Leaf,Low Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094546,PRJNA1176579,14_R_10N_B _1,Leaf Base,Low Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094541,PRJNA1176579,20_R_10N_P_2,Leaf Apex,Low Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094542,PRJNA1176579,19_R_10N_M_2,Leaf,Low Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094543,PRJNA1176579,18_R_10N_B_2,Leaf Base,Low Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094544,PRJNA1176579,17_R_10N_B0_2,Leaf Base,Low Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094545,PRJNA1176579,15_R_10N_M _1,Leaf,Low Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094549,PRJNA1176579,12_R_270N_P_3,Leaf Apex,High Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094547,PRJNA1176579,13_R_10N_B0 _1,Leaf Base,Low Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094548,PRJNA1176579,16_R_10N_P _1,Leaf Apex,Low Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094552,PRJNA1176579,48_NR_10N_P _3,Leaf Apex,Low Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094550,PRJNA1176579,6_R_270N_B_2,Leaf Base,High Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094551,PRJNA1176579,11_R_270N_M_3,Leaf,High Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094539,PRJNA1176579,3_R_270N_M_1,Leaf,High Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094540,PRJNA1176579,23_R_10N_M_3,Leaf,Low Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094529,PRJNA1176579,30_NR_270N_B _2,Leaf Base,High Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094538,PRJNA1176579,21_R_10N_B0_3,Leaf Base,Low Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094537,PRJNA1176579,22_R_10N_B_3,Leaf Base,Low Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094525,PRJNA1176579,10_R_270N_B_3,Leaf Base,High Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094526,PRJNA1176579,9_R_270N_B0_3,Leaf Base,High Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094527,PRJNA1176579,8_R_270N_P_2,Leaf Apex,High Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094528,PRJNA1176579,7_R_270N_M_2,Leaf,High Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094530,PRJNA1176579,29_NR_270N_B0 _2,Leaf Base,High Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094531,PRJNA1176579,28_NR_270N_P_1,Leaf Apex,High Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094532,PRJNA1176579,4_R_270N_P_1,Leaf Apex,High Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094533,PRJNA1176579,27_NR_270N_M _1,Leaf,High Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094534,PRJNA1176579,26_NR_270N_B _1,Leaf Base,High Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094535,PRJNA1176579,25_NR_270N_B0 _1,Leaf Base,High Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094555,PRJNA1176579,45_NR_10N_B0 _3,Leaf Base,Low Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094536,PRJNA1176579,24_R_10N_P_3,Leaf Apex,Low Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094554,PRJNA1176579,46_NR_10N_B _3,Leaf Base,Low Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094557,PRJNA1176579,43_NR_10N_M _2,Leaf,Low Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094556,PRJNA1176579,44_NR_10N_P _2,Leaf Apex,Low Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094565,PRJNA1176579,36_NR_270N_P_3,Leaf Apex,High Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094572,PRJNA1176579,1_R_270N_B0_1,Leaf Base,High Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094571,PRJNA1176579,2_R_270N_B_1,Leaf Base,High Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094570,PRJNA1176579,31_NR_270N_M _2,Leaf,High Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094569,PRJNA1176579,32_NR_270N_P _2,Leaf Apex,High Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094567,PRJNA1176579,34_NR_270N_B _3,Leaf Base,High Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094566,PRJNA1176579,35_NR_270N_M _3,Leaf,High Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094568,PRJNA1176579,33_NR_270N_B0_3,Leaf Base,High Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094564,PRJNA1176579,37_NR_10N_B0 _1,Leaf Base,Low Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094563,PRJNA1176579,38_NR_10N_B _1,Leaf Base,Low Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094562,PRJNA1176579,39_NR_10N_M _1,Leaf,Low Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094561,PRJNA1176579,40_NR_10N_P _1,Leaf Apex,Low Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094560,PRJNA1176579,5_R_270N_B0_2,Leaf Base,High Nitrogen,Nitrogen resposive genotype,RB975375,Sand,Saccharum hybrid
+SRR31094559,PRJNA1176579,41_NR_10N_B0 _2,Leaf Base,Low Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SRR31094558,PRJNA1176579,42_NR_10N_B _2,Leaf Base,Low Nitrogen,Nitrogen non resposive genotype,RB937570,Sand,Saccharum hybrid
+SAMC5708702,CRA028188,L_51N03_2N-1A,leaf,2N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708703,CRA028188,L_51N03_2N-2A,leaf,2N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708704,CRA028188,L_51N03_2N-3A,leaf,2N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708705,CRA028188,L_51N03_6N-1A,leaf,6N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708706,CRA028188,L_51N03_6N-2A,leaf,6N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708707,CRA028188,L_51N03_6N-3A,leaf,6N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708708,CRA028188,L_51N03_ON-1A,leaf,0N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708709,CRA028188,L_51N03_ON-2A,leaf,0N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708710,CRA028188,L_51N03_ON-3A,leaf,0N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708711,CRA028188,L_TA0Z_2N-1A,leaf,2N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708712,CRA028188,L_TA0Z_2N-2A,leaf,2N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708713,CRA028188,L_TA0Z_2N-3A,leaf,2N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708714,CRA028188,L_TA0Z_6N-1A,leaf,6N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708715,CRA028188,L_TA0Z_6N-2A,leaf,6N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708716,CRA028188,L_TA0Z_6N-3A,leaf,6N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708717,CRA028188,L_TA0Z_ON-1A,leaf,0N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708718,CRA028188,L_TA0Z_ON-2A,leaf,0N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708719,CRA028188,L_TA0Z_ON-3A,leaf,0N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708720,CRA028188,R_51N03_2N-1A,root,2N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708721,CRA028188,R_51N03_2N-2A,root,2N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708722,CRA028188,R_51N03_2N-3A,root,2N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708723,CRA028188,R_51N03_6N-1A,root,6N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708724,CRA028188,R_51N03_6N-2A,root,6N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708725,CRA028188,R_51N03_6N-3A,root,6N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708726,CRA028188,R_51N03_ON-1A,root,0N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708727,CRA028188,R_51N03_ON-2A,root,0N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708728,CRA028188,R_51N03_ON-3A,root,0N,Nitrogen resposive genotype,51NG3,sand-perlite mixture,S. robustum
+SAMC5708729,CRA028188,R_TA0Z_2N-1A,root,2N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708730,CRA028188,R_TA0Z_2N-2A,root,2N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708731,CRA028188,R_TA0Z_2N-3A,root,2N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708732,CRA028188,R_TA0Z_6N-1B,root,6N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708733,CRA028188,R_TA0Z_6N-2B,root,6N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708734,CRA028188,R_TA0Z_6N-3B,root,6N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708735,CRA028188,R_TA0Z_ON-1A,root,0N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708736,CRA028188,R_TA0Z_ON-2A,root,0N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
+SAMC5708737,CRA028188,R_TA0Z_ON-3A,root,0N,Nitrogen non resposive genotype,TAGZ,sand-perlite mixture,S. officinarum
