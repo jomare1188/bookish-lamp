@@ -15,9 +15,9 @@ Table 1. Data summary.
 | Network | Study                    | Genotype | Trait           | Samples | Soil | Organism                | Notes                           | Reference                   |
 |---------|--------------------------|---------|-----------------|---------|------|-------------------------|----------------------------------|-----------------------------| 
 | 1       | Muñoz-Perez et al. 2025  | RB937570 | non-responsive   | 24      | sand | Sugarcane               | Include high and low nitrogen conditions | R570              |
-| 2       | Muñoz-Perez et al. 2025  | RB975375 | responsive       | 24      | sand | Sugarcane               | Include high and low nitrogen conditions | R570              |
-| 3       | Ta Quang Kiet et al. 2025| 51NG3    | responsive       | 9       | sand | Saccharum robustum      | Include high and low nitrogen conditions | LA purple         |
-| 4       | Ta Quang Kiet et al. 2025| TAGZ     | non-responsive   | 9       | sand | Saccharum officinarum   | Include high and low nitrogen conditions | LA purple         |
+| 1       | Muñoz-Perez et al. 2025  | RB975375 | responsive       | 24      | sand | Sugarcane               | Include high and low nitrogen conditions | R570              |
+| 2       | Ta Quang Kiet et al. 2025| 51NG3    | responsive       | 9       | sand | Saccharum robustum      | Include high and low nitrogen conditions | LA purple         |
+| 2       | Ta Quang Kiet et al. 2025| TAGZ     | non-responsive   | 9       | sand | Saccharum officinarum   | Include high and low nitrogen conditions | LA purple         |
 
 
 1) Data retrieval and processing
@@ -50,12 +50,10 @@ We get rid of transcripts with a coefficient of variation (cv) less than 15% in 
 
 ## Gene filtering
 
-| Network | before filtering (genes) | after filtering (genes) | threshold  (cv) | 
-|---------|--------------------------|-------------------------|-----------------|
-| 1       |      190,973              |     165,047              |      15%        |
-| 2       |      190,973              |     165,047              |      15%        | 
-| 3       |      215,183              |     145,875              |      15%        |
-| 4       |      215,183              |     153,229              |      15%        |
+| Network | before filtering (genes) | after filtering cv > 15% | after filtering pcor(cor > 0.8 and FDR < 0.05) | 
+|---------|---------------------------|-------------------------|------------------------------------------------|
+| 1       |       190,973             |     170,790             |      102,020                                   |
+| 2       |       215,183             |     170,736             |      170,103                                   |
 
 ## Correlation calculation
 
@@ -64,12 +62,12 @@ We set the max_perason to 0.9999 this aims to remove suspicious perfect correlat
 
 (plots of correlations distributions)
 
-| Network | Edges     | Nodes  | Transitivity | Connected Components | Giant Component Size |
-|---------|-----------|--------|--------------|----------------------|----------------------|
-| 1       | 23,105,840  | 148,896 | 0.436967     | 1,180                 | 146,264               |
-| 2       | 19,410,042  | 144,452 | 0.463725     | 1,544                 | 140,949               |
-| 3       | 510,901,069 | 153,228 | 0.596282     | 1                    | 153,228               |
-| 4       | 193,829,933 | 145,873 | 0.389172     | 1                    | 145,873               |
+| Network | Edges      | Nodes   | Transitivity | Connected Components | Giant Component Size |
+|---------|------------|---------|--------------|----------------------|----------------------|
+| 1       |75,380,961  | 102,020 | 0.690058     | 958                  | 99,881               |
+| 2       |681,090,855 | 170,103 | 0.73957      | 44                   | 170,012              |
+
+
 
 
 
