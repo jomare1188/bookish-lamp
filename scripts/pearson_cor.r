@@ -4,9 +4,8 @@ library(data.table)
 library(matrixStats)
 library(parallel)
 
-setwd("/dados02/jorge/comparative_saccharum/china/run1/salmon/deseq2_qc")
+setwd("/dados02/jorge/comparative_saccharum/run1/salmon/deseq2_qc")
 
-# BLAS threading off — let mclapply own all cores
 Sys.setenv(OMP_NUM_THREADS      = 1,
            OPENBLAS_NUM_THREADS = 1,
            MKL_NUM_THREADS      = 1,
@@ -15,24 +14,30 @@ Sys.setenv(OMP_NUM_THREADS      = 1,
 # ==============================================================================
 # CONFIGURATION
 # ==============================================================================
-MIN_CV     <- 15    # CV threshold (%)
-N_CORES    <- 100   # parallel workers (mclapply forks — no socket limit)
-CHUNK_ROWS <- 500   # genes per chunk per worker
-                    # RAM per batch = N_CORES × CHUNK_ROWS × n_genes × 8 × 2
-                    # e.g. 256 workers × 500 rows × 161k genes × 16 B ≈ 330 GB
-                    # Lower CHUNK_ROWS if RAM is tight; raise if headroom allows
+MIN_CV     <- 15
+N_CORES    <- 100
+CHUNK_ROWS <- 500
 
 # ==============================================================================
 # INPUT / OUTPUT
 # ==============================================================================
-genotype_groups <- list(
-  responsive     = "51N03",
-  non_responsive = "TA0Z"
+# One entry per study — combines all genotypes within each study
+study_groups <- list(
+#  purple = list(
+#    label      = "purple",                          # Ta Quang Kiet et al. 2025
+#    col_filter = function(dds) which(dds$Group1 == "L"),  # all leaf samples, both genotypes
+#    out_dir    = "/home/genomics/jorge/files/purple/"
+ 
+  # Add the Muñoz-Perez study here analogously when ready:
+   sugarcane = list(
+     label      = "sugarcane",
+     col_filter = function(dds) seq_len(ncol(dds)),   # all samples
+     out_dir    = "/home/genomics/jorge/files/sugarcane/"
+   )
 )
-out_dir <- "/home/genomics/jorge/files/purple/"
 
 # ==============================================================================
-# LOAD DATA ONCE  (shared across all forked workers at zero copy cost)
+# LOAD DATA ONCE
 # ==============================================================================
 message("Loading data...")
 load("deseq2.dds.RData")
@@ -41,24 +46,7 @@ all_raw <- counts(dds, normalized = FALSE)
 message("VST matrix: ", paste(dim(all_vst), collapse = " x "))
 
 # ==============================================================================
-# WORKER: compute Pearson r + p-values for one chunk, write to temp files
-#
-# Each worker:
-#   1. Slices its assigned rows from vst (inherited via fork)
-#   2. Computes cor(chunk, full_matrix)
-#   3. Computes p-values in-place and frees t_stat immediately
-#   4. Writes cor and pval blocks to numbered temp files
-#   5. Returns the temp file paths for the main process to concatenate
-#
-# Arguments passed explicitly (everything else inherited from parent env):
-#   chunk_idx   — chunk number (for ordering and temp file naming)
-#   row_start   — first gene index in this chunk (1-based)
-#   row_end     — last  gene index in this chunk (1-based)
-#   vst         — full genes × samples VST matrix (inherited via fork)
-#   vst_t       — transposed: samples × genes     (inherited via fork)
-#   genes       — gene name vector                (inherited via fork)
-#   n_samp      — number of samples               (inherited via fork)
-#   tmp_dir     — directory for temp files        (inherited via fork)
+# WORKER
 # ==============================================================================
 worker_chunk <- function(chunk_idx, row_start, row_end) {
   tryCatch({
@@ -66,15 +54,12 @@ worker_chunk <- function(chunk_idx, row_start, row_end) {
     vst_chunk   <- vst[row_start:row_end, , drop = FALSE]
     df          <- n_samp - 2L
 
-    # Pearson r: chunk_genes × all_genes
     cor_block  <- cor(t(vst_chunk), vst_t)
 
-    # P-values — computed and freed before writing to minimise peak RAM
     t_stat     <- cor_block * sqrt(df / (1 - cor_block^2 + 1e-15))
     pval_block <- 2 * pt(-abs(t_stat), df = df)
     rm(t_stat, vst_chunk); gc()
 
-    # Write to numbered temp files so main process can cat in correct order
     tmp_cor  <- file.path(tmp_dir, sprintf("chunk_%05d_cor.tsv",  chunk_idx))
     tmp_pval <- file.path(tmp_dir, sprintf("chunk_%05d_pval.tsv", chunk_idx))
 
@@ -96,20 +81,19 @@ worker_chunk <- function(chunk_idx, row_start, row_end) {
 }
 
 # ==============================================================================
-# MAIN LOOP
+# MAIN LOOP — one iteration per study
 # ==============================================================================
-for (group_name in names(genotype_groups)) {
-  genotype_label <- genotype_groups[[group_name]]
+for (study_name in names(study_groups)) {
+  study  <- study_groups[[study_name]]
+  out_dir <- study$out_dir
 
   message("\n", strrep("=", 60))
-  message("Processing group: ", group_name, " (", genotype_label, ")")
+  message("Processing study: ", study_name)
   message(strrep("=", 60))
 
-  # ── 1. Sample selection ───────────────────────────────────────────
-
-col_idx <- which(dds$Group1 == "L" & dds$Group2 == genotype_label)
-#  col_idx <- which(dds$Group1 == genotype_label) # for sugarcane only 
-  message("Samples: ", length(col_idx))
+  # ── 1. Sample selection (all genotypes in this study) ─────────────
+  col_idx <- study$col_filter(dds)
+  message("Samples selected: ", length(col_idx))
 
   # ── 2. CV filtering ───────────────────────────────────────────────
   raw_sub <- all_raw[, col_idx, drop = FALSE]
@@ -119,47 +103,40 @@ col_idx <- which(dds$Group1 == "L" & dds$Group2 == genotype_label)
   keep    <- which(cv_raw >= MIN_CV)
   rm(raw_sub, m_raw, sd_raw, cv_raw); gc()
 
-  # These are inherited by all forked workers at zero copy cost
   vst     <- all_vst[keep, col_idx, drop = FALSE]
   genes   <- rownames(vst)
   n_genes <- length(genes)
   n_samp  <- ncol(vst)
-  vst_t   <- t(vst)   # samples × genes — built once, shared by all workers
+  vst_t   <- t(vst)
 
   n_chunks <- ceiling(n_genes / CHUNK_ROWS)
 
-  message("Genes after CV filter:   ", format(n_genes,   big.mark = ","))
+  message("Genes after CV filter:   ", format(n_genes, big.mark = ","))
   message("Samples: ", n_samp, " | df: ", n_samp - 2L)
-  message("Chunk size: ", CHUNK_ROWS, " | Chunks: ", n_chunks,
-          " | Workers: ", N_CORES)
+  message("Chunks: ", n_chunks, " | Workers: ", N_CORES)
   message(sprintf("RAM per parallel batch:  ~%.0f GB",
                   (N_CORES * CHUNK_ROWS * n_genes * 8 * 2) / 1e9))
-  message(sprintf("Full matrix (reference): ~%.0f GB",
-                  (n_genes^2 * 8 * 2) / 1e9))
 
-  # ── 3. Temp directory for chunk files ─────────────────────────────
-  tmp_dir <- file.path(out_dir, paste0(".tmp_", group_name))
+  # ── 3. Temp directory ─────────────────────────────────────────────
+  tmp_dir <- file.path(out_dir, paste0(".tmp_", study_name))
   dir.create(tmp_dir, showWarnings = FALSE, recursive = TRUE)
 
-  # ── 4. Build chunk index table ────────────────────────────────────
+  # ── 4. Chunk index ────────────────────────────────────────────────
   chunk_starts <- seq(1L, n_genes, by = CHUNK_ROWS)
   chunk_ends   <- pmin(chunk_starts + CHUNK_ROWS - 1L, n_genes)
   chunk_ids    <- seq_along(chunk_starts)
 
-  # ── 5. Process all chunks in parallel ────────────────────────────
-  # mclapply forks — workers inherit vst, vst_t, genes, n_samp, tmp_dir
-  # from the parent process (copy-on-write, no explicit export needed)
+  # ── 5. Parallel computation ───────────────────────────────────────
   message("Launching parallel computation...")
-
   results <- mclapply(
     chunk_ids,
     function(ci) worker_chunk(ci, chunk_starts[ci], chunk_ends[ci]),
-    mc.cores             = N_CORES,
-    mc.preschedule       = FALSE,   # dynamic scheduling — better load balance
-    mc.allow.recursive   = FALSE
+    mc.cores           = N_CORES,
+    mc.preschedule     = FALSE,
+    mc.allow.recursive = FALSE
   )
 
-  # ── 6. Check for worker errors ────────────────────────────────────
+  # ── 6. Check errors ───────────────────────────────────────────────
   failed <- which(!vapply(results, `[[`, logical(1L), "ok"))
   if (length(failed) > 0L) {
     msgs <- vapply(results[failed], `[[`, character(1L), "msg")
@@ -168,32 +145,20 @@ col_idx <- which(dds$Group1 == "L" & dds$Group2 == genotype_label)
   }
   message("All ", n_chunks, " chunks computed successfully.")
 
-  # ── 7. Concatenate temp files in order → final output files ───────
-  out_cor  <- file.path(out_dir,
-               paste0("matrix_purple_", group_name, "_pearson.tsv"))
-  out_pval <- file.path(out_dir,
-               paste0("matrix_purple_", group_name, "_pvalues.tsv"))
+  # ── 7. Concatenate in order ───────────────────────────────────────
+  # Output: one matrix per study (not per genotype)
+  out_cor  <- file.path(out_dir, paste0("matrix_", study_name, "_pearson.tsv"))
+  out_pval <- file.path(out_dir, paste0("matrix_", study_name, "_pvalues.tsv"))
 
-  # Write header lines
   header_line <- paste(c("GeneID", genes), collapse = "\t")
   writeLines(header_line, con = out_cor)
   writeLines(header_line, con = out_pval)
 
-  message("Concatenating ", n_chunks, " chunk files in order...")
-
-  # Sort results by chunk index to guarantee row order
   results <- results[order(vapply(results, `[[`, integer(1L), "chunk"))]
 
   for (res in results) {
-    # Append cor chunk
-    con <- file(out_cor, open = "a")
-    file.append(out_cor, res$cor)
-    close(con)
-    # Append pval chunk
-    con <- file(out_pval, open = "a")
+    file.append(out_cor,  res$cor)
     file.append(out_pval, res$pval)
-    close(con)
-    # Remove temp files as we go to free disk space
     file.remove(res$cor, res$pval)
   }
 
@@ -205,4 +170,4 @@ col_idx <- which(dds$Group1 == "L" & dds$Group2 == genotype_label)
   rm(vst, vst_t, keep, results); gc()
 }
 
-message("\nAll groups processed.")
+message("\nAll studies processed.")

@@ -2,14 +2,13 @@ library(data.table)
 library(parallel)
 
 # ==============================================================================
-# CONFIGURATION — adjust these parameters as needed
+# CONFIGURATION
 # ==============================================================================
-PEARSON_THRESHOLD <- 0.6    # minimum ABSOLUTE Pearson r to keep an edge
-                             # catches both positive (>0.6) and negative (<-0.6)
-PVAL_RAW_MAX      <- 0.05   # maximum RAW p-value (pre-FDR) — pre-filter
-PADJ_MAX          <- 0.05   # maximum FDR-adjusted p-value in final edge list
-N_CORES           <- 100    # cores available
-ROWS_PER_CORE     <- 50   # rows per worker per block; tune for RAM/speed
+PEARSON_THRESHOLD <- 0.7
+PVAL_RAW_MAX      <- 0.05
+PADJ_MAX          <- 0.05
+N_CORES           <- 100
+ROWS_PER_CORE     <- 50
 
 Sys.setenv(OMP_NUM_THREADS = 1, OPENBLAS_NUM_THREADS = 1, MKL_NUM_THREADS = 1)
 
@@ -17,82 +16,49 @@ Sys.setenv(OMP_NUM_THREADS = 1, OPENBLAS_NUM_THREADS = 1, MKL_NUM_THREADS = 1)
 # INPUT FILES
 # ==============================================================================
 input_groups <- list(
-  responsive = list(
-    cor_file = "/home/genomics/jorge/files/purple/matrix_purple_responsive_pearson.tsv",
-    pv_file  = "/home/genomics/jorge/files/purple/matrix_purple_responsive_pvalues.tsv",
-    out_file = "/home/genomics/jorge/files/purple/edgelist_purple_responsive_pearson.tsv"
-  ),
-  non_responsive = list(
-    cor_file = "/home/genomics/jorge/files/purple/matrix_purple_non_responsive_pearson.tsv",
-    pv_file  = "/home/genomics/jorge/files/purple/matrix_purple_non_responsive_pvalues.tsv",
-    out_file = "/home/genomics/jorge/files/purple/edgelist_purple_non_responsive_pearson.tsv"
+  purple = list(
+    cor_file = "/home/genomics/jorge/files/sugarcane/matrix_sugarcane_pearson.tsv",
+    pv_file  = "/home/genomics/jorge/files/sugarcane/matrix_sugarcane_pvalues.tsv",
+    out_file = "/home/genomics/jorge/files/sugarcane/edgelist_sugarcane_pearson.tsv"
   )
 )
 
 # ==============================================================================
-# HELPER: detect file structure for the Pearson matrix format
-#
-# The Pearson script writes a proper single tab-separated header line:
-#   Line 1     : GeneID \t gene1 \t gene2 \t ... \t geneN
-#   Lines 2..  : data rows: gene_id \t val1 \t val2 \t ...
-#
-# Returns: list(col_genes, n_genes, skip_n = 1)
+# HELPER: detect file structure
 # ==============================================================================
 detect_file_structure <- function(file) {
   if (!file.exists(file)) stop("File not found: ", file)
-
-  # Read first line — this is the full tab-separated header
   header_line <- readLines(file, n = 1L, warn = FALSE)
   fields      <- strsplit(header_line, "\t", fixed = TRUE)[[1L]]
-
-  # First field is "GeneID" label, rest are gene names
   if (fields[1L] != "GeneID") {
-    stop("Expected 'GeneID' as first field in header of: ", file,
-         "\n  Got: '", fields[1L], "' — check file format.")
+    stop("Expected 'GeneID' as first field in: ", file,
+         "\n  Got: '", fields[1L], "'")
   }
-
   col_genes <- fields[-1L]
   n_genes   <- length(col_genes)
-
-  message("  Header: single tab-separated line | ",
-          format(n_genes, big.mark = ","), " column genes detected")
-
+  message("  ", format(n_genes, big.mark = ","), " column genes detected")
   list(col_genes = col_genes, n_genes = n_genes, skip_n = 1L)
 }
 
 # ==============================================================================
-# HELPER: process one block of raw text lines
-#
-# cor_lines / pv_lines : character vectors — one raw TSV line per element
-# col_genes            : column gene names from header (in order)
-# row_offset           : global 1-based index of first row in this block
-# cor_thr              : absolute Pearson threshold
-# pval_max             : raw p-value upper limit
-#
-# Upper triangle (j > global_i) removes self-loops and duplicate edges.
-# strsplit is called once per line; only needed field positions extracted.
+# HELPER: process one block of lines → data.table or NULL
 # ==============================================================================
 process_block <- function(cor_lines, pv_lines, col_genes, row_offset,
                           cor_thr, pval_max) {
   n_genes <- length(col_genes)
 
   results <- mclapply(seq_along(cor_lines), function(local_i) {
-    global_i <- row_offset + local_i - 1L
-
-    # Upper triangle only
+    global_i  <- row_offset + local_i - 1L
     j_indices <- (global_i + 1L):n_genes
     if (length(j_indices) == 0L) return(NULL)
 
-    # Field 1 = gene name, fields 2..N+1 = values
-    # Gene j → field position j+1
     cor_parts <- strsplit(cor_lines[local_i], "\t", fixed = TRUE)[[1L]]
     pv_parts  <- strsplit(pv_lines[local_i],  "\t", fixed = TRUE)[[1L]]
 
-    col_pos   <- j_indices + 1L
-    cor_vals  <- as.numeric(cor_parts[col_pos])
-    pv_vals   <- as.numeric(pv_parts[col_pos])
+    col_pos  <- j_indices + 1L
+    cor_vals <- as.numeric(cor_parts[col_pos])
+    pv_vals  <- as.numeric(pv_parts[col_pos])
 
-    # Filter: absolute Pearson >= threshold AND raw pval <= max
     keep <- which(abs(cor_vals) >= cor_thr & pv_vals <= pval_max)
     if (length(keep) == 0L) return(NULL)
 
@@ -110,21 +76,24 @@ process_block <- function(cor_lines, pv_lines, col_genes, row_offset,
 }
 
 # ==============================================================================
-# MAIN: process one group end-to-end
+# MAIN: process one study
+#
+# Three-pass strategy to avoid the 2^31 rbindlist row limit:
+#   Pass 1 — stream blocks → append candidate edges directly to temp TSV on disk
+#   Pass 2 — read pval column only → compute BH padj → identify surviving indices
+#   Pass 3 — re-read temp file in chunks → write only surviving rows to final file
 # ==============================================================================
 process_group <- function(group_name, cor_file, pv_file, out_file) {
+
   message("\n", strrep("=", 60))
-  message("Processing group: ", group_name)
+  message("Processing study: ", group_name)
   message(strrep("=", 60))
 
-  for (f in c(cor_file, pv_file)) {
-    if (!file.exists(f)) stop("File not found: ", f)
-  }
+  if (!file.exists(cor_file)) stop("File not found: ", cor_file)
+  if (!file.exists(pv_file))  stop("File not found: ", pv_file)
 
-  # ── Detect structure ──────────────────────────────────────────────
   message("Detecting structure: ", basename(cor_file))
   cor_info <- detect_file_structure(cor_file)
-
   message("Detecting structure: ", basename(pv_file))
   pv_info  <- detect_file_structure(pv_file)
 
@@ -140,33 +109,40 @@ process_group <- function(group_name, cor_file, pv_file, out_file) {
   block_size <- ROWS_PER_CORE * N_CORES
   n_blocks   <- ceiling(n_genes / block_size)
 
-  message("\nGenes:                 ", format(n_genes,            big.mark = ","))
-  message("Block size:            ", format(block_size,          big.mark = ","),
+  message("\nGenes:                ", format(n_genes,           big.mark = ","))
+  message("Block size:           ", format(block_size,         big.mark = ","),
           " rows | Total blocks: ", n_blocks)
-  message("Upper-triangle pairs:  ", format(choose(n_genes, 2), big.mark = ","))
+  message("Upper-triangle pairs: ", format(choose(n_genes, 2), big.mark = ","))
 
-  # ── Open persistent connections — skip header once, read sequentially ────
-  # This avoids fread's large-skip segfault on wide matrices
+  tmp_candidates <- paste0(out_file, ".tmp_candidates.tsv")
+
+  # ── PASS 1: stream blocks → disk ──────────────────────────────────
+  message("\n[Pass 1] Streaming candidate edges to disk...")
+  message("  Temp file: ", tmp_candidates)
+
+  # Write header to temp file
+  writeLines("gene1\tgene2\tpearson\tpval", con = tmp_candidates)
+
   cor_con <- file(cor_file, open = "r")
   pv_con  <- file(pv_file,  open = "r")
-  on.exit({ close(cor_con); close(pv_con) }, add = TRUE)
 
-  # Skip exactly 1 header line in each file
+  # Skip header lines
   readLines(cor_con, n = cor_info$skip_n, warn = FALSE)
   readLines(pv_con,  n = pv_info$skip_n,  warn = FALSE)
 
-  # ── Collect candidate edges across all blocks ─────────────────────
-  all_edges   <- vector("list", n_blocks)
-  block_count <- 0L
-  row_start   <- 1L
+  total_candidates <- 0    # numeric (double) — avoids 32-bit overflow at ~2.1B rows
+  block_count      <- 0L
+  row_start        <- 1L
 
   repeat {
     cor_lines <- readLines(cor_con, n = block_size, warn = FALSE)
     pv_lines  <- readLines(pv_con,  n = block_size, warn = FALSE)
 
     if (length(cor_lines) == 0L) break
+
     if (length(cor_lines) != length(pv_lines)) {
-      stop("Line count mismatch between correlation and p-value files at block ",
+      close(cor_con); close(pv_con)
+      stop("Line count mismatch between cor and pval files at block ",
            block_count + 1L)
     }
 
@@ -179,53 +155,89 @@ process_group <- function(group_name, cor_file, pv_file, out_file) {
       pval_max   = PVAL_RAW_MAX
     )
 
-    all_edges[[block_count]] <- block_edges
+    if (!is.null(block_edges) && nrow(block_edges) > 0L) {
+      fwrite(block_edges, file = tmp_candidates,
+             sep = "\t", quote = FALSE, append = TRUE, col.names = FALSE)
+      total_candidates <- total_candidates + nrow(block_edges)
+    }
+
     row_start <- row_start + length(cor_lines)
 
-    edges_so_far <- sum(vapply(all_edges,
-                               function(x) if (is.null(x)) 0L else nrow(x),
-                               integer(1L)))
     message(sprintf(
-      "[%s] Block %d/%d — %.1f%% complete (%s/%s genes) | candidate edges: %s",
+      "  [%s] Block %d/%d — %.1f%% (%s/%s genes) | candidates on disk: %s",
       group_name,
       block_count, n_blocks,
       (min(row_start - 1L, n_genes) / n_genes) * 100,
       format(min(row_start - 1L, n_genes), big.mark = ","),
-      format(n_genes,      big.mark = ","),
-      format(edges_so_far, big.mark = ",")
+      format(n_genes,          big.mark = ","),
+      format(total_candidates, big.mark = ",")
     ))
 
-    rm(cor_lines, pv_lines, block_edges); gc()
+    rm(cor_lines, pv_lines, block_edges)
+    gc()
   }
 
-  # ── Combine candidate edges ───────────────────────────────────────
-  message("\nCombining candidate edges...")
-  edges <- rbindlist(Filter(Negate(is.null), all_edges))
-  rm(all_edges); gc()
-  message("Total candidate edges before FDR: ", format(nrow(edges), big.mark = ","))
+  close(cor_con)
+  close(pv_con)
 
-  if (nrow(edges) == 0L) {
-    message("No edges passed pre-filters for group: ", group_name)
+  message("Total candidate edges before FDR: ",
+          format(total_candidates, big.mark = ","))
+
+  if (total_candidates == 0) {
+    message("No edges passed pre-filters for study: ", group_name)
+    if (file.exists(tmp_candidates)) file.remove(tmp_candidates)
     return(invisible(NULL))
   }
 
-  # ── FDR correction (BH) across ALL candidate edges ────────────────
-  message("Applying FDR correction (BH method)...")
-  edges[, padj := p.adjust(pval, method = "BH")]
+  # ── PASS 2: read pval column only → BH correction ──────────────────
+  message("\n[Pass 2] Reading p-values for BH correction...")
+  message("  Loading pval column from temp file...")
 
-  edges <- edges[padj <= PADJ_MAX]
-  message("Edges after FDR filter (padj <= ", PADJ_MAX, "): ",
-          format(nrow(edges), big.mark = ","))
+  pvals <- fread(tmp_candidates, select = "pval", header = TRUE)$pval
 
-  if (nrow(edges) == 0L) {
-    message("No edges survived FDR correction for group: ", group_name)
+  message("  Computing BH adjusted p-values over ",
+          format(length(pvals), big.mark = ","), " candidates...")
+
+  padj     <- p.adjust(pvals, method = "BH")
+  keep_idx <- which(padj <= PADJ_MAX)
+  padj_kept <- padj[keep_idx]
+
+  rm(pvals, padj)
+  gc()
+
+  message("  Edges surviving FDR (padj <= ", PADJ_MAX, "): ",
+          format(length(keep_idx), big.mark = ","))
+
+  if (length(keep_idx) == 0L) {
+    message("No edges survived FDR correction for study: ", group_name)
+    if (file.exists(tmp_candidates)) file.remove(tmp_candidates)
     return(invisible(NULL))
   }
 
-  # ── Sort by adjusted p-value and write ───────────────────────────
-  setorder(edges, padj)
-  fwrite(edges, file = out_file, sep = "\t", quote = FALSE)
-  message("Saved: ", out_file)
+  # ── PASS 3: extract surviving rows → final output ──────────────────
+  # Read the full candidate file, subset by index, attach padj, sort, write.
+  # If this is still too large for RAM, see chunked alternative below.
+  message("\n[Pass 3] Writing final edge list...")
+  message("  Reading surviving rows from temp file...")
+
+  candidates  <- fread(tmp_candidates, header = TRUE)
+  final_edges <- candidates[keep_idx]
+  final_edges[, padj := padj_kept]
+
+  rm(candidates, padj_kept, keep_idx)
+  gc()
+
+  setorder(final_edges, padj)
+  fwrite(final_edges, file = out_file, sep = "\t", quote = FALSE)
+
+  message("  Saved: ", out_file)
+  message("  Final edges: ", format(nrow(final_edges), big.mark = ","))
+
+  rm(final_edges)
+  gc()
+
+  if (file.exists(tmp_candidates)) file.remove(tmp_candidates)
+  message("  Temp file removed.")
 }
 
 # ==============================================================================
@@ -241,4 +253,4 @@ for (grp in names(input_groups)) {
   )
 }
 
-message("\nAll groups processed.")
+message("\nAll studies processed.")
