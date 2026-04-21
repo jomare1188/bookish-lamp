@@ -1,0 +1,12 @@
+Metric	Value
+Nodes	102020
+Edges	75380961
+Edge_density	0.014485
+Global_transitivity	0.690058
+Mean_normalised_weight	0.281104
+N_connected_components	958
+Giant_component_size	99881
+Pearson_min_filter	0.8
+Pearson_max_filter	0.9999
+Padj_filter	0.05
+Weight_method	minmax
