@@ -6,27 +6,30 @@ library(ggplot2)
 # ==============================================================================
 # CONFIGURATION
 # ==============================================================================
-RESOLUTION      <- 1.0   # Leiden resolution — tune if modules are too big/small
-                          #   too many tiny modules → lower (0.5, 0.3)
-                          #   too few huge modules  → raise (1.5, 2.0)
-MIN_MODULE_SIZE <- 30     # modules smaller than this → labelled "Unassigned"
-N_ITERATIONS    <- 10     # leiden n.iterations per run
-N_STARTS        <- 5      # independent starts — best modularity is kept
-RANDOM_SEED     <- 42
+RESOLUTION           <- 1.0   # Leiden resolution — tune if modules are too big/small
+                               #   too many tiny modules → lower (0.5, 0.3)
+                               #   too few huge modules  → raise (1.5, 2.0)
+MIN_MODULE_SIZE      <- 2     # modules smaller than this → labelled "Unassigned"
+                               # set to 2 so virtually all modules are retained
+MIN_MODULE_SIZE_PLOT <- 10    # minimum module size shown in the plot
+N_ITERATIONS         <- 10    # leiden n.iterations per run
+N_STARTS             <- 5     # independent starts — best modularity is kept
+RANDOM_SEED          <- 42
 
 OUT_DIR_SUGARCANE <- "/home/genomics/jorge/files/sugarcane/"
-OUT_DIR_PURPLE <- "home/genomics/jorge/files/purple/new/"
+OUT_DIR_PURPLE    <- "/home/genomics/jorge/files/purple/new/"
+
 # ==============================================================================
 # INPUT FILES — already filtered and weight-normalised
 # ==============================================================================
 networks <- list(
-  responsive = list(
+  sugarcane = list(
     edge_file = "/home/genomics/jorge/files/sugarcane/network_sugarcane_filtered_edges.tsv",
-    prefix    = file.path(OUT_DIR_SUGARCANE, "leiden_sugarcane_responsive")
+    prefix    = file.path(OUT_DIR_SUGARCANE, "leiden_sugarcane")
   ),
-  non_responsive = list(
+  purple = list(
     edge_file = "/home/genomics/jorge/files/purple/new/network_purple_filtered_edges.tsv",
-    prefix    = file.path(OUT_DIR_PURPLE, "leiden_purple_responsive")
+    prefix    = file.path(OUT_DIR_PURPLE, "leiden_purple")
   )
 )
 
@@ -34,10 +37,9 @@ networks <- list(
 # HELPER: run Leiden N times, keep partition with highest modularity
 # Correct signature: leiden.community(graph, resolution, n.iterations)
 # ==============================================================================
-
 run_leiden_stable <- function(g, resolution, n_iter, n_starts, seed) {
-  best_mod  <- -Inf
-  best_mem  <- NULL   # store membership vector, not the community object
+  best_mod <- -Inf
+  best_mem <- NULL   # store membership vector, not the community object
 
   for (s in seq_len(n_starts)) {
     set.seed(seed + s)
@@ -49,8 +51,8 @@ run_leiden_stable <- function(g, resolution, n_iter, n_starts, seed) {
 
     # leiden.community returns a "fakeCommunities" object —
     # extract the integer membership vector first, then compute modularity
-    mem <- membership(part)                          # named integer vector
-    q   <- igraph::modularity(g, mem)               # explicit igraph dispatch
+    mem <- membership(part)             # named integer vector
+    q   <- igraph::modularity(g, mem)  # explicit igraph dispatch
 
     if (q > best_mod) {
       best_mod <- q
@@ -68,7 +70,7 @@ run_leiden_stable <- function(g, resolution, n_iter, n_starts, seed) {
 # MAIN: cluster one network
 # ==============================================================================
 cluster_network <- function(group_name, edge_file, prefix,
-                            resolution, min_module_size,
+                            resolution, min_module_size, min_module_size_plot,
                             n_iter, n_starts, seed) {
 
   cat("\n", strrep("=", 60), "\n", sep = "")
@@ -80,8 +82,10 @@ cluster_network <- function(group_name, edge_file, prefix,
   edges <- fread(edge_file, header = TRUE,
                  select = c("gene1", "gene2", "weight"))
 
-  cat(sprintf("  Edges: %s\n",               format(nrow(edges),   big.mark = ",")))
-  cat(sprintf("  Weight range: [%.6f, %.6f]\n", min(edges$weight), max(edges$weight)))
+  cat(sprintf("  Edges: %s\n",
+              format(nrow(edges), big.mark = ",")))
+  cat(sprintf("  Weight range: [%.6f, %.6f]\n",
+              min(edges$weight), max(edges$weight)))
 
   # ── 2. Build weighted igraph ──────────────────────────────────────
   cat("Building igraph object...\n")
@@ -98,12 +102,9 @@ cluster_network <- function(group_name, edge_file, prefix,
   rm(edges); gc()
 
   # ── 3. Run Leiden ─────────────────────────────────────────────────
-  # Note: leidenAlg::leiden.community does not have a weight.attr argument —
-  # it uses E(g)$weight automatically when the graph has a weight attribute.
   cat(sprintf("Running Leiden (resolution=%.2f, n.iterations=%d, %d starts)...\n",
               resolution, n_iter, n_starts))
 
-  # NEW
   partition     <- run_leiden_stable(g, resolution, n_iter, n_starts, seed)
   n_raw_modules <- length(unique(partition$membership))
   q             <- partition$modularity
@@ -115,8 +116,8 @@ cluster_network <- function(group_name, edge_file, prefix,
     module_raw = as.integer(partition$membership)
   )
 
-
   # Size-rank modules: largest = Module_001, etc.
+  # Only modules with N >= min_module_size get a name; rest → "Unassigned"
   mod_sizes  <- membership_dt[, .N, by = module_raw][order(-N)]
   large_mods <- mod_sizes[N >= min_module_size, module_raw]
 
@@ -137,22 +138,24 @@ cluster_network <- function(group_name, edge_file, prefix,
   membership_dt[, degree   := node_deg[gene]]
   setorder(membership_dt, module_name, -strength)
 
-  # ── 6. Module summary ─────────────────────────────────────────────
+  # ── 6. Module summary (all modules, including small ones) ─────────
   summary_dt <- membership_dt[, .N, by = module_name][order(-N)]
   setnames(summary_dt, c("module", "n_genes"))
-  summary_dt[, modularity_Q    := round(q, 4)]
-  summary_dt[, resolution      := resolution]
-  summary_dt[, min_module_size := min_module_size]
+  summary_dt[, modularity_Q       := round(q, 4)]
+  summary_dt[, resolution         := resolution]
+  summary_dt[, min_module_size    := min_module_size]
+  summary_dt[, shown_in_plot      := n_genes >= min_module_size_plot & module != "Unassigned"]
 
-  n_modules    <- sum(summary_dt$module != "Unassigned")
-  n_unassigned <- membership_dt[module_name == "Unassigned", .N]
+  n_modules_all    <- sum(summary_dt$module != "Unassigned")
+  n_modules_plot   <- sum(summary_dt$shown_in_plot)
+  n_unassigned     <- membership_dt[module_name == "Unassigned", .N]
+  assigned_modules <- summary_dt[module != "Unassigned"]
 
-  cat(sprintf("  Modules >= %d genes: %d\n",     min_module_size, n_modules))
-  cat(sprintf("  Unassigned genes:    %d\n",      n_unassigned))
-  cat(sprintf("  Largest module:      %d genes\n",
-              max(summary_dt[module != "Unassigned", n_genes])))
-  cat(sprintf("  Median module size:  %.0f genes\n",
-              median(summary_dt[module != "Unassigned", n_genes])))
+  cat(sprintf("  Total modules (>= %d genes): %d\n", min_module_size, n_modules_all))
+  cat(sprintf("  Modules shown in plot (>= %d genes): %d\n", min_module_size_plot, n_modules_plot))
+  cat(sprintf("  Unassigned genes:    %d\n", n_unassigned))
+  cat(sprintf("  Largest module:      %d genes\n", max(assigned_modules$n_genes)))
+  cat(sprintf("  Median module size:  %.0f genes\n", median(assigned_modules$n_genes)))
 
   # ── 7. Hub genes — top 10 per module by weighted strength ─────────
   hubs_dt <- membership_dt[module_name != "Unassigned",
@@ -161,34 +164,54 @@ cluster_network <- function(group_name, edge_file, prefix,
                             .SDcols = c("gene", "strength", "degree")]
   hubs_dt[, hub_rank := seq_len(.N), by = module_name]
 
-  # ── 8. Save outputs ───────────────────────────────────────────────
+  # ── 8. Plot data table — modules that will appear in the plot ─────
+  # This is the table used to generate the plot, saved as a separate file
+  # so results are fully reproducible without re-running the analysis.
+  plot_dt <- summary_dt[shown_in_plot == TRUE][order(-n_genes)]
+  plot_dt[, module := factor(module, levels = module)]
+
+  # ── 9. Save all output files ──────────────────────────────────────
   out_membership <- paste0(prefix, "_membership.tsv")
   out_summary    <- paste0(prefix, "_module_summary.tsv")
   out_hubs       <- paste0(prefix, "_hub_genes.tsv")
+  out_plot_data  <- paste0(prefix, "_plot_data.tsv")
 
+  # gene → module mapping (all genes, including Unassigned)
   fwrite(membership_dt[, .(gene, module_name, strength, degree)],
          file = out_membership, sep = "\t", quote = FALSE)
-  fwrite(summary_dt,
-         file = out_summary,    sep = "\t", quote = FALSE)
+
+  # module sizes — all modules (includes small ones and Unassigned)
+  fwrite(summary_dt[, .(module, n_genes, modularity_Q,
+                         resolution, min_module_size, shown_in_plot)],
+         file = out_summary, sep = "\t", quote = FALSE)
+
+  # hub genes
   fwrite(hubs_dt,
-         file = out_hubs,       sep = "\t", quote = FALSE)
+         file = out_hubs, sep = "\t", quote = FALSE)
+
+  # table used to generate the plot (modules >= min_module_size_plot only)
+  fwrite(plot_dt[, .(module = as.character(module), n_genes,
+                      modularity_Q, resolution)],
+         file = out_plot_data, sep = "\t", quote = FALSE)
 
   cat("  Saved:", basename(out_membership), "\n")
   cat("  Saved:", basename(out_summary),    "\n")
   cat("  Saved:", basename(out_hubs),       "\n")
+  cat("  Saved:", basename(out_plot_data),  "\n")
 
-  # ── 9. Module size distribution plot ─────────────────────────────
-  plot_dt <- summary_dt[module != "Unassigned"][order(-n_genes)]
-  plot_dt[, module := factor(module, levels = module)]
-
+  # ── 10. Module size distribution plot ────────────────────────────
+  # Only modules with >= min_module_size_plot genes are plotted;
+  # a dashed line marks the min_module_size_plot threshold.
   p <- ggplot(plot_dt, aes(x = module, y = n_genes)) +
     geom_col(fill = "#2c7bb6", alpha = 0.85) +
-    geom_hline(yintercept = min_module_size, linetype = "dashed",
+    geom_hline(yintercept = min_module_size_plot, linetype = "dashed",
                color = "firebrick", linewidth = 0.6) +
     labs(
       title    = paste("Module size distribution —", group_name),
-      subtitle = sprintf("Leiden resolution=%.2f | Q=%.4f | %d modules",
-                         resolution, q, n_modules),
+      subtitle = sprintf(
+        "Leiden resolution=%.2f | Q=%.4f | %d total modules | %d shown (≥%d genes)",
+        resolution, q, n_modules_all, n_modules_plot, min_module_size_plot
+      ),
       x = "Module (sorted by size)",
       y = "Number of genes"
     ) +
@@ -204,6 +227,9 @@ cluster_network <- function(group_name, edge_file, prefix,
   ggsave(paste0(prefix, "_module_sizes.png"), plot = p,
          width = 12, height = 5, dpi = 300)
 
+  cat("  Saved:", basename(paste0(prefix, "_module_sizes.pdf")), "\n")
+  cat("  Saved:", basename(paste0(prefix, "_module_sizes.png")), "\n")
+
   cat("Clustering complete for:", group_name, "\n")
 
   invisible(list(
@@ -211,6 +237,7 @@ cluster_network <- function(group_name, edge_file, prefix,
     graph      = g,
     membership = membership_dt,
     summary    = summary_dt,
+    plot_data  = plot_dt,
     hubs       = hubs_dt,
     modularity = q
   ))
@@ -224,18 +251,19 @@ results <- list()
 for (grp in names(networks)) {
   n <- networks[[grp]]
   results[[grp]] <- cluster_network(
-    group_name      = grp,
-    edge_file       = n$edge_file,
-    prefix          = n$prefix,
-    resolution      = RESOLUTION,
-    min_module_size = MIN_MODULE_SIZE,
-    n_iter          = N_ITERATIONS,
-    n_starts        = N_STARTS,
-    seed            = RANDOM_SEED
+    group_name           = grp,
+    edge_file            = n$edge_file,
+    prefix               = n$prefix,
+    resolution           = RESOLUTION,
+    min_module_size      = MIN_MODULE_SIZE,
+    min_module_size_plot = MIN_MODULE_SIZE_PLOT,
+    n_iter               = N_ITERATIONS,
+    n_starts             = N_STARTS,
+    seed                 = RANDOM_SEED
   )
 }
 
-rds_out <- file.path(OUT_DIR, "leiden_results_both_networks.rds")
+rds_out <- file.path(OUT_DIR_SUGARCANE, "leiden_results_both_networks.rds")
 saveRDS(results, file = rds_out)
 cat("\nSaved combined RDS:", basename(rds_out), "\n")
 cat("All networks clustered.\n")

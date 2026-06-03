@@ -4,6 +4,7 @@ library(ggplot2)
 library(hexbin)
 library(scales)
 
+
 # ==============================================================================
 # CONFIGURATION
 # ==============================================================================
@@ -12,19 +13,19 @@ PEARSON_MAX   <- 0.9999
 PADJ_FILTER   <- 0.05
 WEIGHT_METHOD <- "minmax"
 
-OUT_DIR <- "/home/genomics/jorge/files/sugarcane/"
+
 
 # ==============================================================================
 # INPUT FILES — one entry per study
 # ==============================================================================
 files_to_process <- list(
 #  purple = list(
-#    edge_file     = "/home/genomics/jorge/files/sugarcane/edgelist_sugarcane_pearson.tsv",
-#    output_prefix = file.path(OUT_DIR, "network_sugarcane")
+#    edge_file     = "/home/genomics/jorge/files/purple/new/edgelist_purple_pearson.tsv",
+#    output_prefix = file.path("/home/genomics/jorge/files/purple/new/", "network_purple")
   
-   sugarcane = list(
-     edge_file     = "/home/genomics/jorge/files/sugarcane/edgelist_sugarcane_pearson.tsv",
-     output_prefix = file.path("/home/genomics/jorge/files/sugarcane/", "network_sugarcane")
+#   sugarcane = list(
+#     edge_file     = "/home/genomics/jorge/files/sugarcane/edgelist_sugarcane_pearson.tsv",
+#     output_prefix = file.path("/home/genomics/jorge/files/sugarcane/", "network_sugarcane")
    )
 )
 
@@ -33,11 +34,12 @@ files_to_process <- list(
 # ==============================================================================
 normalise_weights <- function(abs_r, method) {
   switch(method,
-    minmax = {
-      lo <- min(abs_r, na.rm = TRUE); hi <- max(abs_r, na.rm = TRUE)
-      if (hi == lo) return(rep(1, length(abs_r)))
-      (abs_r - lo) / (hi - lo)
-    },
+   minmax = {
+  lo <- min(abs_r, na.rm = TRUE); hi <- max(abs_r, na.rm = TRUE)
+  if (hi == lo) return(rep(1, length(abs_r)))
+  normalized <- (abs_r - lo) / (hi - lo)
+  0.01 + (normalized * 0.99)
+  },
     rank = {
       r <- rank(abs_r, ties.method = "average", na.last = "keep")
       r / max(r, na.rm = TRUE)

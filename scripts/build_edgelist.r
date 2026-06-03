@@ -1,6 +1,21 @@
 library(data.table)
 library(parallel)
 
+
+
+#inputs-sugarcane
+#cor_file = "/home/genomics/jorge/files/sugarcane/matrix_sugarcane_pearson.tsv"
+#pv_file  = "/home/genomics/jorge/files/sugarcane/matrix_sugarcane_pvalues.tsv"
+#out_file = "/home/genomics/jorge/files/sugarcane/edgelist_sugarcane_pearson.tsv"
+
+#inputs-purple
+#cor_file = "/home/genomics/jorge/files/purple/new/matrix_purple_pearson.tsv"
+#pv_file  = "/home/genomics/jorge/files/purple/new/matrix_purple_pvalues.tsv"
+#out_file = "/home/genomics/jorge/files/purple/new/edgelist_purple_pearson.tsv"
+
+
+
+
 # ==============================================================================
 # CONFIGURATION
 # ==============================================================================
@@ -17,9 +32,9 @@ Sys.setenv(OMP_NUM_THREADS = 1, OPENBLAS_NUM_THREADS = 1, MKL_NUM_THREADS = 1)
 # ==============================================================================
 input_groups <- list(
   purple = list(
-    cor_file = "/home/genomics/jorge/files/sugarcane/matrix_sugarcane_pearson.tsv",
-    pv_file  = "/home/genomics/jorge/files/sugarcane/matrix_sugarcane_pvalues.tsv",
-    out_file = "/home/genomics/jorge/files/sugarcane/edgelist_sugarcane_pearson.tsv"
+    cor_file = "/home/genomics/jorge/files/purple/new/matrix_purple_pearson.tsv",
+    pv_file  = "/home/genomics/jorge/files/purple/new/matrix_purple_pvalues.tsv",
+    out_file = "/home/genomics/jorge/files/purple/new/edgelist_purple_pearson.tsv"
   )
 )
 
@@ -222,7 +237,7 @@ process_group <- function(group_name, cor_file, pv_file, out_file) {
 
   candidates  <- fread(tmp_candidates, header = TRUE)
   final_edges <- candidates[keep_idx]
-  final_edges[, padj := padj_kept]
+  final_edges[, padj := signif(padj_kept, 4)]
 
   rm(candidates, padj_kept, keep_idx)
   gc()

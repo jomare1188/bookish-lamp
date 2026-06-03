@@ -4,7 +4,25 @@ library(data.table)
 library(matrixStats)
 library(parallel)
 
-setwd("/dados02/jorge/comparative_saccharum/run1/salmon/deseq2_qc")
+
+# CONFIGURE THIS
+# For sugarcane
+
+in_dir="/dados02/jorge/comparative_saccharum/run1/salmon/deseq2_qc"
+out_dir="/home/genomics/jorge/files/sugarcane/"
+label="sugarcane"
+
+# For the other study
+
+#in_dir="/dados02/jorge/comparative_saccharum/china/run2_onlyL/salmon/deseq2_qc"
+#out_dir="/home/genomics/jorge/files/purple/"
+#label="purple"
+
+
+
+
+
+setwd(in_dir)
 
 Sys.setenv(OMP_NUM_THREADS      = 1,
            OPENBLAS_NUM_THREADS = 1,
@@ -30,9 +48,9 @@ study_groups <- list(
  
   # Add the Muñoz-Perez study here analogously when ready:
    sugarcane = list(
-     label      = "sugarcane",
+     label      = label,
      col_filter = function(dds) seq_len(ncol(dds)),   # all samples
-     out_dir    = "/home/genomics/jorge/files/sugarcane/"
+     out_dir    = out_dir
    )
 )
 
