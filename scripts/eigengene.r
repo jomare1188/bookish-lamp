@@ -11,15 +11,16 @@ Sys.setenv(OMP_NUM_THREADS = 1, OPENBLAS_NUM_THREADS = 1, MKL_NUM_THREADS = 1)
 # ==============================================================================
 DDS_PATH <- "/dados02/jorge/comparative_saccharum/run1/salmon/deseq2_qc/deseq2.dds.RData"
 # /dados02/jorge/comparative_saccharum/china/run2_onlyL/salmon/deseq2_qc/deseq2.dds.RData
+# /dados02/jorge/comparative_saccharum/run1/salmon/deseq2_qc/deseq2.dds.RData
 networks <- list(
   sugarcane = list(
-    membership_file = "/home/genomics/jorge/files/sugarcane/leiden_sugarcane_membership.tsv",
+    membership_file = "/home/genomics/jorge/files/sugarcane/mcl_sugarcane_membership.tsv",
     col_filter      = function(dds) seq_len(ncol(dds)),
     out_dir         = "/home/genomics/jorge/files/sugarcane/"
   )
 #  purple = list(
-#    membership_file = "/home/genomics/jorge/files/purple/new/leiden_purple_responsive_membership.tsv",
-#    col_filter      = function(dds) which(dds$Group1 == "L"),
+#    membership_file = "/home/genomics/jorge/files/purple/new/mcl_purple_membership.tsv",
+#    col_filter      = function(dds) seq_len(ncol(dds)),
 #    out_dir         = "/home/genomics/jorge/files/purple/new/"
 #  )
 )
@@ -43,6 +44,11 @@ message("VST matrix loaded: ", paste(dim(all_vst), collapse = " x "))
 #   explained by PC1.
 # ==============================================================================
 compute_module_eigengene <- function(vst_sub) {
+
+# Remove zero variance genes 
+  vst_sub <- vst_sub[apply(vst_sub, 1, var, na.rm = TRUE) > 0, ]
+  
+  ###
   pca     <- prcomp(t(vst_sub), center = TRUE, scale. = TRUE)
   pc1     <- pca$x[, 1]
   var_pct <- summary(pca)$importance[2, 1] * 100   # % variance explained
