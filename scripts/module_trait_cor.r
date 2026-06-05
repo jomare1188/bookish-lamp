@@ -3,8 +3,8 @@ library(data.table)
 # ==============================================================================
 # CONFIGURATION
 # ==============================================================================
-NETWORK_NAME <- "sugarcane"
-PEARSON_THR  <- 0.9       # |r| threshold for module selection
+NETWORK_NAME <- "purple"
+PEARSON_THR  <- 0.6       # |r| threshold for module selection
 PADJ_THR     <- 0.05      # FDR threshold
 MIN_GENES    <- 2       # minimum module size for selection
 
@@ -14,37 +14,37 @@ MIN_GENES    <- 2       # minimum module size for selection
 
 
 
-TRAIT_ENCODING <- list(
-  genotype  = c("RB975375" = 1L, "RB937570" = 0L),   # responsive=1, non-responsive=0
-  treatment = c("High Nitrogen" = 1L, "Low Nitrogen" = 0L)
-)
-
-
 #TRAIT_ENCODING <- list(
-#  genotype  = c("51NG3" = 1L, "TAGZ" = 0L),   # responsive=1, non-responsive=0
-#  treatment = c("0N" = 0L, "2N" = 2L, "6N" = 6L )
+#  genotype  = c("RB975375" = 1L, "RB937570" = 0L),   # responsive=1, non-responsive=0
+#  treatment = c("High Nitrogen" = 1L, "Low Nitrogen" = 0L)
 #)
+
+
+TRAIT_ENCODING <- list(
+  genotype  = c("51NG3" = 1L, "TAGZ" = 0L),   # responsive=1, non-responsive=0
+  treatment = c("0N" = 0L, "2N" = 2L, "6N" = 6L )
+)
 
 # ==============================================================================
 # INPUT FILES PURPLE
 # ==============================================================================
-#EIGENGENE_FILE  <- "/home/genomics/jorge/files/purple/new/eigengenes_purple.tsv"
-#METADATA_FILE   <- "/dados02/jorge/comparative_saccharum/china/samplesheet_china.csv"
-#SUMMARY_FILE    <- "/home/genomics/jorge/files/purple/new/mcl_purple_module_summary.tsv"
-#MEMBERSHIP_FILE <- "/home/genomics/jorge/files/purple/new/mcl_purple_membership.tsv"
-#EDGE_FILE       <- "/home/genomics/jorge/files/purple/new/network_purple_filtered_edges.tsv"
-#OUT_DIR         <- "/home/genomics/jorge/files/purple/new/"
+EIGENGENE_FILE  <- "/home/genomics/jorge/files/purple/new/eigengenes_purple.tsv"
+METADATA_FILE   <- "/dados02/jorge/comparative_saccharum/china/samplesheet_china.csv"
+SUMMARY_FILE    <- "/home/genomics/jorge/files/purple/new/mcl_purple_module_summary.tsv"
+MEMBERSHIP_FILE <- "/home/genomics/jorge/files/purple/new/mcl_purple_membership.tsv"
+EDGE_FILE       <- "/home/genomics/jorge/files/purple/new/network_purple_filtered_edges.tsv"
+OUT_DIR         <- "/home/genomics/jorge/files/purple/new/"
 
 # ==============================================================================
 # INPUT FILES SUGARCANE
 # ==============================================================================
 
-EIGENGENE_FILE  <- "/home/genomics/jorge/files/sugarcane/eigengenes_sugarcane.tsv"
-METADATA_FILE   <- "/dados02/jorge/comparative_saccharum/samplesheet.csv"
-SUMMARY_FILE    <- "/home/genomics/jorge/files/sugarcane/mcl_sugarcane_module_summary.tsv"
-MEMBERSHIP_FILE <- "/home/genomics/jorge/files/sugarcane/mcl_sugarcane_membership.tsv"
-EDGE_FILE       <- "/home/genomics/jorge/files/sugarcane/network_sugarcane_filtered_edges.tsv"
-OUT_DIR         <- "/home/genomics/jorge/files/sugarcane/"
+#EIGENGENE_FILE  <- "/home/genomics/jorge/files/sugarcane/eigengenes_sugarcane.tsv"
+#METADATA_FILE   <- "/dados02/jorge/comparative_saccharum/samplesheet.csv"
+#SUMMARY_FILE    <- "/home/genomics/jorge/files/sugarcane/mcl_sugarcane_module_summary.tsv"
+#MEMBERSHIP_FILE <- "/home/genomics/jorge/files/sugarcane/mcl_sugarcane_membership.tsv"
+#EDGE_FILE       <- "/home/genomics/jorge/files/sugarcane/network_sugarcane_filtered_edges.tsv"
+#OUT_DIR         <- "/home/genomics/jorge/files/sugarcane/"
 
 
 # ==============================================================================
