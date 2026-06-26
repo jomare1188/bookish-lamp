@@ -4,25 +4,25 @@ library(DESeq2)
 # ==============================================================================
 # CONFIGURATION
 # ==============================================================================
-Sys.setenv(OMP_NUM_THREADS = 1, OPENBLAS_NUM_THREADS = 1, MKL_NUM_THREADS = 1)
+Sys.setenv(OMP_NUM_THREADS = 50, OPENBLAS_NUM_THREADS = 50, MKL_NUM_THREADS = 50)
 
 # ==============================================================================
 # INPUT FILES
 # ==============================================================================
-DDS_PATH <- "/dados02/jorge/comparative_saccharum/run1/salmon/deseq2_qc/deseq2.dds.RData"
+DDS_PATH <- "/dados02/jorge/comparative_saccharum/china/run2_onlyL/salmon/deseq2_qc/deseq2.dds.RData"
 # /dados02/jorge/comparative_saccharum/china/run2_onlyL/salmon/deseq2_qc/deseq2.dds.RData
 # /dados02/jorge/comparative_saccharum/run1/salmon/deseq2_qc/deseq2.dds.RData
 networks <- list(
-  sugarcane = list(
-    membership_file = "/home/genomics/jorge/files/sugarcane/mcl_sugarcane_membership.tsv",
-    col_filter      = function(dds) seq_len(ncol(dds)),
-    out_dir         = "/home/genomics/jorge/files/sugarcane/"
-  )
-#  purple = list(
-#    membership_file = "/home/genomics/jorge/files/purple/new/mcl_purple_membership.tsv",
+#  sugarcane = list(
+#    membership_file = "/dados02/jorge/comparative_saccharum/files/sugarcane/mcl_sugarcane_membership.tsv",
 #    col_filter      = function(dds) seq_len(ncol(dds)),
-#    out_dir         = "/home/genomics/jorge/files/purple/new/"
+#    out_dir         = "/dados02/jorge/comparative_saccharum/files/sugarcane/"
 #  )
+  purple = list(
+    membership_file = "/dados02/jorge/comparative_saccharum/files/purple/new/mcl_purple_membership.tsv",
+    col_filter      = function(dds) seq_len(ncol(dds)),
+    out_dir         = "/dados02/jorge/comparative_saccharum/files/purple/new/"
+  )
 )
 
 # ==============================================================================

@@ -2,29 +2,31 @@ library(data.table)
 library(igraph)
 library(ggplot2)
 
+
+setDTthreads(100) 
 # ==============================================================================
 # CONFIGURATION
 # ==============================================================================
-INFLATION            <- 2.0   # MCL Inflation parameter — tune if modules are too big/small
+INFLATION            <- 4.0   # MCL Inflation parameter — tune if modules are too big/small
                               #   too many tiny modules -> lower inflation (1.4, 1.8)
                               #   too few huge modules  -> raise inflation (2.5, 4.0)
 MIN_MODULE_SIZE      <- 2     # modules smaller than this -> labelled "Unassigned"
 MIN_MODULE_SIZE_PLOT <- 10    # minimum module size shown in the plot
-NUM_CORES            <- 250     # Number of CPU threads dedicated to the C MCL execution (-te flag)
+NUM_CORES            <- 100     # Number of CPU threads dedicated to the C MCL execution (-te flag)
 
-OUT_DIR_SUGARCANE <- "/home/genomics/jorge/files/sugarcane/"
-OUT_DIR_PURPLE    <- "/home/genomics/jorge/files/purple/new/"
+OUT_DIR_SUGARCANE <- "/dados02/jorge/comparative_saccharum/files/sugarcane/"
+OUT_DIR_PURPLE    <- "/dados02/jorge/comparative_saccharum/files/purple/new/"
 
 # ==============================================================================
 # INPUT FILES — already filtered and weight-normalised
 # ==============================================================================
 networks <- list(
   sugarcane = list(
-    edge_file = "/home/genomics/jorge/files/sugarcane/network_sugarcane_filtered_edges.tsv",
+    edge_file = "/dados02/jorge/comparative_saccharum/files/sugarcane/network_sugarcane_filtered_edges.tsv",
     prefix    = file.path(OUT_DIR_SUGARCANE, "mcl_sugarcane") # changed prefix to match algorithm
   ),
   purple = list(
-    edge_file = "/home/genomics/jorge/files/purple/new/network_purple_filtered_edges.tsv",
+    edge_file = "/dados02/jorge/comparative_saccharum/files/purple/new/network_purple_filtered_edges.tsv",
     prefix    = file.path(OUT_DIR_PURPLE, "mcl_purple")
   )
 )

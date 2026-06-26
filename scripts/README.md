@@ -3,6 +3,8 @@
 3. peason_cor.r # r_env
 4. build_edgelist.r # r_env
 5. general_stats.r # r_net_env
-6. cluster.r
+6. cluster.r # r_net_env
+7. eigengene.r # r_env
+8. module_trait_cor.r # r_env
 
 
