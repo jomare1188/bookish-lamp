@@ -4,6 +4,7 @@ library(ggplot2)
 library(hexbin)
 library(scales)
 
+setDTthreads(100)
 
 # ==============================================================================
 # CONFIGURATION
@@ -13,20 +14,39 @@ PEARSON_MAX   <- 0.9999
 PADJ_FILTER   <- 0.05
 WEIGHT_METHOD <- "minmax"
 
+# Local transitivity is O(sum deg^2) and dominates the runtime: the purple
+# network (~700M edges, mean degree ~8000) took ~15 h on the Jun 2-3 run, and
+# nothing downstream TESTS it — it only appears as a reported column in
+# get_tfs/05_tf_characterization.r and myb61/07_network_readout.r. FALSE writes
+# NA and skips the transitivity-vs-degree plot; flip to TRUE to backfill.
+COMPUTE_TRANSITIVITY <- FALSE
 
+BASE <- "/dados04/jorge/comparative_saccharum"
 
 # ==============================================================================
 # INPUT FILES — one entry per study
+#
+# Two accepted edge-file formats, detected automatically by analyze_network():
+#
+#   RAW      gene1 gene2 pearson pval padj              (build_edgelist.r output)
+#            -> filtered to |r| in [PEARSON_MIN, PEARSON_MAX] & padj <= 0.05,
+#               weighted, and written out as <prefix>_filtered_edges.tsv
+#
+#   WEIGHTED gene1 gene2 ... weight ...                 (already filtered)
+#            -> used as-is. Covers network_*_filtered_edges.tsv and the augmented
+#               network_*_augmented_edges.tsv from mutual_information/, whose
+#               `weight` column was verified to reproduce normalise_weights() to
+#               6.7e-16. Nothing is re-filtered and no edge file is re-written.
 # ==============================================================================
 files_to_process <- list(
-#  purple = list(
-#    edge_file     = "/home/genomics/jorge/files/purple/new/edgelist_purple_pearson.tsv",
-#    output_prefix = file.path("/home/genomics/jorge/files/purple/new/", "network_purple")
-  
-#   sugarcane = list(
-#     edge_file     = "/home/genomics/jorge/files/sugarcane/edgelist_sugarcane_pearson.tsv",
-#     output_prefix = file.path("/home/genomics/jorge/files/sugarcane/", "network_sugarcane")
-   )
+  sugarcane = list(
+    edge_file     = file.path(BASE, "files/sugarcane/network_sugarcane_augmented_edges.tsv"),
+    output_prefix = file.path(BASE, "files/sugarcane", "network_sugarcane")
+  ),
+  purple = list(
+    edge_file     = file.path(BASE, "files/purple/new/network_purple_augmented_edges.tsv"),
+    output_prefix = file.path(BASE, "files/purple/new", "network_purple")
+  )
 )
 
 # ==============================================================================
@@ -64,25 +84,39 @@ analyze_network <- function(edge_file, output_prefix,
   cat(strrep("=", 60), "\n", sep = "")
 
   # ── Read ────────────────────────────────────────────────────────────
-  edges <- fread(edge_file, header = TRUE,
-                 col.names = c("gene1", "gene2", "pearson", "pval", "padj"))
-  cat(sprintf("  Raw edges: %s\n", format(nrow(edges), big.mark = ",")))
+  # Detect the format from the header rather than reading positionally: the
+  # augmented file has 9 columns, and a positional 5-name read would silently
+  # map `weight` onto `padj`.
+  hdr <- names(fread(edge_file, nrows = 0L))
+  pre_weighted <- "weight" %in% hdr
 
-  # ── Filter ──────────────────────────────────────────────────────────
-  abs_r <- abs(edges$pearson)
-  keep  <- abs_r >= pearson_min & abs_r <= pearson_max
-  if (!is.null(padj_filter)) keep <- keep & edges$padj <= padj_filter
-  edges <- edges[keep]
-  cat(sprintf("  After filters: %s edges\n", format(nrow(edges), big.mark = ",")))
+  if (pre_weighted) {
+    edges <- fread(edge_file, header = TRUE, select = c("gene1", "gene2", "weight"))
+    cat(sprintf("  Edges: %s  (pre-filtered, pre-weighted — using `weight` as-is)\n",
+                format(nrow(edges), big.mark = ",")))
+    if (nrow(edges) == 0L) { cat("  No edges — skipping.\n"); return(invisible(NULL)) }
 
-  if (nrow(edges) == 0L) { cat("  No edges — skipping.\n"); return(invisible(NULL)) }
+  } else {
+    edges <- fread(edge_file, header = TRUE,
+                   col.names = c("gene1", "gene2", "pearson", "pval", "padj"))
+    cat(sprintf("  Raw edges: %s\n", format(nrow(edges), big.mark = ",")))
 
-  # ── Normalise ───────────────────────────────────────────────────────
-  edges[, weight := normalise_weights(abs(pearson), weight_method)]
+    # ── Filter ──────────────────────────────────────────────────────────
+    abs_r <- abs(edges$pearson)
+    keep  <- abs_r >= pearson_min & abs_r <= pearson_max
+    if (!is.null(padj_filter)) keep <- keep & edges$padj <= padj_filter
+    edges <- edges[keep]
+    cat(sprintf("  After filters: %s edges\n", format(nrow(edges), big.mark = ",")))
 
-  out_edges <- paste0(output_prefix, "_filtered_edges.tsv")
-  fwrite(edges, file = out_edges, sep = "\t", quote = FALSE)
-  cat("  Saved filtered edges: ", basename(out_edges), "\n", sep = "")
+    if (nrow(edges) == 0L) { cat("  No edges — skipping.\n"); return(invisible(NULL)) }
+
+    # ── Normalise ───────────────────────────────────────────────────────
+    edges[, weight := normalise_weights(abs(pearson), weight_method)]
+
+    out_edges <- paste0(output_prefix, "_filtered_edges.tsv")
+    fwrite(edges, file = out_edges, sep = "\t", quote = FALSE)
+    cat("  Saved filtered edges: ", basename(out_edges), "\n", sep = "")
+  }
 
   # ── Build graph ─────────────────────────────────────────────────────
   g <- graph_from_data_frame(edges[, .(gene1, gene2, weight)], directed = FALSE)
@@ -101,7 +135,7 @@ analyze_network <- function(edge_file, output_prefix,
                "Padj_filter", "Weight_method"),
     Value  = c(vcount(g), ecount(g),
                round(edge_density(g),             6),
-               round(transitivity(g, "global"),   6),
+               if (COMPUTE_TRANSITIVITY) round(transitivity(g, "global"), 6) else NA,
                round(mean(E(g)$weight),            6),
                comp$no, max(comp$csize),
                pearson_min, pearson_max,
@@ -118,9 +152,12 @@ analyze_network <- function(edge_file, output_prefix,
     gene         = V(g)$name,
     degree       = degree(g),
     strength     = round(strength(g), 6),
-    transitivity = transitivity(g, type = "local")
+    transitivity = if (COMPUTE_TRANSITIVITY) transitivity(g, type = "local")
+                   else NA_real_
   )
   node_stats[is.nan(transitivity), transitivity := NA]
+  if (!COMPUTE_TRANSITIVITY)
+    cat("  Local transitivity SKIPPED (COMPUTE_TRANSITIVITY = FALSE); column is NA\n")
 
   out_nodes <- paste0(output_prefix, "_node_metrics.tsv")
   fwrite(node_stats, file = out_nodes, sep = "\t", quote = FALSE)
@@ -157,16 +194,19 @@ analyze_network <- function(edge_file, output_prefix,
   ggsave(paste0(output_prefix, "_strength_vs_degree.pdf"), p2, width = 6, height = 5)
   ggsave(paste0(output_prefix, "_strength_vs_degree.png"), p2, width = 6, height = 5, dpi = 300)
 
-  p3 <- ggplot(node_stats[!is.na(transitivity)], aes(x = degree, y = transitivity)) +
-    geom_hex(bins = 75) +
-    scale_fill_viridis_c(trans = "log10", name = "Node Count") +
-    scale_x_log10(labels = trans_format("log10", math_format(10^.x))) +
-    labs(title = paste("Transitivity vs Degree —", grp),
-         x = "Degree (k)", y = "Local Transitivity C(k)") +
-    pub_theme
+  p3 <- NULL
+  if (COMPUTE_TRANSITIVITY && node_stats[!is.na(transitivity), .N] > 0L) {
+    p3 <- ggplot(node_stats[!is.na(transitivity)], aes(x = degree, y = transitivity)) +
+      geom_hex(bins = 75) +
+      scale_fill_viridis_c(trans = "log10", name = "Node Count") +
+      scale_x_log10(labels = trans_format("log10", math_format(10^.x))) +
+      labs(title = paste("Transitivity vs Degree —", grp),
+           x = "Degree (k)", y = "Local Transitivity C(k)") +
+      pub_theme
 
-  ggsave(paste0(output_prefix, "_transitivity_vs_degree.pdf"), p3, width = 7, height = 5)
-  ggsave(paste0(output_prefix, "_transitivity_vs_degree.png"), p3, width = 7, height = 5, dpi = 300)
+    ggsave(paste0(output_prefix, "_transitivity_vs_degree.pdf"), p3, width = 7, height = 5)
+    ggsave(paste0(output_prefix, "_transitivity_vs_degree.png"), p3, width = 7, height = 5, dpi = 300)
+  }
 
   cat("Analysis complete for: ", grp, "\n", sep = "")
   rm(g, node_stats, deg_dist, str_dist, p1, p2, p3); gc()

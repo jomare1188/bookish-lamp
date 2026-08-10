@@ -27,12 +27,12 @@ setDTthreads(100)
 # ==============================================================================
 # CONFIGURATION
 # ==============================================================================
-ORTHOFINDER_TSV <- "/dados02/jorge/comparative_saccharum/files/fix_orthofinder/proteins/OrthoFinder/Results_Jun04_2/Orthogroups/Orthogroups.tsv"
+ORTHOFINDER_TSV <- "/dados04/jorge/comparative_saccharum/files/fix_orthofinder/proteins/OrthoFinder/Results_Jun04_2/Orthogroups/Orthogroups.tsv"
 
-EDGE_FILE_SUGARCANE <- "/dados02/jorge/comparative_saccharum/files/sugarcane/network_sugarcane_filtered_edges.tsv"
-EDGE_FILE_PURPLE    <- "/dados02/jorge/comparative_saccharum/files/purple/new/network_purple_filtered_edges.tsv"
+EDGE_FILE_SUGARCANE <- "/dados04/jorge/comparative_saccharum/files/sugarcane/network_sugarcane_augmented_edges.tsv"
+EDGE_FILE_PURPLE    <- "/dados04/jorge/comparative_saccharum/files/purple/new/network_purple_augmented_edges.tsv"
 
-OUT_DIR <- "/dados02/jorge/comparative_saccharum/files/network_conservation/"
+OUT_DIR <- "/dados04/jorge/comparative_saccharum/files/network_conservation/"
 
 SPECIES_SUGARCANE <- "sugarcane_one_transcript"
 SPECIES_PURPLE    <- "one_transcript_purple_proteins"
@@ -41,7 +41,7 @@ SPECIES_PURPLE    <- "one_transcript_purple_proteins"
 #   project through orthology, check existence in the purple network.
 # "purple_to_sugarcane": walk purple edges (681M) instead -- ~9x more outer
 #   edges, run this direction second / separately once the first completes.
-DIRECTION <- "purple_to_sugarcane"
+DIRECTION <- "sugarcane_to_purple"
 
 CHUNK_SIZE <- 2e6   # edges per chunk -- lower this first if you see memory pressure
 
