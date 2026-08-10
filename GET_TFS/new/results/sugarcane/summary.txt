@@ -1,0 +1,7 @@
+species            : sugarcane
+proteome           : /dados04/jorge/comparative_saccharum/files/fix_orthofinder/sugarcane/SofficinarumxspontaneumR570_771_v2.1.protein.fa
+proteins with TAP  : 21189
+TF genes (total)   : 13191
+network genes      : 102020
+TF genes in network: 7007
+TFF families        : 68

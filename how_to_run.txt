@@ -1,0 +1,6 @@
+nextflow run nf-core/fetchngs \
+   -profile docker \
+   --input ids_fail_db_sugarcane.csv \
+   --outdir failed_sra_sugarcanedb \
+   --download_method sratools \
+   -resume  

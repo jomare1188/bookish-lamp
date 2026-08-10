@@ -1,0 +1,9 @@
+species	group	n	median_deg_pct	median_degree	pct_on_conserved
+purple	All nodes	170103	50	721	24.9
+purple	All TFs	12151	50.9	791	24.8
+purple	All MYB/MYB-rel	1305	49.6	687	21.7
+purple	Module-20 orthologs	25	44.1	457	20
+sugarcane	All nodes	102020	50.1	53	37.2
+sugarcane	All TFs	7007	46.4	39	38.1
+sugarcane	All MYB/MYB-rel	809	46.1	38	33
+sugarcane	Module-20 orthologs	30	63	140	33.3

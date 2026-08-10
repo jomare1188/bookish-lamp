@@ -45,6 +45,11 @@ GET_TFS/mytfdb/
 **/domtbl/
 *.domtbl
 
+# network_genes.ids is a scratch dump of node_metrics column 1, written by
+# get_tfs/04_postprocess.sh:34 only to feed the `comm` on the next line. It is
+# ~270 k lines, is rewritten on every network rebuild, and nothing reads it.
+network_genes.ids
+
 # DIAMOND / MAFFT scratch caches (myb61 and module20 keep these under
 # results/*/work) and any nextflow work directory.
 work/

@@ -1,0 +1,13 @@
+transcript	munoz_family	munoz_class	our_call	our_type	calling_orf	agree
+SCA2_2__c76820f1p01331	MYB	TFF	MYB	TFF	SCA2_2__c76820f1p01331.p1	TRUE
+N_NR___TRINITY_DN30_c0_g1_i9	MYB_related	TFF	MYB-related	TFF	N_NR___TRINITY_DN30_c0_g1_i9.p1	TRUE
+SCA2_2__c55824f2p11649	MYB_related	TFF	MYB-related	TFF	SCA2_2__c55824f2p11649.p1	TRUE
+SCA2_2__c65732f1p01355	MYB_related	TFF	MYB-related	TFF	SCA2_2__c65732f1p01355.p1	TRUE
+SCA2_2__c76396f1p01512	MYB_related	TFF	MYB-related	TFF	SCA2_2__c76396f1p01512.p1	TRUE
+SCA2_2__c87109f1p01887	MYB_related	TFF	MYB-related	TFF	SCA2_2__c87109f1p01887.p2	TRUE
+SCA2_2__c87778f1p01484	MYB_related	TFF	MYB-related	TFF	SCA2_2__c87778f1p01484.p1	TRUE
+SCA3__SP803280_c111248_g1_i2	MYB_related	TFF	MYB-related	TFF	SCA3__SP803280_c111248_g1_i2.p4	TRUE
+SCA3__SP803280_c111248_g1_i4	MYB_related	TFF	MYB-related	TFF	SCA3__SP803280_c111248_g1_i4.p1	TRUE
+N_R___TRINITY_DN20_c0_g1_i6	no_tf	no_tf	no_TF_call			TRUE
+N_R___TRINITY_DN331_c0_g1_i3	no_tf	no_tf	no_TF_call			TRUE
+N_R___TRINITY_DN8473_c0_g3_i3	no_tf	no_tf	no_TF_call			TRUE

@@ -3,22 +3,31 @@ library(Matrix)
 library(cogeqc)
 setDTthreads(100)
 # ==============================================================================
+# FULL-NETWORK EDGE CONSERVATION (matrix approach)
+#
+# Same logic as the subnetwork script, but run over the entire filtered
+# co-expression networks instead of only the nitrogen-correlated modules.
+#
+# WARNING — SCALE: the triple product O %*% A_b %*% t(O) materializes an
+# A-gene x A-gene sparse matrix and the intermediate O %*% A_b can densify
+# heavily when B has a high mean degree (purple). Expect large memory use.
+# Run sugarcane->purple first (fewer outer edges) and monitor RAM. If it OOMs,
+# the matrix approach is not viable at this scale and a chunked join is needed.
+# ==============================================================================
+
+# ==============================================================================
 # CONFIGURATION
 # ==============================================================================
-ORTHOFINDER_TSV  <- "/dados04/jorge/comparative_saccharum/files/fix_orthofinder/proteins/OrthoFinder/Results_Jun04_2/Orthogroups/Orthogroups.tsv"
-SUBNET_SUGARCANE <- "/dados04/jorge/comparative_saccharum/files/sugarcane/subnetwork_selected_modules_sugarcane.tsv"
-SUBNET_PURPLE    <- "/dados04/jorge/comparative_saccharum/files/purple/new/subnetwork_selected_modules_purple.tsv"
-OUT_DIR          <- "/dados04/jorge/comparative_saccharum/files/network_conservation/"
+ORTHOFINDER_TSV     <- "/dados04/jorge/comparative_saccharum/files/fix_orthofinder/proteins/OrthoFinder/Results_Jun04_2/Orthogroups/Orthogroups.tsv"
+EDGE_FILE_SUGARCANE <- "/dados04/jorge/comparative_saccharum/files/sugarcane/network_sugarcane_filtered_edges.tsv"
+EDGE_FILE_PURPLE    <- "/dados04/jorge/comparative_saccharum/files/purple/new/network_purple_filtered_edges.tsv"
+OUT_DIR             <- "/dados04/jorge/comparative_saccharum/files/network_conservation/"
 
-# ── Species detection ──────────────────────────────────────────────────────────
-# Run once with DETECT_SPECIES = TRUE to print species names, then set to FALSE
-# and fill in the two strings below (protein filename without extension).
-DETECT_SPECIES    <- FALSE
-SPECIES_SUGARCANE <- "sugarcane"   # update after detection
-SPECIES_PURPLE    <- "purple"       # update after detection
+# OrthoFinder species labels (protein filename without extension)
+SPECIES_SUGARCANE <- "sugarcane_one_transcript"
+SPECIES_PURPLE    <- "one_transcript_purple_proteins"
 
 # Strip the .p<N> isoform suffix OrthoFinder appends to protein gene IDs?
-# Set FALSE if your gene IDs already match between the network and OrthoFinder.
 STRIP_ISOFORM <- FALSE
 
 # ==============================================================================
@@ -27,37 +36,26 @@ STRIP_ISOFORM <- FALSE
 message("Loading OrthoFinder results...")
 og <- as.data.table(read_orthogroups(ORTHOFINDER_TSV))
 
-if (DETECT_SPECIES) {
-  cat("\nSpecies names found in the OrthoFinder TSV:\n")
-  print(unique(og$Species))
-  stop(paste(
-    "\n→ Set DETECT_SPECIES = FALSE and update SPECIES_SUGARCANE / SPECIES_PURPLE",
-    "with the names printed above, then re-run."
-  ))
-}
-
 if (STRIP_ISOFORM) og[, Gene := sub("\\.p[0-9]+$", "", Gene)]
 
-# Strip R570 v2.1 assembly suffix (e.g. "GeneID.v2.1" -> "GeneID") from the
-# OrthoFinder IDs so they align with the sugarcane network IDs.
+# Strip R570 v2.1 assembly suffix (e.g. "GeneID.v2.1" -> "GeneID")
 og[, Gene := sub("\\.v[0-9]+\\.[0-9]+$", "", Gene)]
 
-# Build ortholog pairs (allow many-to-many from polyploidy / gene families)
-sc_og <- og[Species == "sugarcane_one_transcript", .(Orthogroup, sugarcane_gene = Gene)]
-pu_og <- og[Species == "one_transcript_purple_proteins",    .(Orthogroup, purple_gene    = Gene)]
+sc_og <- og[Species == SPECIES_SUGARCANE, .(Orthogroup, sugarcane_gene = Gene)]
+pu_og <- og[Species == SPECIES_PURPLE,    .(Orthogroup, purple_gene    = Gene)]
 ortholog_pairs <- merge(sc_og, pu_og, by = "Orthogroup", allow.cartesian = TRUE)
 
 message(sprintf("Ortholog pairs (many-to-many included): %s",
                 format(nrow(ortholog_pairs), big.mark = ",")))
 
 # ==============================================================================
-# LOAD SUBNETWORKS  (only gene1 / gene2 / weight needed)
+# LOAD FULL EDGE LISTS  (only gene1 / gene2 / weight needed)
 # ==============================================================================
-message("Loading subnetworks...")
-edges_sc <- fread(SUBNET_SUGARCANE, select = c("gene1", "gene2", "weight"))
-edges_pu <- fread(SUBNET_PURPLE,    select = c("gene1", "gene2", "weight"))
+message("Loading full edge lists...")
+edges_sc <- fread(EDGE_FILE_SUGARCANE, select = c("gene1", "gene2", "weight"))
+edges_pu <- fread(EDGE_FILE_PURPLE,    select = c("gene1", "gene2", "weight"))
 
-# Strip .v2.1 from the sugarcane network IDs too (match the ortholog table)
+# Strip .v2.1 from the sugarcane network IDs (match the ortholog table)
 edges_sc[, gene1 := sub("\\.v[0-9]+\\.[0-9]+$", "", gene1)]
 edges_sc[, gene2 := sub("\\.v[0-9]+\\.[0-9]+$", "", gene2)]
 
@@ -68,7 +66,7 @@ message(sprintf("  Purple:    %s edges | %s unique genes",
                 format(nrow(edges_pu), big.mark = ","),
                 format(length(unique(c(edges_pu$gene1, edges_pu$gene2))), big.mark = ",")))
 
-# Gene ID format sanity check — compare a few IDs from each source
+# Gene ID format sanity check
 cat("\n  Sample IDs — sugarcane network:   ", head(edges_sc$gene1, 3), "\n")
 cat("  Sample IDs — purple network:      ", head(edges_pu$gene1, 3), "\n")
 cat("  Sample IDs — sugarcane orthologs: ", head(ortholog_pairs$sugarcane_gene, 3), "\n")
@@ -77,23 +75,15 @@ cat("  Sample IDs — purple orthologs:    ", head(ortholog_pairs$purple_gene, 3
 # ==============================================================================
 # CORE: map edges from network A -> network B through ortholog matrix
 #
-# pairs must have columns gene_a (source species) and gene_b (target species).
-# Returns edges_a with an extra logical column `conserved`.
-#
-# Logic mirrors the simple_code.r example exactly:
 #   O         — sparse ortholog matrix: |genes_a| x |genes_b|
 #   A_a       — symmetric adjacency of network A (unweighted)
 #   A_b       — symmetric adjacency of network B (unweighted)
-#   mapped    — (O %*% A_b %*% t(O)) > 0  -> projects B edges into A-gene space;
-#               entry [i,j] TRUE iff at least one ortholog pair of gene_i and
-#               gene_j is connected in B
-#   conserved — mapped & (A_a > 0)  -> edges present in A AND whose orthologs
-#               are connected in B
+#   mapped    — (O %*% A_b %*% t(O)) > 0  -> B edges projected into A-gene space
+#   conserved — mapped & (A_a > 0)        -> A edges whose orthologs connect in B
 # ==============================================================================
 map_conserved_edges <- function(edges_a, edges_b, pairs,
                                 label_a = "A", label_b = "B") {
 
-  # Gene universes: NETWORK GENES ONLY — do not inflate with ortholog-table genes
   genes_a <- unique(c(edges_a$gene1, edges_a$gene2))
   genes_b <- unique(c(edges_b$gene1, edges_b$gene2))
   n_a     <- length(genes_a);  n_b <- length(genes_b)
@@ -118,9 +108,12 @@ map_conserved_edges <- function(edges_a, edges_b, pairs,
       stop(sprintf("Gene ID mismatch: %s side has 0 overlap with the ortholog table.",
                    if (a_in_og == 0L) label_a else label_b))
     stop("Both sides map to the ortholog table individually, but no ortholog PAIR ",
-         "connects the two networks — likely a genuine biological result (no shared ",
-         "orthologous edges), not an ID problem.")
+         "connects the two networks — genuine biological result, not an ID problem.")
   }
+
+  message(sprintf("  [%s->%s] Building matrices (n_a=%s, n_b=%s)...",
+                  label_a, label_b,
+                  format(n_a, big.mark = ","), format(n_b, big.mark = ",")))
 
   # O: ortholog matrix, rows = A genes, cols = B genes
   O <- sparseMatrix(
@@ -148,13 +141,21 @@ map_conserved_edges <- function(edges_a, edges_b, pairs,
     dims = c(n_b, n_b)
   )
 
-  # Project B edges into A-gene space, then AND with A's own adjacency
-  mapped           <- (O %*% A_b %*% t(O)) > 0
-  conserved_matrix <- mapped & (A_a > 0)
+  message(sprintf("  [%s->%s] Step 1: O %%*%% A_b ...", label_a, label_b))
+  M <- O %*% A_b
+  gc()
 
-  # Annotate each edge in edges_a
+  message(sprintf("  [%s->%s] Step 2: (O A_b) %%*%% t(O) ...", label_a, label_b))
+  mapped <- (M %*% t(O)) > 0
+  rm(M); gc()
+
+  message(sprintf("  [%s->%s] Step 3: AND with A_a ...", label_a, label_b))
+  conserved_matrix <- mapped & (A_a > 0)
+  rm(mapped, A_a, A_b, O); gc()
+
   out <- copy(edges_a)
   out[, conserved := as.logical(conserved_matrix[cbind(i_a, j_a)])]
+  rm(conserved_matrix); gc()
   out
 }
 
@@ -163,45 +164,39 @@ map_conserved_edges <- function(edges_a, edges_b, pairs,
 # ==============================================================================
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 
-message("\n[1/2] Sugarcane -> Purple")
+message("\n[1/2] Sugarcane -> Purple (run first: fewer outer edges)")
 pairs_sc2pu <- ortholog_pairs[, .(gene_a = sugarcane_gene, gene_b = purple_gene)]
 res_sc      <- map_conserved_edges(edges_sc, edges_pu, pairs_sc2pu, "sugarcane", "purple")
 n_con_sc    <- sum(res_sc$conserved)
-jac_sc      <- n_con_sc / nrow(res_sc)
-message(sprintf("  Conserved: %s / %s edges | Jaccard: %.4f",
+jac_sc      <- signif(n_con_sc / nrow(res_sc), 4)
+message(sprintf("  Conserved: %s / %s edges | Jaccard: %s",
                 format(n_con_sc,     big.mark = ","),
-                format(nrow(res_sc), big.mark = ","),
-                jac_sc))
+                format(nrow(res_sc), big.mark = ","), jac_sc))
+fwrite(res_sc, file.path(OUT_DIR, "conserved_edges_full_sugarcane_to_purple.tsv"),
+       sep = "\t", quote = FALSE)
+rm(res_sc); gc()
 
 message("\n[2/2] Purple -> Sugarcane")
 pairs_pu2sc <- ortholog_pairs[, .(gene_a = purple_gene, gene_b = sugarcane_gene)]
 res_pu      <- map_conserved_edges(edges_pu, edges_sc, pairs_pu2sc, "purple", "sugarcane")
 n_con_pu    <- sum(res_pu$conserved)
-jac_pu      <- n_con_pu / nrow(res_pu)
-message(sprintf("  Conserved: %s / %s edges | Jaccard: %.4f",
+jac_pu      <- signif(n_con_pu / nrow(res_pu), 4)
+message(sprintf("  Conserved: %s / %s edges | Jaccard: %s",
                 format(n_con_pu,     big.mark = ","),
-                format(nrow(res_pu), big.mark = ","),
-                jac_pu))
-
-# ==============================================================================
-# SAVE
-# ==============================================================================
-fwrite(res_sc,
-       file.path(OUT_DIR, "conserved_edges_sugarcane_to_purple.tsv"),
+                format(nrow(res_pu), big.mark = ","), jac_pu))
+fwrite(res_pu, file.path(OUT_DIR, "conserved_edges_full_purple_to_sugarcane.tsv"),
        sep = "\t", quote = FALSE)
 
-fwrite(res_pu,
-       file.path(OUT_DIR, "conserved_edges_purple_to_sugarcane.tsv"),
-       sep = "\t", quote = FALSE)
-
+# ==============================================================================
+# SUMMARY
+# ==============================================================================
 summary_dt <- data.table(
   direction       = c("sugarcane_to_purple", "purple_to_sugarcane"),
-  total_edges     = c(nrow(res_sc),  nrow(res_pu)),
-  conserved_edges = c(n_con_sc,      n_con_pu),
-  jaccard_index   = round(c(jac_sc, jac_pu), 4)
+  total_edges     = c(nrow(edges_sc), nrow(edges_pu)),
+  conserved_edges = c(n_con_sc, n_con_pu),
+  jaccard_index   = c(jac_sc, jac_pu)
 )
-fwrite(summary_dt,
-       file.path(OUT_DIR, "conservation_summary.tsv"),
+fwrite(summary_dt, file.path(OUT_DIR, "conservation_summary_full.tsv"),
        sep = "\t", quote = FALSE)
 
 message("\nSummary:")

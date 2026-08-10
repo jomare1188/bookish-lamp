@@ -2,7 +2,7 @@
 
 Our main goal is to show the potential of reusing RNAseq data in sugarcane genomics.
 
-We have selected a dataset composed of two studys Muñoz-Perez et al. 2025 (https://onlinelibrary.wiley.com/doi/10.1111/ppl.70612) and Ta Quang Kiet et al. 2025 (https://onlinelibrary.wiley.com/doi/10.1111/ppl.70612)
+We have selected a dataset composed of two studys Muñoz-Perez et al. 2025 (https://onlinelibrary.wiley.com/doi/10.1111/ppl.70612) and Ta Quang Kiet et al. 2025 (https://www.sciencedirect.com/science/article/pii/S0926669025017017?via%3Dihub)
 The first one have two genotypes with contrasting NUE (nitrogen responsive and non-responsive), in two contrasting nitrogen avaiability conditions (low-high), samples are taken across leaf segments.
 The second one have samples of Saccharum officinarum  and Saccharum robustum under low and high nitrogen (gradient).
 

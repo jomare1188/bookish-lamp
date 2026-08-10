@@ -1,0 +1,29 @@
+species	gene	call	clade	in_network	degree	deg_pct	strength	transitivity	treatment_r	treatment_padj	N_correlated	on_conserved_edge	conservation_status	bitscore	qcov
+sugarcane	SoffiXsponR570.02Ag129700	rescued by tree	chr3-type co-ortholog	TRUE	490	76.1331111546756	75.537169	0.510955302366345	-0.1784	0.5068	FALSE	TRUE		840	100
+sugarcane	SoffiXsponR570.02Cg127200	strict (RBH + MYB rule)	chr3-type co-ortholog	TRUE	23	40.0637129974515	1.545873	0.711462450592885			FALSE	FALSE		840	100
+sugarcane	SoffiXsponR570.02Dg128600	strict (RBH + MYB rule)	chr3-type co-ortholog	TRUE	2	11.5256812389728	0.264157	0			FALSE	FALSE		842	100
+sugarcane	SoffiXsponR570.02Eg097100	strict (RBH + MYB rule)	chr3-type co-ortholog	TRUE	381	73.9889237404431	57.091216	0.637146014642906			FALSE	FALSE		844	100
+sugarcane	SoffiXsponR570.02Fg126200	strict (RBH + MYB rule)	chr3-type co-ortholog	TRUE	57	51.2963144481474	5.678479	0.731203007518797	-0.2466	0.2889	FALSE	TRUE		838	100
+sugarcane	SoffiXsponR570.06Ag034500	strict (RBH + MYB rule)	chr9-type co-ortholog	FALSE							FALSE	FALSE		844	100
+sugarcane	SoffiXsponR570.06Bg004700	strict (RBH + MYB rule)	chr9-type co-ortholog	TRUE	22	39.5701823171927	2.894832	0.25974025974026			FALSE	FALSE		847	100
+sugarcane	SoffiXsponR570.06Cg013000	strict (RBH + MYB rule)	chr9-type co-ortholog	TRUE	3	15.6959419721623	0.13004	0.666666666666667			FALSE	FALSE		847	100
+sugarcane	SoffiXsponR570.06Eg039800	strict (RBH + MYB rule)	chr9-type co-ortholog	TRUE	221	68.8438541462458	27.451781	0.780501851090086	0.1382	0.6237	FALSE	TRUE		848	100
+sugarcane	SoffiXsponR570.06Fg031900	strict (RBH + MYB rule)	chr9-type co-ortholog	FALSE							FALSE	FALSE		849	100
+sugarcane	SoffiXsponR570.6_9Ag129100	strict (RBH + MYB rule)	chr9-type co-ortholog	FALSE							FALSE	FALSE		847	100
+sugarcane	SoffiXsponR570.6us88g027600	strict (RBH + MYB rule)	chr9-type co-ortholog	FALSE							FALSE	FALSE		845	100
+purple	Soffic.03D0011800-3D	strict (RBH + MYB rule)	chr3-type co-ortholog	TRUE	598	46.9680134977043	117.466678	0.371142221699355	-0.1307	1	FALSE	TRUE		840	100
+purple	Soffic.03E0011140-3E	strict (RBH + MYB rule)	chr3-type co-ortholog	TRUE	105	24.2426647384232	30.273077	0.225824175824176	-0.2593	0.8265	FALSE	TRUE		840	100
+purple	Soffic.03G0011080-3A	strict (RBH + MYB rule)	chr3-type co-ortholog	TRUE	1173	55.260342263217	418.975588	0.456978547465878			FALSE	FALSE		836	100
+purple	Soffic.03G0011160-3E	strict (RBH + MYB rule)	chr3-type co-ortholog	FALSE							FALSE	FALSE		837	100
+purple	Soffic.03G0011270-3G	strict (RBH + MYB rule)	chr3-type co-ortholog	TRUE	183	33.3744848709311	31.688974	0.297243739866691			FALSE	FALSE		843	100
+purple	Soffic.03G0011310-3B	strict (RBH + MYB rule)	chr3-type co-ortholog	TRUE	246	38.0190237679524	43.194117	0.2534262485482	-0.6434	0.2726	FALSE	TRUE		840	100
+purple	Soffic.03G0011670-3F	strict (RBH + MYB rule)	chr3-type co-ortholog	TRUE	674	49.380669359153	133.247044	0.282966124487987	-0.4716	0.543	FALSE	TRUE		838	100
+purple	Soffic.03H0011570-3H	strict (RBH + MYB rule)	chr3-type co-ortholog	TRUE	783	50.7768822419358	167.753877	0.280728916587458	-0.5443	0.4484	FALSE	TRUE		840	100
+purple	Soffic.09B0003350-9B	strict (RBH + MYB rule)	chr9-type co-ortholog	TRUE	826	51.2939219178968	59.743962	0.106053268765133			FALSE	FALSE		848	100
+purple	Soffic.09F0003800-9F	strict (RBH + MYB rule)	chr9-type co-ortholog	TRUE	522	45.1003215698724	127.53081	0.497643053073591	-0.1617	0.9829	FALSE	TRUE		848	100
+purple	Soffic.09G0002760-9D	strict (RBH + MYB rule)	chr9-type co-ortholog	TRUE	1049	54.2729993004239	124.267694	0.156131975927637			FALSE	FALSE		821	98.1
+purple	Soffic.09G0003220-9C	strict (RBH + MYB rule)	chr9-type co-ortholog	TRUE	20761	81.273698876563	4818.757614	0.819244184595041			FALSE	FALSE		844	100
+purple	Soffic.09G0003220-9G	strict (RBH + MYB rule)	chr9-type co-ortholog	TRUE	103	23.8723009000429	29.164027	0.687226346849419	-0.1348	1	FALSE	TRUE		848	100
+purple	Soffic.09G0003300-9B	strict (RBH + MYB rule)	chr9-type co-ortholog	TRUE	470	44.2775847574705	115.786518	0.34791997459511			FALSE	FALSE		849	100
+purple	Soffic.09G0003580-9A	strict (RBH + MYB rule)	chr9-type co-ortholog	TRUE	463	44.1526604469057	204.125153	0.525081110394285	-0.2416	0.8555	FALSE	TRUE		848	100
+purple	Soffic.09H0003560-9H	strict (RBH + MYB rule)	chr9-type co-ortholog	TRUE	140	28.5071397917732	21.457034	0.64655704008222	-0.2417	0.8554	FALSE	TRUE		848	100

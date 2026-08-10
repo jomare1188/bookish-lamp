@@ -1,0 +1,7 @@
+species            : purple
+proteome           : /dados04/jorge/comparative_saccharum/files/fix_orthofinder/purple/one_transcript_purple_proteins.faa
+proteins with TAP  : 16706
+TF genes (total)   : 16706
+network genes      : 170103
+TF genes in network: 12151
+TFF families        : 67
