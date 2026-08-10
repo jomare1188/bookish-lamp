@@ -1,0 +1,113 @@
+# ==============================================================================
+# comparative_saccharum
+#
+# This working directory is ~2.2 TB; the part worth versioning is ~1 MB of
+# scripts, tables and notes. Without these rules a stray `git add .` tries to
+# swallow the whole thing. Sizes noted below are as of 2026-08-09.
+#
+# Rule of thumb: track code, configuration, sample sheets and small result
+# TABLES. Never track sequencing data, correlation matrices, edge lists, or
+# anything an analysis script regenerates.
+#
+# NOTE: git does not support trailing comments on a pattern line -- a `#` after
+# a pattern is part of the pattern. Keep every comment on its own line.
+# ==============================================================================
+
+# --- Bulk data trees ----------------------------------------------------------
+# files/   1.2 T  correlation matrices, edge lists, networks, MI output,
+#                 and the pearson_baseline/ archive
+# raw_sugarcane/  277 G  Munoz raw reads
+# run1/            81 G  nf-core/rnaseq output (salmon, dds)
+# failed_sra_sugarcanedb/  5.7 G
+# annotation/     299 M  eggNOG-mapper annotations for both references
+files/
+raw_sugarcane/
+run1/
+failed_sra_sugarcanedb/
+annotation/
+
+# china/ is 542 G of Kiet reads + nf-core output, but its sample sheets and
+# nextflow config are small and describe the experiment -- keep those.
+# Excluding china/** rather than china/ is deliberate: git cannot re-include a
+# file whose parent DIRECTORY is excluded, so `china/` + `!china/*.csv` silently
+# does nothing. Subdirectories still match china/** and are pruned unvisited.
+china/**
+!china/*.csv
+!china/*.config
+
+# --- GET_TFS: keep the result tables, drop the heavy intermediates ------------
+# The TF / MYB61 / module20 result TSVs total ~18 M and are read by the readout
+# scripts, so they stay. The HMM databases and per-chunk search output do not.
+GET_TFS/db/
+GET_TFS/tf_reference/
+GET_TFS/mytfdb/
+**/chunks/
+**/domtbl/
+*.domtbl
+
+# DIAMOND / MAFFT scratch caches (myb61 and module20 keep these under
+# results/*/work) and any nextflow work directory.
+work/
+
+# --- Sequence and alignment files ---------------------------------------------
+*.fa
+*.faa
+*.fna
+*.fasta
+*.pep
+*.fa.gz
+*.faa.gz
+*.fna.gz
+*.fasta.gz
+*.pep.all.fa.gz
+*.fastq
+*.fq
+*.fastq.gz
+*.fq.gz
+*.sam
+*.bam
+*.bai
+*.cram
+*.dmnd
+*.hmm
+
+# --- Serialised R objects and other large binaries ----------------------------
+# e.g. mcl_results_both_networks.rds is 8 G. If a small .rds is ever worth
+# keeping, force it with `git add -f`.
+*.rds
+*.RData
+*.rda
+
+# --- Nextflow -----------------------------------------------------------------
+.nextflow/
+.nextflow.log*
+timeline*.html
+report*.html
+trace*.txt
+dag*.html
+
+# --- Reference PDFs and generated listings ------------------------------------
+# Papers live at the repo root; figures under plots/ are committed deliberately.
+# tree.txt is a 36 M generated directory listing.
+*.pdf
+!plots/**/*.pdf
+tree.txt
+
+# --- Language and editor junk -------------------------------------------------
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+.Rhistory
+.Rproj.user/
+*.Rout
+.Renviron
+*.swp
+*~
+.DS_Store
+.vscode/
+.idea/
+
+# LibreOffice/Excel lock files, left behind when a .tsv is opened in a GUI
+.~lock.*#
