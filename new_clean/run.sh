@@ -20,7 +20,7 @@
 #   ./run.sh conservenull <direction>        permutation null for the above
 #   ./run.sh trait     <study>               gene-trait correlations
 #   ./run.sh traitmi   <study>               gene-vs-trait MI (non-linear)
-#   ./run.sh conscor   [pearson|mi|union]    conserved N response (node + edge)
+#   ./run.sh conscor   [0|1] [selection]     conserved N response; 1 = directed test
 #   ./run.sh go        BP|MF|CC              GO enrichment
 #   ./run.sh gosem                           GO semantic clustering
 #   ./run.sh tfs       <study>               TFs in the network (step 04 only)
@@ -241,7 +241,9 @@ main() {
     CLEAN_OUT_DIR="${RESULTS}/conservation" \
     CLEAN_ORTHOGROUPS="$ORTHOGROUPS" \
     CLEAN_SELECT_TRAIT="$SELECT_TRAIT" \
-    CLEAN_SELECTION="${ARG:-$TRAIT_SELECTION}" \
+    CLEAN_SELECTION="${EXTRA[0]:-$TRAIT_SELECTION}" \
+    CLEAN_DIRECTED="${ARG:-0}" \
+    CLEAN_DISCOVERY="$TRAIT_DISCOVERY" \
     CLEAN_TRAIT_R_THR="$TRAIT_R_THR" \
     CLEAN_TRAIT_PADJ_THR="$TRAIT_PADJ_THR" \
     CLEAN_CORES="$NUM_CORES" \

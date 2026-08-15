@@ -387,6 +387,53 @@ supply the matching purple side.
 
 ---
 
+### The directed test, and what it shows
+
+Correcting purple genome-wide (m = 44,118) is the wrong burden for a comparative
+question. `08_conserved_cor_genes.r` therefore takes a **directed** mode
+(`./run.sh conscor 1`): purple's p-values are corrected over only the orthologs of
+sugarcane's responsive genes, which is the hypothesis actually being tested.
+
+| | |
+|---|---|
+| candidate purple orthologs | 4,745 of 44,118 |
+| BH denominator | 44,118 → 4,745 |
+| \|r\| required of the best gene | ≈0.884 → ≈0.844 |
+| **passing, same candidates, genome-wide BH** | **2** |
+| **passing, same candidates, directed BH** | **1** |
+
+**It found fewer, not more.** BH is adaptive — a gene benefits from sitting in a
+set containing many discoveries — and the candidate set is depleted of purple's
+strongest signal, so the smaller denominator does not compensate.
+
+That depletion is the result:
+
+| | |
+|---|---|
+| purple's genome-wide responsive genes | 32 |
+| …that are orthologs of a sugarcane-responsive gene | **2** |
+| purple's top 30 genes by p, that are candidates | **2** (≈3.2 expected if independent) |
+
+**The two species' nitrogen-responsive gene sets are independent in ortholog
+space, marginally below chance.** This is a substantive negative result, not a
+missing-power caveat.
+
+Nor is the signal merely below a threshold. Among all 4,745 candidates:
+
+| best \|r\| | required | \|r\| ≥ 0.8 | \|r\| ≥ 0.6 |
+|---|---|---|---|
+| 0.854 | 0.844 | **3** | 128 |
+
+Three genes clear 0.8. An edge needs two *connected* genes responsive on both
+sides, so no denominator choice produces one. Reported uncorrected (raw p ≤ 0.05,
+\|r\| ≥ 0.6) the candidate count is 128 — the most generous available reading, and
+it should carry that label.
+
+**The zero survives three selection rules, two correction burdens, and both
+conservation directions.**
+
+---
+
 ## Gene–trait mutual information (`12_gene_trait_mi.py`)
 
 Added to attack the 62-gene purple bottleneck: the trait is discrete, so this

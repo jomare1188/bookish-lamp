@@ -49,6 +49,10 @@ OUT_DIR      <- ensure_dir(env_req("CLEAN_OUT_DIR"))
 ORTHOGROUPS  <- env_req("CLEAN_ORTHOGROUPS")
 SELECT_TRAIT <- env_opt("CLEAN_SELECT_TRAIT", "treatment")
 SELECTION    <- env_opt("CLEAN_SELECTION", "union")
+# DIRECTED test: correct the confirmation species' p-values over only the
+# orthologs of the discovery species' responsive genes, instead of genome-wide.
+DIRECTED     <- env_flag("CLEAN_DIRECTED", FALSE)
+DISCOVERY    <- env_opt("CLEAN_DISCOVERY", "sugarcane")
 R_THR        <- env_num("CLEAN_TRAIT_R_THR", 0.6)
 PADJ_THR     <- env_num("CLEAN_TRAIT_PADJ_THR", 0.05)
 SPECIES_SUGARCANE <- env_opt("CLEAN_OG_SPECIES_SUGARCANE", "sugarcane_one_transcript")
@@ -59,7 +63,9 @@ if (!SELECTION %in% c("pearson", "mi", "union"))
   stop("CLEAN_SELECTION must be pearson, mi or union (got '", SELECTION, "')",
        call. = FALSE)
 
-banner(paste0("conserved nitrogen response  [selection: ", SELECTION, "]"))
+TAG <- if (DIRECTED) "_directed" else ""
+banner(paste0("conserved nitrogen response  [selection: ", SELECTION,
+              if (DIRECTED) paste0(", DIRECTED from ", DISCOVERY) else "", "]"))
 
 # --- inputs ------------------------------------------------------------------
 trait_file <- function(s) file.path(RESULTS, s, sprintf("gene_trait_mi_%s.tsv", s))
@@ -87,11 +93,25 @@ pairs <- unique(merge(
 say("  ortholog pairs (many-to-many): ", fmt_n(nrow(pairs)))
 
 # --- responsive genes, restricted to the conserved-edge gene set -------------
-responsive <- function(study) {
+responsive <- function(study, restrict = NULL) {
   keep <- strip_version(readLines(cons_file(study), warn = FALSE))
   t <- fread(trait_file(study))
   t[, gene := strip_version(gene)]
   t <- t[gene %chin% keep]
+  if (!is.null(restrict)) {
+    # The genome-wide BH denominator is the wrong burden for a comparative
+    # question. "Does THIS gene's ortholog also respond?" is a test over the
+    # candidate orthologs, not over the transcriptome, and correcting over
+    # 44,118 genes when the hypothesis names a few thousand throws away most of
+    # the power for nothing. Recompute BH over the restricted set.
+    n_before <- nrow(t)
+    t <- t[gene %chin% restrict]
+    t[, padj         := p.adjust(pval,         method = "BH")]
+    t[, pearson_padj := p.adjust(pearson_pval, method = "BH")]
+    say(sprintf("  %-9s DIRECTED: %s candidate orthologs of %s's responsive genes",
+                study, fmt_n(nrow(t)), DISCOVERY))
+    say(sprintf("            BH denominator %s -> %s", fmt_n(n_before), fmt_n(nrow(t))))
+  }
   t[, by_pearson := !is.na(pearson_padj) & pearson_padj <= PADJ_THR &
                     abs(pearson) >= R_THR]
   t[, by_mi      := !is.na(padj) & padj <= PADJ_THR]
@@ -105,8 +125,21 @@ responsive <- function(study) {
   t[selected == TRUE]
 }
 say("selecting responsive genes")
-sc_t <- responsive("sugarcane")
-pu_t <- responsive("purple")
+if (DIRECTED) {
+  CONFIRM <- setdiff(c("sugarcane", "purple"), DISCOVERY)
+  say("DIRECTED design: discover in ", DISCOVERY, ", confirm in ", CONFIRM)
+  disc <- responsive(DISCOVERY)
+  cand <- if (DISCOVERY == "sugarcane")
+            pairs[sugarcane_gene %chin% disc$gene, unique(purple_gene)]
+          else
+            pairs[purple_gene %chin% disc$gene, unique(sugarcane_gene)]
+  conf <- responsive(CONFIRM, restrict = cand)
+  sc_t <- if (DISCOVERY == "sugarcane") disc else conf
+  pu_t <- if (DISCOVERY == "sugarcane") conf else disc
+} else {
+  sc_t <- responsive("sugarcane")
+  pu_t <- responsive("purple")
+}
 sc <- unique(sc_t[, .(sugarcane_gene = gene, sc_r = pearson, sc_mi = mi,
                       sc_by_pearson = by_pearson, sc_by_mi = by_mi)])
 pu <- unique(pu_t[, .(purple_gene = gene, pu_r = pearson, pu_mi = mi,
@@ -127,7 +160,7 @@ setcolorder(corr_pairs, c("Orthogroup", "sugarcane_gene", "sc_r", "sc_mi",
                           "purple_gene", "pu_r", "pu_mi", "concordant"))
 setorder(corr_pairs, -concordant, Orthogroup)
 write_tsv(corr_pairs, file.path(OUT_DIR,
-          sprintf("conserved_correlated_ortholog_pairs_%s.tsv", SELECTION)))
+          sprintf("conserved_correlated_ortholog_pairs_%s%s.tsv", SELECTION, TAG)))
 
 classify <- function(sel, self_col, other_col) {
   n_ortho    <- pairs[, .N, by = c(self_col)]
@@ -145,9 +178,9 @@ classify <- function(sel, self_col, other_col) {
 sc_status <- classify(sc, "sugarcane_gene", "purple_gene")
 pu_status <- classify(pu, "purple_gene",    "sugarcane_gene")
 write_tsv(sc_status, file.path(OUT_DIR,
-          sprintf("sugarcane_correlated_conservation_status_%s.tsv", SELECTION)))
+          sprintf("sugarcane_correlated_conservation_status_%s%s.tsv", SELECTION, TAG)))
 write_tsv(pu_status, file.path(OUT_DIR,
-          sprintf("purple_correlated_conservation_status_%s.tsv", SELECTION)))
+          sprintf("purple_correlated_conservation_status_%s%s.tsv", SELECTION, TAG)))
 
 banner("node level")
 print(sc_status[, .N, by = status], row.names = FALSE)
@@ -204,7 +237,7 @@ if (!file.exists(edge_file)) {
                selection = SELECTION, e_both), fill = TRUE)
   if (nrow(edge_summary))
     write_tsv(edge_summary, file.path(OUT_DIR,
-              sprintf("conserved_correlated_edges_%s.tsv", SELECTION)))
+              sprintf("conserved_correlated_edges_%s%s.tsv", SELECTION, TAG)))
 
   if (sum(e_both$n) == 0L) {
     say("")
@@ -217,7 +250,7 @@ if (!file.exists(edge_file)) {
 
 # =============================================================================
 summary_dt <- data.table(
-  metric = c("selection_rule",
+  metric = c("selection_rule", "design",
              "correlated_sugarcane_genes", "correlated_purple_genes",
              "sugarcane_genes_conserved_correlated",
              "purple_genes_conserved_correlated",
@@ -226,7 +259,8 @@ summary_dt <- data.table(
              "pairs_sign_concordant", "pairs_sign_discordant",
              "pairs_direction_not_comparable",
              "genes_responsive_both_species"),
-  value  = c(SELECTION, nrow(sc), nrow(pu),
+  value  = c(SELECTION, if (DIRECTED) paste0("directed from ", DISCOVERY) else "genome-wide",
+             nrow(sc), nrow(pu),
              sc_status[status == "conserved_correlated", .N],
              pu_status[status == "conserved_correlated", .N],
              nrow(corr_pairs), uniqueN(corr_pairs$Orthogroup),
@@ -235,6 +269,6 @@ summary_dt <- data.table(
              corr_pairs[is.na(concordant), .N],
              length(sc_both)))
 write_tsv(summary_dt, file.path(OUT_DIR,
-          sprintf("conserved_correlated_summary_%s.tsv", SELECTION)))
+          sprintf("conserved_correlated_summary_%s%s.tsv", SELECTION, TAG)))
 print(summary_dt, row.names = FALSE)
 say("done  [selection: ", SELECTION, "]")

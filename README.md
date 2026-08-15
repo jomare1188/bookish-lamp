@@ -146,8 +146,38 @@ So the funnel does not close at the edges, or at the MI layer. It closes at
 **purple's 30–32 responsive genes**, which is a power result: at n = 18 over
 44,118 genes a gene needs |r| ≈ 0.80 merely to clear the FDR. A mutual-information
 gene–trait test was built specifically to attack this and **did not fix it** — it
-*shrinks* purple's set (30 → 5 alone). n = 18 is the binding constraint, not the
-choice of statistic.
+*shrinks* purple's set (30 → 5 alone).
+
+### The two species' responsive genes are independent in ortholog space
+
+Testing purple genome-wide is the wrong burden for a comparative question, so the
+test was repeated **directed**: correct purple's p-values over only the 4,745
+orthologs of sugarcane-responsive genes rather than over all 44,118
+(`./run.sh conscor 1`). That drops the |r| a gene must reach from ≈0.88 to ≈0.84.
+
+It found **fewer**, not more — 1 gene against 2 under the genome-wide burden on
+the identical candidate set. The reason is the finding:
+
+> Of purple's **32** genome-wide nitrogen-responsive genes, only **2** are
+> orthologs of a sugarcane-responsive gene. Of purple's top 30 genes by p-value,
+> 2 are candidates against ~3.2 expected if the two sets were independent.
+
+**The nitrogen-responsive gene sets of the two species are, in ortholog space,
+independent — marginally below chance overlap.** The candidate set is therefore
+*depleted* of purple's strongest signal, and BH is adaptive: shrinking the
+denominator does not compensate for losing that company.
+
+And the signal is genuinely absent rather than hidden by a threshold. Among all
+4,745 candidates the best |r| is **0.854** against a required 0.844, and only
+**3** reach |r| ≥ 0.8 at all. No choice of denominator turns three genes into a
+conserved responsive edge, which needs two connected genes responsive on both
+sides. (At raw p ≤ 0.05 and |r| ≥ 0.6 — no multiple-testing correction — 128
+candidates qualify; that is the most generous reading available and should be
+labelled uncorrected.)
+
+**The zero survives three selection rules, two correction burdens and both
+conservation directions.** n = 18 with 0/2/6 mM in triplicate is a design limit,
+not a method limit.
 
 ### Function and H1 readouts
 

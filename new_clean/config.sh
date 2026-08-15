@@ -155,6 +155,13 @@ SELECT_TRAIT=treatment
 # does not distinguish "no shared response" from "no LINEAR shared response".
 # Overridable per run:  ./run.sh conscor pearson
 TRAIT_SELECTION=union
+
+# Discovery species for the DIRECTED test (./run.sh conscor 1). The other
+# species' p-values are then corrected over only the orthologs of the
+# discovery species' responsive genes, which is the burden the comparative
+# question actually implies -- a genome-wide BH over 44,118 genes is testing
+# a hypothesis nobody asked. Discovery should be the better-powered study.
+TRAIT_DISCOVERY=sugarcane
 TRAIT_R_THR=0.6
 TRAIT_PADJ_THR=0.05
 
