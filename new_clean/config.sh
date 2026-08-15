@@ -147,6 +147,14 @@ TRAITS_purple="genotype:51NG3=1,TAGZ=0;treatment:0N=0,2N=2,6N=6"
 
 # The trait the gene selection is made on, and its thresholds.
 SELECT_TRAIT=treatment
+
+# Which statistic makes a gene "nitrogen-responsive" in 08_conserved_cor_genes.r:
+#   pearson | mi | union
+# `union` is the default because finding a conserved response that Pearson cannot
+# see is the reason the MI layer exists -- a Pearson-only search returning nothing
+# does not distinguish "no shared response" from "no LINEAR shared response".
+# Overridable per run:  ./run.sh conscor pearson
+TRAIT_SELECTION=union
 TRAIT_R_THR=0.6
 TRAIT_PADJ_THR=0.05
 

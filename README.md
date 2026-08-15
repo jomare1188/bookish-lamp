@@ -110,17 +110,44 @@ they had more chances to match by accident.
 
 ### Nitrogen response
 
+"Trait-responsive" here means: a gene sitting on **at least one conserved edge**
+(any layer) that is also associated with nitrogen. Association is tested by
+Pearson **and** by mutual information, and the selection rule is configurable
+(`TRAIT_SELECTION`, default `union`) — because a Pearson-only search returning
+nothing cannot distinguish "no shared response" from "no *linear* shared
+response".
+
 | | sugarcane | purple |
 |---|---|---|
-| trait-correlated genes (of conserved set) | 1,361 | **62** |
+| genes on conserved edges | 39,226 | 44,118 |
+| responsive — Pearson | 1,361 | **30** |
+| responsive — MI | 3,221 | **5** |
+| responsive — union | 3,265 | **32** |
 | \|r\| needed to clear FDR | 0.378 (the 0.6 cut binds) | **0.799** (FDR binds) |
-| **conserved correlated ortholog pairs** | **1** (≈4.4 expected by chance) | |
 
-**No evidence of a shared node-level nitrogen response.** The bottleneck is
-purple's 62 genes, and it is a power problem: at n = 18 over 44,118 genes a gene
-needs |r| ≈ 0.80 just to clear the FDR. A mutual-information gene–trait test was
-built to attack exactly this and **did not fix it** — 21 significant genes against
-Pearson's 85. n = 18 is the binding constraint, not the choice of statistic.
+**Node level — conserved correlated ortholog pairs: 1 (Pearson), 0 (MI), 2 (union)**,
+against ≈4.4 expected by chance.
+
+**Edge level — 0, under every selection rule.** Conserved edges joining two genes
+responsive in *sugarcane* are plentiful, and the MI layer contributes a real share
+of them:
+
+| selection | conserved edges, both endpoints responsive in sugarcane | of which `pearson` / `both` / **`mi`** |
+|---|---|---|
+| Pearson | 5,894 | 4,761 / 1,065 / **68** |
+| union | 35,761 | 26,170 / 6,993 / **2,598** |
+
+But **not one of them has a purple counterpart whose endpoints are also
+responsive**, because an edge needs *two* genes responsive on both sides and there
+are only 1 (Pearson) or 2 (union) such genes in the whole analysis — and they are
+not connected.
+
+So the funnel does not close at the edges, or at the MI layer. It closes at
+**purple's 30–32 responsive genes**, which is a power result: at n = 18 over
+44,118 genes a gene needs |r| ≈ 0.80 merely to clear the FDR. A mutual-information
+gene–trait test was built specifically to attack this and **did not fix it** — it
+*shrinks* purple's set (30 → 5 alone). n = 18 is the binding constraint, not the
+choice of statistic.
 
 ### Function and H1 readouts
 

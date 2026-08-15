@@ -336,160 +336,54 @@ no encoding bug: both traits used all 18 / 48 samples, no sample was dropped as
 unencoded, and the samplesheet's `treatment` values (`0N`/`2N`/`6N`) match the
 config exactly.
 
-### Node-level conservation of the nitrogen response — a null result
+### Conservation of the nitrogen response — node and edge level
 
-| metric | value |
-|---|---|
-| correlated sugarcane genes | 1,361 |
-| correlated purple genes | 62 |
-| **conserved correlated ortholog pairs** | **1** |
-| sign concordant / discordant | 1 / 0 |
+`08_conserved_cor_genes.r` takes a `selection` argument (`pearson` | `mi` |
+`union`, default `union`) and reads both statistics from
+`gene_trait_mi_<study>.tsv`, so the two are computed on the same samples and the
+same VST and the rules are directly comparable. Genes are first restricted to the
+conserved-edge gene set, which is built from conserved edges of **all** layers.
 
-Expected by chance, given 1,361 sugarcane genes, ~2.31 orthologs each, and 62 of
-purple's 44,118 conserved genes correlated: **~4.4 pairs**. Observed: **1**.
-
-So there is **no evidence of a shared linear nitrogen response at the node
-level** — the observed overlap is at or below chance. Every other sugarcane gene
-falls in `ortholog_not_correlated` (1,360 of 1,361), not `no_ortholog`, so this is
-not an orthology-coverage artifact: the orthologs exist and simply are not
-correlated on the other side.
-
-The bottleneck is purple's 62 genes, and that is a power problem, not a biology
-finding. Two things would change it, in order of promise:
-
-1. **Non-linear gene–trait association.** Purple's `treatment` is a three-level
-   *dose* (0/2/6 mM) and this stage correlates against it linearly. A saturating
-   or threshold dose response — the shape a nitrogen response is most likely to
-   take — is invisible to that, which is the same argument that motivated the MI
-   layer for the network. The KSG machinery in `02_network_engine.py` already
-   does gene-vs-vector MI; pointing it at the trait vector instead of another
-   gene is a small, well-defined extension and the obvious next step.
-2. **Relaxing the FDR for purple specifically**, which trades false positives for
-   power and should be done with eyes open rather than by lowering a constant.
-
----
-
-## GO enrichment of the conserved gene sets
-
-topGO **weight01** Fisher, thresholded on the **raw** weight01 p ≤ 0.05.
-Background = the GO-annotated nodes of each network, so the test asks what is
-special about the conserved genes *relative to their own network*.
-
-| ontology | sugarcane | purple | union | **shared** | % shared | themes |
-|---|---|---|---|---|---|---|
-| BP | 106 | 155 | 192 | **69** | 35.9 | 12 |
-| MF | 70 | 93 | 124 | **39** | 31.5 | 12 |
-| CC | 38 | 48 | 62 | **24** | 38.7 | 12 |
-
-Top sugarcane BP terms: detection of brassinosteroid stimulus (14/14 annotated
-genes conserved, p = 1.8e-05), brassinosteroid-mediated signalling, regulation of
-gene expression, MAPK cascade.
-
-**69 shared biological-process terms**, against exactly **one** shared
-nitrogen-correlated gene (above). Those two results are not in conflict — they
-measure different things at very different power. The GO test runs on the full
-conserved-gene sets (39,226 and 44,118 genes), so it is not power-starved the way
-the trait test is, and "different genes, same processes" is an ordinary
-evolutionary pattern. But the contrast should be reported, not just the
-encouraging half of it.
-
-### Two changes to how this is computed, and what they cost
-
-The pipeline previously used topGO's `classic` algorithm with BH adjustment. Both
-were changed; the term counts moved a long way, so the history is worth keeping.
-
-| ontology | classic + BH¹ | weight01 + BH | **weight01 + raw p** |
+| | Pearson | MI | union |
 |---|---|---|---|
-| BP (sc / pu / shared) | 311 / 405 / 174 | 10 / 38 / 4 | **106 / 155 / 69** |
-| MF | 121 / 165 / 67 | 4 / 24 / 2 | **70 / 93 / 39** |
-| CC | 87 / 101 / 61 | 5 / 14 / 2 | **38 / 48 / 24** |
+| responsive sugarcane genes | 1,361 | 3,221 | 3,265 |
+| responsive purple genes | **30** | **5** | **32** |
+| **conserved correlated ortholog pairs** | **1** | **0** | **2** |
+| expected by chance | ~2.1 | ~0.8 | ~5.5 |
 
-¹ *and with the BH bug described below, so these counts were inflated twice over.*
+**Node level: at or below chance under every rule.** 1,360 of sugarcane's 1,361
+fall in `ortholog_not_correlated`, not `no_ortholog`, so it is not an orthology-
+coverage artifact — the orthologs exist and are simply not responsive on the
+other side.
 
-**1. `classic` → `weight01`.** `classic` scores every GO term independently, so a
-specific term's signal propagates up the DAG and each ancestor is reported as its
-own finding. weight01 conditions each term on its neighbours, down-weighting
-genes already explained by a more specific child. The old term lists were padded
-with ancestor chains.
+### Edge level — the question the MI layer was built for
 
-**2. A BH bug, found while making that change.** The old code filtered to
-`p < 0.05` and *then* ran `p.adjust(..., "BH")` on that subset. BH's *m* must be
-the number of tests performed; correcting over only the terms already known to be
-small shrinks the denominator and makes the adjusted values anti-conservative.
+A conserved edge counts only if **both** its genes are responsive in **both**
+species. On the sugarcane side alone there are plenty, and the MI layer supplies a
+real share of them:
 
-**3. Thresholding moved to the raw weight01 p.** This is topGO's own convention
-and the reason is structural: weight01's p-values are deliberately *not*
-independent — conditioning each term on its DAG neighbours is the entire
-mechanism — so they are not an exchangeable family and BH's assumptions do not
-hold on them. The conditioning has already absorbed most of the redundancy a
-correction would be compensating for. A BH column is still written to every
-output table as `p.adj` for reference; it does not select the terms.
-
-Threshold lives in `config.sh` as `GO_P` (renamed from `GO_FDR`, which no longer
-described what it did).
-
----
-
-## H1 readouts
-
-### Transcription factors in the networks
-
-| study | TF genes (proteome) | in network | network nodes | families |
+| selection | conserved edges, both endpoints responsive in sugarcane | `pearson` | `both` | **`mi`** |
 |---|---|---|---|---|
-| sugarcane | 13,191 | **7,088** | 103,336 | 68 |
-| purple | 16,706 | **12,197** | 170,736 | 67 |
+| Pearson | 5,894 | 4,761 | 1,065 | **68** |
+| MI | 34,898 | 25,507 | 6,801 | **2,590** |
+| union | 35,761 | 26,170 | 6,993 | **2,598** |
 
-`network_genes` matches `node_metrics` exactly in both studies, which is the
-end-to-end confirmation that the gene-id normalisation in `01_export_vst.r`
-survives all the way to the readouts. Had the `.v2.1` stripping been wrong
-anywhere, these merges use `all.x = TRUE` and would have produced silent NAs
-rather than an error.
+**Both species: 0, under every selection rule.**
 
-### MYB61 copies on conserved edges
+The reason is arithmetic rather than a weak signal. An edge needs *two* genes
+responsive on both sides, and there are 1 (Pearson) or 2 (union) in the entire
+analysis — `SoffiXsponR570.10os1g012500`, plus `SoffiXsponR570.05Cg220600` when MI
+is included — and they are not connected to each other.
 
-| species | copies in network | on a conserved edge | background | fold | binom p | degree-matched p |
-|---|---|---|---|---|---|---|
-| **purple** | 15 | 9 (60.0%) | 25.8% | **2.33** | **0.0053** | **0.0010** |
-| sugarcane | 8 | 3 (37.5%) | 38.0% | 0.99 | 0.64 | 0.67 |
+So the funnel closes at **purple's 30–32 responsive genes**, not at the edges and
+not at the MI layer. Adding MI moves the sugarcane side from 5,894 to 35,761
+qualifying edges (2,598 of them invisible to Pearson) and moves the purple side
+*down*, 30 → 5. The n = 18 selection is the binding constraint everywhere.
 
-**Purple's MYB61 copies sit on cross-species conserved edges far more than
-expected, and it is not a hub artifact.** Their median degree is 486 against
-859 for all purple nodes — the 42.6th percentile, i.e. *below* average — yet 60%
-of them touch a conserved edge against a 25.8% background. The 20,000-draw
-degree-matched permutation test is what rules out the obvious confound, and it
-gives p = 0.0010 with a 2.85-fold excess over degree-matched expectation.
-
-Sugarcane's copies show nothing (fold 0.99, p = 0.67).
-
-**Neither species has a nitrogen-correlated MYB61 copy** — and the reason is the
-power problem, made concrete. Purple's best copy reaches \|r\| = 0.643 against the
-nitrogen dose, which clears the `TRAIT_R_THR = 0.6` effect-size cut but not the
-\|r\| ≈ 0.799 that FDR demands at n = 18. Sugarcane's best is 0.247. So the copy
-that looks most nitrogen-responsive in the whole analysis is one the FDR cannot
-license at that sample size.
-
-### Muñoz Module 20 in both networks
-
-| species | loci mapped | genes in network | median degree pct | MYB background | p vs MYB genes |
-|---|---|---|---|---|---|
-| sugarcane | 4 | 30 | 63.9 | 45.4 | 0.071 |
-| purple | 3 | 25 | 43.3 | 49.3 | 0.969 |
-
-| species | on a conserved edge | background |
-|---|---|---|
-| sugarcane | 40.0% | 38.0% |
-| purple | 24.0% | 25.8% |
-
-**Nothing significant.** Sugarcane's Module-20 orthologs sit somewhat higher in
-the degree distribution than the MYB background (63.9th vs 45.4th percentile) but
-at p = 0.071 that does not survive, and purple shows nothing at all (p = 0.97).
-Neither species enriches for conserved edges.
-
-This reproduces the earlier finding on the previous networks: **Module 20's
-nitrogen response transfers between studies, its network position does not.**
-Getting the same answer from a rebuilt network — different quantification for
-purple, a corrected linear layer, and an added MI layer — is a useful stability
-check on that conclusion.
+This is worth stating as a result rather than an absence: **the MI layer did
+supply non-linear conserved edges between nitrogen-responsive genes — 2,598 of
+them — in the study that has the samples to find them.** What it could not do is
+supply the matching purple side.
 
 ---
 
