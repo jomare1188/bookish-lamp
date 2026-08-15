@@ -1,0 +1,597 @@
+# Results
+
+Numbers from the current build. Update this file as stages complete — it is the
+one place where counts live, so that [thresholds.md](thresholds.md) and
+[methods.md](methods.md) can stay stable.
+
+Build started 2026-08-13.
+
+---
+
+## Inputs
+
+| study | dds | libraries | genes before filter | genes at CV ≥ 15 |
+|---|---|---|---|---|
+| sugarcane | `run1/salmon/deseq2_qc` | 48 | 190,973 | **170,790** |
+| purple | `china/run2_onlyL/salmon/deseq2_qc` | 18 | 215,183 | **170,740** |
+
+Purple is now the leaf-only quantification — see [decisions.md](decisions.md).
+Its previous gene count, from `china/run1` + `Group1=="L"`, was 170,736.
+
+The sugarcane VST export is **byte-identical** (same md5) to the one the previous
+MI sweep used, so that side of the rebuild is a controlled comparison: only the
+method changed, not the data.
+
+---
+
+## Layer construction
+
+| study | layer | edges | candidate edges | floor | null | runtime |
+|---|---|---|---|---|---|---|
+| sugarcane | pearson | **75,333,769** | 213,790,679 | \|r\| = 0.8 | analytic | 5.5 min |
+| sugarcane | ksg | **2,871,152** | 24,190,102 | 0.98911 nats | 2e8 perm | 169.7 min |
+| purple | pearson | **675,955,918** | 1,364,134,888 | \|r\| = 0.8 | analytic | 58.7 min |
+| purple | ksg | **79,795,793** | | 0.98822 nats | 1e6 perm | 45.5 min |
+
+The two KSG floors — 0.98911 at n = 48 and 0.98822 at n = 18 — sit five decimal
+places from the previous build's 0.98910 / 0.98827, despite purple having a
+different VST, a different gene set and an independently drawn null. The floor is
+fixed by the target p-value and n, both unchanged, so the input change moves it
+only in the fifth decimal. That stability is the matching argument holding.
+
+Purple's null needed only 1e6 permutations against sugarcane's 2e8: at n = 18 the
+target p is 6.72e-5, which 1e6 draws resolve directly, so the auto-sizer does not
+reach for the ceiling. It also reports **0 edges beyond the fitted null's upper
+endpoint**, i.e. every purple MI p-value is calibrated rather than floored;
+sugarcane has 69,390 such edges (2.4%), the price of extrapolating to 9e-12.
+
+Measured KSG null means, read by the merge from each layer's own `null.tsv`
+rather than a lookup table: **+0.12428** (n = 48) and **+0.17968** (n = 18),
+against the +0.124 / +0.180 that were previously hardcoded.
+
+The KSG floor is the MI value with the same per-edge false-positive rate as
+\|r\| = 0.8 at n = 48 (p = 9.02e-12) — see [thresholds.md](thresholds.md).
+
+At n = 18 the engine auto-raises the candidate cut from the requested
+p = 1.219e-3 (\|r\| = 0.7) to 1.345e-3 (\|r\| = 0.696), so the 0.8 floor clears the
+candidate boundary by the required 20×. BH then stays exact up to 392 M
+rejections, far above what purple needs.
+
+All 1.46 × 10¹⁰ sugarcane pairs were swept in **12 seconds** (1.62 × 10⁹
+pairs/s); the rest of the 5.5 min is the BH pass and writing 6.1 GB of text.
+
+---
+
+## Validation of the linear layer
+
+Sugarcane's input is unchanged from the previous build, so the new linear layer
+is directly comparable to the old `network_sugarcane_filtered_edges.tsv`.
+
+Ground truth: r computed in **float64** from the DESeq2 VST for the first 6,000
+genes, thresholded at 0.8 ≤ |r| ≤ 0.9999.
+
+| | edges | vs truth |
+|---|---|---|
+| float64 truth | 73,404 | — |
+| **new layer** | **73,404** | **0 missing, 0 extra** |
+| old network | 73,453 | 0 missing, **49 extra** |
+
+The new layer reproduces float64 ground truth exactly. Across the full network it
+has 75,333,769 edges against the old 75,380,961 — **the old network contained
+47,192 edges whose true \|r\| was below its own 0.8 threshold**, admitted because
+the dense correlation matrix stored r rounded to 4 decimal places. See
+[decisions.md](decisions.md) for the full diagnosis.
+
+Independent checks that passed:
+
+- `./run.sh validate` — all checks, including GPU r vs `numpy.corrcoef`
+  (max 2.4e-07), analytic p vs `scipy.stats.t` (exact), sign preservation for
+  negative correlations, and `--match-pearson 0.8` round-tripping to exactly 0.8.
+- The KSG path is **bit-identical** to the original engine on a 2,000-gene
+  subset — edge list and null file both compare equal — confirming the three
+  estimator hooks are true no-ops for the MI estimators.
+- `lib/common.R:read_vst()` round-trips the DESeq2 VST to 9.5e-07 (pure float32).
+- Measured KSG null at n = 48: mean **+0.12428**, sd 0.10004 — matching the
+  +0.124 used for the `r_eq` bias correction.
+
+---
+
+## The network
+
+| study | total edges | pearson only | both | mi only | size |
+|---|---|---|---|---|---|
+| sugarcane | **76,200,344** | 73,329,192 (96.23%) | 2,004,577 (2.63%) | **866,575 (1.14%)** | 8.27 GB |
+| purple | **705,571,723** | 625,775,930 (88.69%) | 50,179,988 (7.11%) | **29,615,805 (4.20%)** | ~65 GB |
+
+**30.2% of the sugarcane MI edges and 37.1% of the purple MI edges are invisible
+to the linear layer** — 866,575 and 29,615,805 edges that a correlation cannot
+represent. That is the return on the method.
+
+Do **not** read purple's larger MI share as more non-linear biology. At n = 18 the
+p-value implied by \|r\| = 0.8 is 6.72e-5 against 9.02e-12 at n = 48, so purple's
+matched floor is far softer in power terms. The asymmetry is sample size, not
+species. See [thresholds.md](thresholds.md) §3.3.
+
+### Sugarcane vs the previous build
+
+Same input (the VST export is md5-identical), so this is a controlled comparison
+of the *method* alone:
+
+| | previous | current | change |
+|---|---|---|---|
+| pearson only | 73,375,808 | 73,329,192 | **−46,616** |
+| both | 2,005,153 | 2,004,577 | −576 |
+| mi only | 866,148 | 866,575 | **+427** |
+| total | 76,247,109 | 76,200,344 | −46,765 |
+
+The story is internally consistent: the linear layer loses ~46.6 k edges — the
+ones admitted by the old 4-decimal rounding — and the MI-only count goes *up* by
+427, because some edges previously counted as `both` had a spurious Pearson
+partner and are now correctly attributed to the MI layer alone.
+
+The MI layer itself changed by only **149 edges** (2,871,301 → 2,871,152,
+0.005%). Same seed and the same 2 × 10⁸ permutations, so the null is identical;
+the two differ only in how the floor is reached — the old file was an `awk`
+filter on `pval`, the new one inverts the GPD fit at the same p. Agreement to
+0.005% is an independent check that baking the threshold into the sweep
+reproduces the post-hoc filter.
+
+---
+
+## Topology
+
+| study | nodes | edges | components | giant component | density |
+|---|---|---|---|---|---|
+| sugarcane | **103,336** | 76,200,344 | 939 | 101,253 (98.0%) | 1.43e-2 |
+| purple | **170,736** | 705,571,723 | 1 | 170,736 (100.0%) | 0.04840871 |
+
+The node count is the load-bearing number: against the Pearson-only baselines of
+102,020 and 170,103, the MI layer contributes ~1,300 (sugarcane) and ~630
+(purple) genes that have **no linear edge at all** at |r| >= 0.8. Purple's
+network now covers 170,736 of the 170,740 genes in its VST — only four genes are
+isolated. Those change the GO enrichment denominator and the
+degree-matched permutation nulls in the MYB61 and Module-20 readouts, which is
+why `node_metrics` is regenerated rather than reused.
+
+`igraph::simplify()` in the clustering stage reported the same 103,336 / 76,200,344
+after removing multi-edges and self-loops — i.e. it removed none. That is a check
+on the merge's edge key (`min(i,j) * n_genes + max(i,j)`): a collision there
+would have surfaced as a collapsed edge count.
+
+**Purple is one connected component.** All 170,736 nodes, mean degree ~8,264,
+density 0.0484 against sugarcane's 0.0143. The Pearson-only baseline already had
+44 components with a 170,012-node giant, so this is not created by the MI layer —
+625.8 M of the 705.6 M edges are Pearson-only — but it is the single most
+important caveat on every purple result downstream:
+
+- It produces a top-heavy partition: one module with 28% of the genes and 14,594
+  genes in modules too small to name. **It does not produce worse modularity** —
+  purple's Q of 0.1631 is higher than sugarcane's 0.1005. Density and modularity
+  are not the same axis, and an earlier note here predicting otherwise was
+  wrong: Q is measured against a degree-preserving null, so a denser graph is not
+  penalised for being dense.
+- The threshold is soft here. At n = 18. At that sample size \|r\| >= 0.8 is p = 6.72e-5 — six
+  orders of magnitude softer than the same \|r\| at n = 48 — so the threshold
+  admits far more of the correlation distribution. It is FDR-honest (BH over
+  1.46e10 tests) but not selective.
+- The design compounds it: 2 genotypes x 3 nitrogen levels x 3 replicates means
+  most genes share a coarse genotype-or-treatment response, which is real
+  covariation but not specific co-regulation.
+
+If purple's modules turn out to be uninformative, the fix is a stricter threshold
+for purple specifically — not a different clustering algorithm. That would break
+the equal-specificity matching with sugarcane, so it is a deliberate trade to
+make and document, not a tuning knob.
+
+Local transitivity is NA by design (`COMPUTE_TRANSITIVITY=0`).
+
+---
+
+## Modules
+
+MCL, inflation 2, `min_module_size = 2` (the pipeline's historical value).
+
+| study | modules | largest | median size | modularity Q | unassigned |
+|---|---|---|---|---|---|
+| sugarcane | **10,309** | 19,604 | 3 | 0.1005 | 401 |
+| purple | **9,881** | 47,887 | 3 | 0.1631 | 14,594 |
+
+Against the Pearson-only baselines:
+
+| | sugarcane old → new | purple old → new |
+|---|---|---|
+| modules | 8,691 → 10,309 | 7,464 → 9,881 |
+| largest | — → 19,604 | 44,050 → 47,887 |
+| Q | 0.1036 → 0.1005 | 0.1726 → 0.1631 |
+| unassigned | 105 → 401 | 273 → 14,594 |
+
+Both networks yield **more, smaller modules** after augmentation, with modularity
+essentially unchanged (down ~0.003 and ~0.010). The extra edges fragment the
+partition slightly rather than reorganising it.
+
+Purple's first module holds 47,887 genes — 28% of the network — and 14,594 genes
+land in modules too small to name. Sugarcane's largest is 19,604 (19%) with only
+401 unassigned. Purple's partition is the more top-heavy of the two, which is
+consistent with its density, though it is *not* the less modular one by Q.
+
+`min_module_size` was briefly run at 5 during this build. It does **not** affect
+the clustering — the raw partition (10,710 modules) and Q (0.1005) came out
+identical either way; it only decides how small a module may be and still get a
+`Module_NNN` name rather than "Unassigned" (3,307 named / 18,935 unassigned at 5,
+versus 10,309 / 401 at 2). Reverted to 2 to match the original pipeline.
+
+---
+
+## Conservation
+
+Each direction streams one network and looks its edges up in the other. **The two
+directions therefore test different MI layers** — `sugarcane_to_purple` tests
+sugarcane's 866,575 MI-only edges, `purple_to_sugarcane` tests purple's
+29,615,805. They are not two measurements of one quantity.
+
+### sugarcane → purple
+
+| layer | edges | conserved | fraction | vs pearson |
+|---|---|---|---|---|
+| ALL | 76,200,344 | 8,197,303 | 10.758% | — |
+| pearson only | 73,329,192 | 7,836,068 | 10.686% | 1.00 |
+| both | 2,004,577 | 257,564 | 12.849% | **1.20** |
+| mi only | 866,575 | 103,671 | 11.963% | **1.12** |
+
+39,226 sugarcane genes sit on at least one conserved edge.
+
+### purple → sugarcane
+
+| layer | edges | conserved | fraction | vs pearson |
+|---|---|---|---|---|
+| ALL | 705,571,723 | 10,722,788 | 1.520% | — |
+| pearson only | 625,775,930 | 9,393,280 | 1.501% | 1.00 |
+| both | 50,179,988 | 909,550 | 1.813% | **1.21** |
+| mi only | 29,615,805 | 419,958 | 1.418% | **0.95** |
+
+The overall rates (10.8% vs 1.5%) are not comparable across directions: purple has
+9x more edges to test against a sparser target, so a purple edge is far less
+likely to find an ortholog partner. Only the **within-direction** contrast between
+layers is meaningful.
+
+### Is any of it above chance? — the permutation null
+
+`13_conservation_null.r` permutes the target column of the ortholog table,
+destroying the true assignment while preserving fan-out, coverage and aggregate
+exposure to the target network's degree distribution. 20 replicates, 5 M sampled
+source edges.
+
+| direction | layer | observed | null | **fold** | z |
+|---|---|---|---|---|---|
+| sc → pu | pearson | 10.6902% | 4.1668% | **2.57** | 78 |
+| | both | 12.7968% | 4.6337% | **2.76** | 75 |
+| | mi | 12.0698% | 4.6796% | **2.58** | 63 |
+| pu → sc | pearson | 1.4996% | 0.6086% | **2.46** | 68 |
+| | both | 1.8398% | 0.6232% | **2.95** | 55 |
+| | mi | 1.4135% | 0.6230% | **2.27** | 41 |
+
+**Edge conservation is real.** Both directions run ~2.5x above a null with the
+same orthology structure, and no replicate came close (p = 1/21, the floor at 20
+replicates). The absolute rates mean something after all.
+
+The null also explains the asymmetry: the null rate is 4.17% one way and 0.61%
+the other — a 6.8x difference that tracks the density gap almost exactly. The
+*fold over null* is 2.57 and 2.46, i.e. **the two directions agree once the
+denominator is removed.** That is the symmetric quantity; the raw rates are not.
+
+### The MI advantage does not survive the null
+
+This corrects the earlier reading of the raw rates.
+
+| | raw rate vs pearson | **fold-over-null vs pearson** |
+|---|---|---|
+| sc → pu, `both` | 1.197 | **1.076** |
+| sc → pu, **`mi`** | **1.129** | **1.005** |
+| pu → sc, `both` | 1.227 | **1.198** |
+| pu → sc, **`mi`** | **0.943** | **0.921** |
+
+MI-only edges have a *higher null rate* than Pearson-only edges (4.68% vs 4.17%;
+0.623% vs 0.609%) — they connect genes with more orthologs and better-connected
+partners, so they had more chances to match by accident. Once that opportunity is
+removed, **MI-only edges are conserved at essentially the Pearson rate** (1.005)
+in sugarcane and below it (0.921) in purple.
+
+This resolves the puzzle in the raw numbers rather than deepening it. The raw
+1.129 and 0.943 looked like a contradiction between directions; corrected to
+1.005 and 0.921 they are consistent, and both say the same thing: **the MI layer
+finds edges that are no better conserved than the linear layer's, and the earlier
+"12% better" was opportunity bias, not biology.**
+
+What *does* survive is the `both` layer: 1.076 and 1.198 over null, elevated in
+both directions. Edges that two independent estimators agree on are genuinely
+better conserved. That was the most robust result before the null and it remains
+the most robust one after.
+
+---
+
+## Gene–trait correlation and node-level conservation
+
+Per-gene expression vs trait, restricted to genes on a conserved edge.
+
+| study | genes tested | padj ≤ 0.05 (treatment) | selected (also \|r\| ≥ 0.6) |
+|---|---|---|---|
+| sugarcane | 39,226 | 6,302 | **1,361** |
+| purple | 44,118 | **62** | **62** |
+
+**The two selections are not defined by the same constraint**, which has to be
+said before any comparison of them:
+
+| | sugarcane | purple |
+|---|---|---|
+| n / df | 48 / 46 | 18 / 16 |
+| \|r\| at the BH boundary | 0.378 | **0.799** |
+| \|r\| needed by the single best gene | 0.635 | 0.884 |
+| what actually binds | the \|r\| ≥ 0.6 effect-size cut | the FDR cut |
+
+At n = 18 with BH over 44,118 genes, a gene needs \|r\| ≈ 0.80 just to clear the
+FDR, so `TRAIT_R_THR = 0.6` never binds on purple and every one of its 62 genes
+is far above it. On sugarcane the FDR admits \|r\| ≥ 0.378 and the 0.6 cut does
+the work. Same nominal thresholds, different operative ones. Verified there is
+no encoding bug: both traits used all 18 / 48 samples, no sample was dropped as
+unencoded, and the samplesheet's `treatment` values (`0N`/`2N`/`6N`) match the
+config exactly.
+
+### Node-level conservation of the nitrogen response — a null result
+
+| metric | value |
+|---|---|
+| correlated sugarcane genes | 1,361 |
+| correlated purple genes | 62 |
+| **conserved correlated ortholog pairs** | **1** |
+| sign concordant / discordant | 1 / 0 |
+
+Expected by chance, given 1,361 sugarcane genes, ~2.31 orthologs each, and 62 of
+purple's 44,118 conserved genes correlated: **~4.4 pairs**. Observed: **1**.
+
+So there is **no evidence of a shared linear nitrogen response at the node
+level** — the observed overlap is at or below chance. Every other sugarcane gene
+falls in `ortholog_not_correlated` (1,360 of 1,361), not `no_ortholog`, so this is
+not an orthology-coverage artifact: the orthologs exist and simply are not
+correlated on the other side.
+
+The bottleneck is purple's 62 genes, and that is a power problem, not a biology
+finding. Two things would change it, in order of promise:
+
+1. **Non-linear gene–trait association.** Purple's `treatment` is a three-level
+   *dose* (0/2/6 mM) and this stage correlates against it linearly. A saturating
+   or threshold dose response — the shape a nitrogen response is most likely to
+   take — is invisible to that, which is the same argument that motivated the MI
+   layer for the network. The KSG machinery in `02_network_engine.py` already
+   does gene-vs-vector MI; pointing it at the trait vector instead of another
+   gene is a small, well-defined extension and the obvious next step.
+2. **Relaxing the FDR for purple specifically**, which trades false positives for
+   power and should be done with eyes open rather than by lowering a constant.
+
+---
+
+## GO enrichment of the conserved gene sets
+
+topGO **weight01** Fisher, thresholded on the **raw** weight01 p ≤ 0.05.
+Background = the GO-annotated nodes of each network, so the test asks what is
+special about the conserved genes *relative to their own network*.
+
+| ontology | sugarcane | purple | union | **shared** | % shared | themes |
+|---|---|---|---|---|---|---|
+| BP | 106 | 155 | 192 | **69** | 35.9 | 12 |
+| MF | 70 | 93 | 124 | **39** | 31.5 | 12 |
+| CC | 38 | 48 | 62 | **24** | 38.7 | 12 |
+
+Top sugarcane BP terms: detection of brassinosteroid stimulus (14/14 annotated
+genes conserved, p = 1.8e-05), brassinosteroid-mediated signalling, regulation of
+gene expression, MAPK cascade.
+
+**69 shared biological-process terms**, against exactly **one** shared
+nitrogen-correlated gene (above). Those two results are not in conflict — they
+measure different things at very different power. The GO test runs on the full
+conserved-gene sets (39,226 and 44,118 genes), so it is not power-starved the way
+the trait test is, and "different genes, same processes" is an ordinary
+evolutionary pattern. But the contrast should be reported, not just the
+encouraging half of it.
+
+### Two changes to how this is computed, and what they cost
+
+The pipeline previously used topGO's `classic` algorithm with BH adjustment. Both
+were changed; the term counts moved a long way, so the history is worth keeping.
+
+| ontology | classic + BH¹ | weight01 + BH | **weight01 + raw p** |
+|---|---|---|---|
+| BP (sc / pu / shared) | 311 / 405 / 174 | 10 / 38 / 4 | **106 / 155 / 69** |
+| MF | 121 / 165 / 67 | 4 / 24 / 2 | **70 / 93 / 39** |
+| CC | 87 / 101 / 61 | 5 / 14 / 2 | **38 / 48 / 24** |
+
+¹ *and with the BH bug described below, so these counts were inflated twice over.*
+
+**1. `classic` → `weight01`.** `classic` scores every GO term independently, so a
+specific term's signal propagates up the DAG and each ancestor is reported as its
+own finding. weight01 conditions each term on its neighbours, down-weighting
+genes already explained by a more specific child. The old term lists were padded
+with ancestor chains.
+
+**2. A BH bug, found while making that change.** The old code filtered to
+`p < 0.05` and *then* ran `p.adjust(..., "BH")` on that subset. BH's *m* must be
+the number of tests performed; correcting over only the terms already known to be
+small shrinks the denominator and makes the adjusted values anti-conservative.
+
+**3. Thresholding moved to the raw weight01 p.** This is topGO's own convention
+and the reason is structural: weight01's p-values are deliberately *not*
+independent — conditioning each term on its DAG neighbours is the entire
+mechanism — so they are not an exchangeable family and BH's assumptions do not
+hold on them. The conditioning has already absorbed most of the redundancy a
+correction would be compensating for. A BH column is still written to every
+output table as `p.adj` for reference; it does not select the terms.
+
+Threshold lives in `config.sh` as `GO_P` (renamed from `GO_FDR`, which no longer
+described what it did).
+
+---
+
+## H1 readouts
+
+### Transcription factors in the networks
+
+| study | TF genes (proteome) | in network | network nodes | families |
+|---|---|---|---|---|
+| sugarcane | 13,191 | **7,088** | 103,336 | 68 |
+| purple | 16,706 | **12,197** | 170,736 | 67 |
+
+`network_genes` matches `node_metrics` exactly in both studies, which is the
+end-to-end confirmation that the gene-id normalisation in `01_export_vst.r`
+survives all the way to the readouts. Had the `.v2.1` stripping been wrong
+anywhere, these merges use `all.x = TRUE` and would have produced silent NAs
+rather than an error.
+
+### MYB61 copies on conserved edges
+
+| species | copies in network | on a conserved edge | background | fold | binom p | degree-matched p |
+|---|---|---|---|---|---|---|
+| **purple** | 15 | 9 (60.0%) | 25.8% | **2.33** | **0.0053** | **0.0010** |
+| sugarcane | 8 | 3 (37.5%) | 38.0% | 0.99 | 0.64 | 0.67 |
+
+**Purple's MYB61 copies sit on cross-species conserved edges far more than
+expected, and it is not a hub artifact.** Their median degree is 486 against
+859 for all purple nodes — the 42.6th percentile, i.e. *below* average — yet 60%
+of them touch a conserved edge against a 25.8% background. The 20,000-draw
+degree-matched permutation test is what rules out the obvious confound, and it
+gives p = 0.0010 with a 2.85-fold excess over degree-matched expectation.
+
+Sugarcane's copies show nothing (fold 0.99, p = 0.67).
+
+**Neither species has a nitrogen-correlated MYB61 copy** — and the reason is the
+power problem, made concrete. Purple's best copy reaches \|r\| = 0.643 against the
+nitrogen dose, which clears the `TRAIT_R_THR = 0.6` effect-size cut but not the
+\|r\| ≈ 0.799 that FDR demands at n = 18. Sugarcane's best is 0.247. So the copy
+that looks most nitrogen-responsive in the whole analysis is one the FDR cannot
+license at that sample size.
+
+### Muñoz Module 20 in both networks
+
+| species | loci mapped | genes in network | median degree pct | MYB background | p vs MYB genes |
+|---|---|---|---|---|---|
+| sugarcane | 4 | 30 | 63.9 | 45.4 | 0.071 |
+| purple | 3 | 25 | 43.3 | 49.3 | 0.969 |
+
+| species | on a conserved edge | background |
+|---|---|---|
+| sugarcane | 40.0% | 38.0% |
+| purple | 24.0% | 25.8% |
+
+**Nothing significant.** Sugarcane's Module-20 orthologs sit somewhat higher in
+the degree distribution than the MYB background (63.9th vs 45.4th percentile) but
+at p = 0.071 that does not survive, and purple shows nothing at all (p = 0.97).
+Neither species enriches for conserved edges.
+
+This reproduces the earlier finding on the previous networks: **Module 20's
+nitrogen response transfers between studies, its network position does not.**
+Getting the same answer from a rebuilt network — different quantification for
+purple, a corrected linear layer, and an added MI layer — is a useful stability
+check on that conclusion.
+
+---
+
+## Gene–trait mutual information (`12_gene_trait_mi.py`)
+
+Added to attack the 62-gene purple bottleneck: the trait is discrete, so this
+uses the **Ross (2014)** estimator rather than KSG, with a label-permutation null
+that — because every gene is rank-transformed — is shared across all genes and
+therefore cheap to make deep (10⁷ permutations, resolving p to 1e-7 empirically).
+
+| study | n | trait | MI sig. | Pearson sig. | both | **mi only** | pearson only |
+|---|---|---|---|---|---|---|---|
+| sugarcane | 48 | binary High/Low | 9,400 | 20,331 | 7,103 | **2,297** | 13,228 |
+| purple | 18 | 3-level dose | 21 | 85 | 14 | **7** | 71 |
+
+*(over all genes, BH across the whole transcriptome; `07_gene_trait_cor.r`
+restricts to conserved genes first, hence its different counts)*
+
+### It is correctly calibrated
+
+- **Negative control:** re-running sugarcane with the trait labels shuffled gives
+  **0 significant genes by MI and 0 by Pearson**. The FDR is controlled.
+- Validation suite: the batched kernel matches a naive loop reference to 5.6e-07;
+  perfect class separation approaches H(trait) from below (0.657 vs ln 2; 0.908
+  vs ln 3); p-values under H₀ are uniform (0.0495 / 0.0096 / 0.00098 against
+  nominal 0.05 / 0.01 / 0.001).
+- 656 of 170,790 sugarcane genes exceed the empirical null's maximum and get
+  GPD-extrapolated p-values (97 of those are floored). Those p-values **rank**
+  correctly but their magnitude is not calibrated — a reported padj of 1e-20
+  means "p < 1e-7", nothing more. The output table flags each row's
+  `p_source` as `empirical` or `extrapolated`.
+
+### But it does not find what it was added to find
+
+**On sugarcane it adds real signal — of a different kind than advertised.** The
+2,297 MI-only genes are *not* non-linear dose responses:
+
+| property of the 2,297 MI-only genes | |
+|---|---|
+| significant by Wilcoxon (a location shift) | **2.4%** |
+| variance ratio between N groups > 2× | 52.4% |
+| median \|AUC − 0.5\| (group separation) | 0.146 |
+| median share of variance explained by N | 5.4% (vs 20.4% for Pearson-only) |
+
+By contrast **100%** of Pearson-only genes are Wilcoxon-significant: those are
+clean location shifts. So MI is picking up genes whose expression *distribution*
+differs by nitrogen — dispersion and shape — rather than genes whose mean shifts.
+That is real (the negative control rules out noise) and arguably interesting, but
+it is a broader phenomenon than the saturating dose response that motivated the
+work, and it should not be described as "non-linear nitrogen response" without
+qualification.
+
+Checked and excluded: this is **not** a genotype × nitrogen interaction. A
+two-way ANOVA gives the interaction 0.7% of the variance in MI-only, Pearson-only
+and non-significant genes alike.
+
+**On purple it does not help at all.** 21 significant genes against Pearson's 85,
+adding 7. At n = 18 with three classes of six, the MI null has sd 0.130 and a
+maximum of 0.908 against a ceiling of ln 3 = 1.099, so significance requires
+near-perfect three-way separation — a *higher* bar than the \|r\| ≈ 0.8 Pearson
+needs. An omnibus test spends its power detecting any of the ways three classes
+might differ; when the effect is monotone, the directed test wins.
+
+### The bottom line: it does not change the biological conclusion
+
+Redoing the node-level conservation with each selection rule, restricted to the
+conserved-edge genes as `08_conserved_cor_genes.r` does:
+
+| selection | sugarcane genes | purple genes | conserved correlated pairs | expected by chance |
+|---|---|---|---|---|
+| Pearson (as run) | 1,361 | 30 | 1 | 2.1 |
+| MI | 3,221 | 5 | 0 | 0.8 |
+| **union** | 3,265 | 32 | **2** | **5.5** |
+
+Two observed against ~5.5 expected. **Still no evidence of a shared node-level
+nitrogen response**, and the purple side is still the bottleneck — MI made it
+*smaller*, not larger.
+
+This was proposed as the highest-value next step. It was worth doing — the
+sugarcane signal is real and the machinery is validated and reusable — but as a
+fix for the purple bottleneck it failed, and the honest reading is that **n = 18
+is the binding constraint, not the choice of statistic.** No estimator recovers
+information that 18 libraries do not contain.
+
+---
+
+## Open items
+
+- The 47,192 spurious sugarcane edges were present in every downstream result of
+  the previous build. The affected artifacts are archived under
+  `files/pearson_baseline/`; nothing there has been corrected, only superseded.
+- ~~Gene–trait association is Pearson-only~~ — **done** (`12_gene_trait_mi.py`),
+  and it did not fix the purple bottleneck. See above. What it did produce is a
+  set of 2,297 sugarcane genes whose expression *dispersion* tracks nitrogen;
+  whether that is biologically interesting is an open question, not a settled one.
+- **Purple needs more libraries, not a better statistic.** Every underpowered
+  result in this build traces back to n = 18: the soft MI floor for the network
+  layer, the 62-gene trait selection, and the failure of the omnibus test to
+  improve on it. That is worth stating in the methods rather than working around.
+- **Purple's MI layer is matched on p, not on power.** At n = 18 the matched floor
+  admits a 34x larger MI-only set than sugarcane's and those edges conserve
+  slightly *worse* than linear ones. Worth testing whether an absolute-stringency
+  purple MI layer recovers a conservation ratio above 1.
+- Local transitivity was never computed (`COMPUTE_TRANSITIVITY=0`). It is only a
+  reported column, but the TF and MYB61 tables carry NA for it.

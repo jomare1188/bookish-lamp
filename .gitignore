@@ -35,6 +35,12 @@ china/**
 !china/*.csv
 !china/*.config
 
+# --- new_clean: track the pipeline, not its output ----------------------------
+# scripts/, config.sh, run.sh and docs/ are the deliverable and are tracked.
+# results/ is ~200 GB of regenerable network output; logs/ is run chatter.
+new_clean/results/
+new_clean/logs/
+
 # --- GET_TFS: keep the result tables, drop the heavy intermediates ------------
 # The TF / MYB61 / module20 result TSVs total ~18 M and are read by the readout
 # scripts, so they stay. The HMM databases and per-chunk search output do not.
