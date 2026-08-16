@@ -274,6 +274,48 @@ be misread as absent shared response when it is really absent orthology coverage
 
 ---
 
+## 14-16 · module-level analysis
+
+```
+./run.sh eigengene    <study>          # PC1 per module -> a VST-format matrix
+./run.sh moduletrait  <study>          # 12_gene_trait_mi.py, unchanged, on it
+./run.sh moduleprofile <study>         # + TF hypergeometric per module
+./run.sh moduleheatmap <study> [mods]  # heatmaps for the responsive ones
+```
+
+| | |
+|---|---|
+| cost | eigengene ~1 min · moduletrait 0.5 min · profile seconds · heatmaps ~2 min |
+| env | `r_net_env`, except heatmaps (`r_env`: ComplexHeatmap, circlize, scico) and moduletrait (`docling`) |
+
+**Why the eigengene matrix is written in the VST export's format.** `.f32` +
+`.genes.txt` + `.meta.json`, module names where gene names go. That lets
+`12_gene_trait_mi.py` run on modules with no modification, so the module-level
+linear/non-linear classification is the *same code path* as the gene-level one.
+Its log says "genes" throughout; read "modules".
+
+The eigengene is `prcomp(t(vst_sub), center=TRUE, scale.=TRUE)`, PC1 scores,
+oriented so it correlates positively with mean module expression, then z-scored.
+Scaling genes before the PCA is the WGCNA convention and matters — without it PC1
+chases the highest-variance members instead of summarising the module. Three
+fixes relative to the dead `scripts/eigengene.r` it was lifted from are listed in
+that script's header.
+
+`MIN_MODULE_SIZE_EIGEN=3` keeps 92% / 87% of each network's genes. Raising it
+does not change the eigengenes of larger modules, so it is a cheap re-run.
+
+TF enrichment is a hypergeometric per module against the **network** node
+universe, BH across modules; a gene's isoform-driven multi-family calls are
+collapsed to one row first or every enrichment is inflated.
+
+Heatmaps draw paired absolute-VST and per-gene z-score panels — a z-score panel
+alone rescales a gene varying by 0.01 VST units to look as structured as one
+varying by 5. Ramps are percentile-clipped (99th absolute, 98th of |z|). Modules
+above `HEATMAP_MAX_GENES` are subset by intramodular strength, stated in the
+subtitle; the largest are 19,604 and 47,887 genes.
+
+---
+
 ## 09 · go — `./run.sh go BP|MF|CC`
 
 topGO **weight01** Fisher, once per ontology, thresholded on the **raw**

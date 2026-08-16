@@ -177,6 +177,20 @@ TRAIT_MI_PERM=10000000
 R_THR=0.7
 PADJ_THR=0.05
 
+# --- module-level analysis ---------------------------------------------------
+# Minimum genes for a module to get an eigengene. 3 keeps 6,576 sugarcane /
+# 6,318 purple modules, covering 92% and 87% of each network's genes. It only
+# modestly eases the testing burden -- purple's strongest module still needs
+# |r| ~ 0.85 to clear BH at n = 18, against 0.88 testing every gene -- but the
+# eigengenes of larger modules do not change if this is raised later.
+MIN_MODULE_SIZE_EIGEN=3
+
+# Heatmaps: how many responsive modules to draw, and how many genes of each.
+# The largest modules are 19,604 (sugarcane) and 47,887 (purple) genes, which no
+# heatmap can render; those are subset to the top genes by intramodular strength.
+HEATMAP_TOP_N=20
+HEATMAP_MAX_GENES=100
+
 # --- GO ----------------------------------------------------------------------
 ONTOLOGIES="BP MF CC"
 # Threshold on the RAW weight01 p-value, topGO's own convention: weight01

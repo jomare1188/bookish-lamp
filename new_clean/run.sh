@@ -20,6 +20,10 @@
 #   ./run.sh conservenull <direction>        permutation null for the above
 #   ./run.sh trait     <study>               gene-trait correlations
 #   ./run.sh traitmi   <study>               gene-vs-trait MI (non-linear)
+#   ./run.sh eigengene <study>               one eigengene per MCL module
+#   ./run.sh moduletrait <study>             module response: linear + non-linear
+#   ./run.sh moduleprofile <study>           + TF enrichment per module
+#   ./run.sh moduleheatmap <study> [mods]    heatmaps for responsive modules
 #   ./run.sh conscor   [0|1] [selection]     conserved N response; 1 = directed test
 #   ./run.sh go        BP|MF|CC              GO enrichment
 #   ./run.sh gosem                           GO semantic clustering
@@ -46,7 +50,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${HERE}/config.sh"
 
-usage() { sed -n '3,34p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 1; }
+usage() { sed -n '3,38p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 1; }
 die()   { echo "ERROR: $*" >&2; exit 1; }
 
 # Per-study value lookup, e.g. cfg DDS sugarcane -> $DDS_sugarcane
@@ -248,6 +252,64 @@ main() {
     CLEAN_TRAIT_PADJ_THR="$TRAIT_PADJ_THR" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_NET" "${SCRIPTS}/08_conserved_cor_genes.r"
+    ;;
+
+  # --- 14-16 module-level analysis --------------------------------------------
+  eigengene)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_VST_PREFIX="$(vst_prefix "$ARG")" \
+    CLEAN_MEMBERSHIP="$(study_dir "$ARG")/mcl_${ARG}_membership.tsv" \
+    CLEAN_OUT_PREFIX="$(study_dir "$ARG")/modules/${ARG}_eigengenes" \
+    CLEAN_MIN_MODULE_SIZE_EIGEN="$MIN_MODULE_SIZE_EIGEN" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_NET" "${SCRIPTS}/14_module_eigengene.r"
+    ;;
+
+  # Reuses 12_gene_trait_mi.py unchanged: the eigengene matrix is written in the
+  # VST export's own format, so the module-level linear/non-linear call comes
+  # from the same validated code path as the gene-level one.
+  moduletrait)
+    check_study "$ARG"
+    "$PYTORCH" -u "${SCRIPTS}/12_gene_trait_mi.py" \
+      --matrix "$(study_dir "$ARG")/modules/${ARG}_eigengenes" \
+      --meta   "$(cfg META "$ARG")" \
+      --traits "$(cfg TRAITS "$ARG")" \
+      --trait  "$SELECT_TRAIT" \
+      --out    "$(study_dir "$ARG")/module_trait_${ARG}" \
+      --k "$TRAIT_MI_K" --n-perm "$TRAIT_MI_PERM" --alpha "$PADJ_THR" \
+      "${EXTRA[@]}"
+    ;;
+
+  moduleprofile)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_MODULE_TRAIT="$(study_dir "$ARG")/module_trait_${ARG}.tsv" \
+    CLEAN_MEMBERSHIP="$(study_dir "$ARG")/mcl_${ARG}_membership.tsv" \
+    CLEAN_PC1_VARIANCE="$(study_dir "$ARG")/modules/${ARG}_eigengenes_pc1_variance.tsv" \
+    CLEAN_TF_FILE="${RESULTS}/readouts/get_tfs/${ARG}/TF_in_network.tsv" \
+    CLEAN_NODE_METRICS="$(study_dir "$ARG")/network_${ARG}_node_metrics.tsv" \
+    CLEAN_OUT_FILE="$(study_dir "$ARG")/module_profile_${ARG}.tsv" \
+    CLEAN_PADJ_THR="$PADJ_THR" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_NET" "${SCRIPTS}/15_module_profile.r"
+    ;;
+
+  moduleheatmap)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_VST_PREFIX="$(vst_prefix "$ARG")" \
+    CLEAN_MODULE_PROFILE="$(study_dir "$ARG")/module_profile_${ARG}.tsv" \
+    CLEAN_MEMBERSHIP="$(study_dir "$ARG")/mcl_${ARG}_membership.tsv" \
+    CLEAN_META="$(cfg META "$ARG")" \
+    CLEAN_TRAITS="$(cfg TRAITS "$ARG")" \
+    CLEAN_TF_FILE="${RESULTS}/readouts/get_tfs/${ARG}/TF_in_network.tsv" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")/heatmaps" \
+    CLEAN_HEATMAP_TOP_N="$HEATMAP_TOP_N" \
+    CLEAN_HEATMAP_MAX_GENES="$HEATMAP_MAX_GENES" \
+    CLEAN_HEATMAP_MODULES="${EXTRA[0]:-}" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_PLOT" "${SCRIPTS}/16_module_heatmaps.r"
     ;;
 
   # --- 09-10 GO ---------------------------------------------------------------
