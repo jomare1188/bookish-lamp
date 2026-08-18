@@ -618,6 +618,69 @@ enrichment, 0 of 37.
   20 per response class. Height scales at 30.5 px per gene (r = 0.9998), so a
   3-gene and a 100-gene module are both legible.
 
+### What the responsive modules are for — GO BP, one test per module
+
+One topGO BP enrichment per responsive module, response classes pooled, against
+the same network-node background the gene-level GO and the TF hypergeometric use
+(`./run.sh modulego <study>`).
+
+**The annotation gate is the binding constraint, and it is severe.**
+
+| | sugarcane | purple |
+|---|---|---|
+| responsive modules | 647 | 38 |
+| GO-annotated network nodes (background) | 8,251 of 103,336 | 12,255 of 170,736 |
+| median GO-annotated members per responsive module | **0** | **0** |
+| **modules testable (≥ 3 annotated members)** | **71 (11%)** | **3 (8%)** |
+| modules with ≥ 1 enriched term | 65 of 71 | 3 of 3 |
+| terms written | 359 | 20 |
+| terms clearing cross-module BH ≤ 0.05 | 91 | 5 |
+
+**89% of the responsive modules cannot be tested at all.** Two facts multiply:
+only 8% of sugarcane's network nodes carry any eggNOG GO annotation, and the
+median responsive module holds 5 genes. **401 of the 647 (62%) have *zero*
+annotated members**; purple's figure is 27 of 38. So this section describes 71 modules, not 647, and the 71 are biased
+toward the large ones — nothing here should be read as characterising the
+responsive set as a whole.
+
+Within that 11%, the signal is strong and it is about nitrogen:
+
+| module | class | genes | ann. | top BP term | p | global BH |
+|---|---|---|---|---|---|---|
+| Module_267 | both | 26 | 12 | response to chitin | 1.2e-26 | 1.0e-21 |
+| Module_514 | both | 16 | 10 | monoterpene biosynthetic process | 5.0e-27 | 8.6e-22 |
+| Module_469 | both | 16 | 5 | spermine / spermidine biosynthesis | 1.0e-17 | 2.0e-13 |
+| Module_1820 | both | 7 | 6 | proline biosynthetic process | 1.6e-17 | 2.8e-13 |
+| Module_440 | both | 17 | 4 | ammonia assimilation cycle | 4.1e-11 | 3.5e-07 |
+| Module_100 | both | 78 | 14 | **nitrate assimilation** | 9.6e-08 | 3.5e-04 |
+| Module_026 | both | 324 | 34 | nitric oxide biosynthetic process | 1.1e-06 | 3.0e-03 |
+| Module_009 | both | 521 | 96 | photosynthesis, light harvesting in PSI | 3.7e-10 | 2.3e-06 |
+
+Nitrogen assimilation recurs across independent modules — nitrate assimilation
+(Module_026, Module_100), the ammonia assimilation cycle and glutamate
+biosynthesis (Module_440, Module_106), ammonium ion metabolism and the polyamines
+(Module_469), proline and asparagine biosynthesis (Module_1820, Module_009,
+Module_146, Module_191), urea transport (Module_117), nitric oxide, and cellular
+response to nitrogen starvation (Module_417). These are different modules finding
+different parts of the same pathway, which is the shape a real result has.
+
+Module_009 (521 genes, the largest responsive module) is photosynthesis and
+translation; Module_026 (324 genes, |r| = 0.96) carries both nitrate assimilation
+and nitric oxide biosynthesis. That the two largest, strongest-responding modules
+return interpretable primary metabolism is the check that the gene→GO join is
+sound.
+
+**By class:** 45 of 367 `both`, 22 of 239 `mi_only` and 4 of 41 `pearson_only`
+modules were testable. `mi_only` is not enriched for anything the other classes
+lack; with 22 testable modules it could not be shown either way. No class-level
+claim is supported here.
+
+**Purple is 3 modules.** 35 of its 38 responsive modules have fewer than 3
+annotated members. The three that survive (Module_334, Module_4168, Module_097)
+give phenylpropanoid biosynthesis, anion and phosphate transport, and acetyl-CoA
+biosynthesis. That is a report of three gene sets, not a characterisation of
+purple's nitrogen response, and it should not be compared with sugarcane's.
+
 ---
 
 ## Open items

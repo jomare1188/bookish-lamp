@@ -274,7 +274,7 @@ be misread as absent shared response when it is really absent orthology coverage
 
 ---
 
-## 14-16 · module-level analysis
+## 14-18 · module-level analysis
 
 ```
 ./run.sh eigengene    <study>          # PC1 per module -> a VST-format matrix
@@ -282,12 +282,13 @@ be misread as absent shared response when it is really absent orthology coverage
 ./run.sh moduleprofile <study>         # + TF hypergeometric per module
 ./run.sh moduleheatmap <study> [mods]  # per-module gene heatmaps
 ./run.sh modulesummary <study>         # one figure: all responsive modules
+./run.sh modulego     <study> [ONT]    # topGO per responsive module (default BP)
 ```
 
 | | |
 |---|---|
-| cost | eigengene ~1 min · moduletrait 0.5 min · profile seconds · heatmaps ~2 min |
-| env | `r_net_env`, except heatmaps (`r_env`: ComplexHeatmap, circlize, scico) and moduletrait (`docling`) |
+| cost | eigengene ~1 min · moduletrait 0.5 min · profile seconds · heatmaps ~2 min · modulego ~45 s |
+| env | `r_net_env`, except heatmaps (`r_env`: ComplexHeatmap, circlize, scico), moduletrait (`docling`) and modulego (`topGO_env`) |
 
 **Why the eigengene matrix is written in the VST export's format.** `.f32` +
 `.genes.txt` + `.meta.json`, module names where gene names go. That lets
@@ -324,6 +325,66 @@ count instead of every figure being forced into one frame. Modules above
 `modulesummary` draws every responsive module's eigengene in one panel, split by
 response class, with PC1 variance explained and module size as row annotations —
 the view that exposes whether a class is coherent or sample-driven.
+
+### 18 · per-module GO — `./run.sh modulego <study> [BP|MF|CC]`
+
+`09_go_enrichment.r` asks what the *conserved gene set* is for, one test per
+species. It cannot name an individual module. `18_module_go.r` does: **one topGO
+run per responsive module**, so `Module_100` can be reported as nitrate
+assimilation rather than only as `both, |r| = 0.93`.
+
+**The response classes are pooled.** `both`, `mi_only` and `pearson_only` all go
+in as one module set; `finding` rides through as a column so the classes can be
+split afterwards, but it does not partition the run. The question is what
+responsive modules *do*, and 15's TF result already showed the classes are too
+small to separate on their own.
+
+Background, algorithm and threshold are **identical to 09** and deliberately so:
+GO-annotated nodes of that species' network as the universe (the same denominator
+as 15's TF hypergeometric), `weight01` Fisher, selection on the **raw** p at
+`GO_P = 0.05`. Keeping all three aligned is what lets "this module is TF-rich"
+and "this module is enriched for nitrate assimilation" be statements about one
+population. `parse_eggnog()` is carried over from 09 unchanged rather than
+reimplemented.
+
+**One `topGOdata` object, reused via `updateGenes()`.** 09 rebuilds the object
+per gene set, which re-runs the DAG mapping every time. Reusing it is not only
+the difference between ~45 seconds and hours — it means **every module is scored
+against an identical term universe** (2,412 BP terms sugarcane, 2,561 purple), so
+the per-module results are comparable to each other. Rebuilding would let the
+tested term set drift with the gene set. Verified bit-identical to a rebuild on
+three modules before adopting it.
+
+The loop reads `score(runTest(...))` and `termStat()` directly instead of
+`GenTable()`. Same numbers, without the round trip through topGO's formatted
+strings (`"< 1e-30"`, 4 significant digits) that 09 has to parse back.
+
+**Three p-value columns, one of which selects.**
+
+| column | what it is |
+|---|---|
+| `pvalue` | raw weight01. **This selects**, at `GO_P`. |
+| `p.adj` | BH within the module, over every tested term — 09's convention |
+| `p.adj_global` | BH across **all** module × term tests in the study |
+
+`p.adj_global` is the burden per-module testing introduces and 09 never faced:
+171,252 tests in sugarcane, 7,683 in purple. It is reported, not used to select —
+weight01 p-values are not an exchangeable family and pooling them across modules
+compounds that — but a term surviving it is on far firmer ground. Computing it
+requires the *complete* p-vector of every module, not just the retained terms,
+because BH takes a cumulative minimum from the largest p downwards.
+
+`MODULE_GO_MIN_ANNOTATED = 3` gates which modules are testable. It is
+deliberately low: a 3-gene module *can* reach p < 0.05 against an 8,251-gene
+background, so the gate only skips modules where the test is undefined. **In
+practice it is the binding constraint on the whole stage** — see
+[results.md](results.md). `n_annotated` is written for every module, gated ones
+included, so filtering harder needs no re-run.
+
+Outputs, in `results/<study>/module_go/`: `module_GO_<ONT>_<study>.tsv` (one row
+per enriched term per module) and `..._summary.tsv` (**one row per responsive
+module, including the ones that returned nothing and the ones the gate
+excluded** — the denominator is the result here, so it cannot be dropped).
 
 ---
 

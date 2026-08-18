@@ -25,6 +25,7 @@
 #   ./run.sh moduleprofile <study>           + TF enrichment per module
 #   ./run.sh moduleheatmap <study> [mods]    heatmaps for responsive modules
 #   ./run.sh modulesummary <study>           one figure: all responsive modules
+#   ./run.sh modulego  <study>               GO enrichment per responsive module
 #   ./run.sh conscor   [0|1] [selection]     conserved N response; 1 = directed test
 #   ./run.sh go        BP|MF|CC              GO enrichment
 #   ./run.sh gosem                           GO semantic clustering
@@ -328,6 +329,27 @@ main() {
     CLEAN_HEATMAP_GROUP_BY="$HEATMAP_GROUP_BY" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/17_module_summary.r"
+    ;;
+
+  # topGO env, like `go` -- the module gene sets and the conserved gene set are
+  # tested against the same network-node background, so the two enrichments stay
+  # on one denominator.
+  modulego)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_MODULE_PROFILE="$(study_dir "$ARG")/module_profile_${ARG}.tsv" \
+    CLEAN_MEMBERSHIP="$(study_dir "$ARG")/mcl_${ARG}_membership.tsv" \
+    CLEAN_NODE_METRICS="$(study_dir "$ARG")/network_${ARG}_node_metrics.tsv" \
+    CLEAN_EMAPPER="$(cfg EMAPPER "$ARG")" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")/module_go" \
+    CLEAN_ONTOLOGY="${EXTRA[0]:-$MODULE_GO_ONTOLOGY}" \
+    CLEAN_GO_P="$GO_P" \
+    CLEAN_MODULE_GO_MIN_ANNOTATED="$MODULE_GO_MIN_ANNOTATED" \
+    CLEAN_MODULE_GO_CORES="$MODULE_GO_CORES" \
+    CLEAN_MODULE_GO_LIMIT="${CLEAN_MODULE_GO_LIMIT:-0}" \
+    CLEAN_CORES="$NUM_CORES" \
+      conda run --no-capture-output -n "$CONDA_TOPGO" \
+        Rscript "${SCRIPTS}/18_module_go.r"
     ;;
 
   # --- 09-10 GO ---------------------------------------------------------------

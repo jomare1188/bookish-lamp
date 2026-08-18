@@ -1,0 +1,317 @@
+# =============================================================================
+# 18_module_go.r — one GO enrichment per nitrogen-responsive module
+#
+# 09_go_enrichment.r asks what the CONSERVED GENE SET is for, one test per
+# species. It cannot say what any individual module is for. This does: every
+# responsive module is its own gene set, tested against the same network-node
+# background, so a module can be named -- "Module_026 is photosynthesis" --
+# rather than only counted.
+#
+# THE MODULE SET IS THE RESPONSE CLASSES POOLED. `both`, `mi_only` and
+# `pearson_only` all go in as one set; `finding` rides through as a column so the
+# classes can be split afterwards, but it does not partition the run. The
+# question here is what responsive modules do, not what distinguishes the
+# classes -- 15_module_profile.r already showed the classes are too small to
+# separate on TF content.
+#
+# ONE topGOdata OBJECT, REUSED. 09 builds a fresh one per gene set, which re-runs
+# the DAG mapping every time; at ~650 modules that is hours. `updateGenes()`
+# swaps the gene list and keeps the graph. The reason to prefer it is not only
+# speed: every module is then scored against an IDENTICAL term universe, so the
+# per-module results are comparable to each other. Rebuilding per module would
+# let the tested term set drift with the gene set.
+#
+# SCORES, NOT GenTable. `score(runTest(...))` gives the p-value for every tested
+# term directly. GenTable formats them into strings ("< 1e-30", 4 significant
+# digits) which 09 then has to parse back, and it is the slowest call in the
+# loop. termStat() supplies Annotated/Significant/Expected for the terms that
+# survive. Same numbers, exactly, without the round trip through text.
+#
+# THRESHOLD is the RAW weight01 p, per 09's reasoning: weight01 conditions each
+# term on its DAG neighbours, so the terms are not an exchangeable family and BH
+# does not apply to them. Two BH columns are written for reference and neither
+# selects -- see the note above p.adj_global below.
+#
+# RUN: through run.sh  ->  ./run.sh modulego sugarcane
+# =============================================================================
+
+suppressMessages({
+  library(topGO)
+  library(data.table)
+})
+
+source(file.path(dirname(sub("--file=", "",
+       grep("--file=", commandArgs(FALSE), value = TRUE)[1])), "lib", "common.R"))
+
+STUDY      <- env_req("CLEAN_STUDY")
+PROFILE    <- env_req("CLEAN_MODULE_PROFILE")
+MEMBERSHIP <- env_req("CLEAN_MEMBERSHIP")
+NODES      <- env_req("CLEAN_NODE_METRICS")
+EMAPPER    <- env_req("CLEAN_EMAPPER")
+ONTOLOGY   <- env_opt("CLEAN_ONTOLOGY", "BP")
+GO_P       <- env_num("CLEAN_GO_P", 0.05)
+MIN_ANN    <- as.integer(env_num("CLEAN_MODULE_GO_MIN_ANNOTATED", 3))
+CORES      <- as.integer(env_num("CLEAN_MODULE_GO_CORES", 1))
+LIMIT      <- as.integer(env_num("CLEAN_MODULE_GO_LIMIT", 0))   # 0 = all; smoke tests
+OUT_DIR    <- ensure_dir(env_req("CLEAN_OUT_DIR"))
+setDTthreads(as.integer(env_num("CLEAN_CORES", 100)))
+
+banner(paste0("per-module GO ", ONTOLOGY, ": ", STUDY))
+
+for (f in c(PROFILE, MEMBERSHIP, NODES, EMAPPER))
+  if (!file.exists(f)) stop("missing ", basename(f), call. = FALSE)
+
+# --- annotation and universe -------------------------------------------------
+# Both helpers are carried over from 09_go_enrichment.r unchanged. The eggNOG
+# layout (col 1 = query id, col 10 = comma-separated GOs) and the isoform merge
+# are the same file and the same problem, so this must not be a second
+# implementation that can drift from it.
+parse_eggnog <- function(annotation_file) {
+  raw <- read.table(
+    annotation_file, sep = "\t", header = FALSE,
+    comment.char = "", quote = "", fill = TRUE, stringsAsFactors = FALSE
+  )
+  raw <- raw[!grepl("^##",     raw[[1]]), ]
+  raw <- raw[!grepl("^#query", raw[[1]]), ]
+
+  gene_col <- raw[[1]]
+  go_col   <- raw[[10]]
+
+  go_list <- strsplit(go_col, ",", fixed = TRUE)
+  go_list <- lapply(go_list, function(x) {
+    x <- trimws(x)
+    x[x != "-" & x != "" & grepl("^GO:", x)]
+  })
+
+  has_go         <- sapply(go_list, length) > 0
+  gene2GO        <- go_list[has_go]
+  names(gene2GO) <- gene_col[has_go]
+
+  gene2GO_merged <- tapply(
+    seq_along(gene2GO), names(gene2GO),
+    function(idx) unique(unlist(gene2GO[idx]))
+  )
+  as.list(gene2GO_merged)
+}
+
+say("parsing eggNOG annotation ...")
+gene2GO_all <- parse_eggnog(EMAPPER)
+say("  genome GO-annotated genes: ", fmt_n(length(gene2GO_all)))
+
+# Universe = GO-annotated genes of THIS network, identical to 09's background and
+# to the TF hypergeometric universe in 15_module_profile.r. Keeping all three on
+# the same denominator is what makes "this module is TF-rich" and "this module is
+# enriched for photosynthesis" statements about the same population.
+node_ids <- read.table(NODES, sep = "\t", header = TRUE,
+                       stringsAsFactors = FALSE, quote = "")[[1]]
+node_ids     <- unique(trimws(node_ids))
+geneUniverse <- intersect(node_ids, names(gene2GO_all))
+gene2GO      <- gene2GO_all[geneUniverse]
+say("  network nodes: ", fmt_n(length(node_ids)),
+    "  |  GO-annotated (= background): ", fmt_n(length(geneUniverse)))
+if (!length(geneUniverse)) stop("empty GO background", call. = FALSE)
+
+# --- which modules -----------------------------------------------------------
+prof <- fread(PROFILE)
+sel  <- prof[finding != "neither"]
+setorder(sel, padj)
+say("responsive modules (all classes pooled): ", fmt_n(nrow(sel)), "  (",
+    paste(sprintf("%s %d", sel[, .N, by = finding]$finding,
+                  sel[, .N, by = finding]$N), collapse = " | "), ")")
+if (!nrow(sel)) { say("nothing to test"); quit(save = "no", status = 0) }
+
+mem <- fread(MEMBERSHIP, select = c("gene", "module_name"))
+mem[, gene := strip_version(gene)]
+setnames(mem, "module_name", "module")
+mem <- mem[module %chin% sel$module]
+by_module <- split(mem$gene, mem$module)
+
+# Annotated members decide whether a module is testable at all. A 3-gene module
+# CAN reach p < 0.05 against a 25,000-gene universe, so this gate is not a
+# judgement on small modules -- it only skips ones with too few annotated members
+# for the test to be defined. n_annotated is reported per module so a reader can
+# filter harder without a re-run.
+sel[, n_annotated := vapply(module, function(m)
+      sum(by_module[[m]] %in% geneUniverse), integer(1))]
+testable <- sel[n_annotated >= MIN_ANN]
+say(sprintf("annotated members >= %d: %s of %s modules testable  (%s gated out)",
+            MIN_ANN, fmt_n(nrow(testable)), fmt_n(nrow(sel)),
+            fmt_n(nrow(sel) - nrow(testable))))
+say(sprintf("  annotated members: median %.0f  max %.0f",
+            median(sel$n_annotated), max(sel$n_annotated)))
+if (LIMIT > 0) {
+  testable <- head(testable, LIMIT)
+  say("CLEAN_MODULE_GO_LIMIT set — testing only the first ", nrow(testable))
+}
+if (!nrow(testable)) { say("no module clears the annotation gate"); quit(save = "no", status = 0) }
+
+# --- the shared topGOdata object ---------------------------------------------
+# Seeded with the union of every testable module's genes purely so the factor has
+# both levels; updateGenes replaces it before anything is scored. nodeSize stays
+# at topGO's default, as in 09 -- raising it here would make the module-level and
+# gene-level term universes different and the two analyses incomparable.
+seed_genes <- unique(unlist(by_module[testable$module], use.names = FALSE))
+mk_list <- function(genes) {
+  gl <- factor(as.integer(geneUniverse %in% genes), levels = c(0L, 1L))
+  names(gl) <- geneUniverse
+  gl
+}
+say("building the topGO graph once (", ONTOLOGY, ") ...")
+GOdata <- suppressMessages(
+  new("topGOdata", ontology = ONTOLOGY, allGenes = mk_list(seed_genes),
+      annot = annFUN.gene2GO, gene2GO = gene2GO))
+all_go <- usedGO(GOdata)
+say("  terms in the shared universe: ", fmt_n(length(all_go)))
+
+# --- per-module test ---------------------------------------------------------
+go_terms <- suppressMessages(AnnotationDbi::Term(GO.db::GOTERM[all_go]))
+
+test_one <- function(i) {
+  mod   <- testable$module[i]
+  genes <- by_module[[mod]]
+  res <- tryCatch({
+    gd  <- suppressMessages(updateGenes(GOdata, mk_list(genes)))
+    rt  <- suppressMessages(runTest(gd, algorithm = "weight01", statistic = "fisher"))
+    p   <- score(rt)
+    keep <- names(p)[p <= GO_P]
+    list(p = p, gd = gd, keep = keep)
+  }, error = function(e) { say("  ", mod, ": topGO error — ", conditionMessage(e)); NULL })
+  if (is.null(res)) return(NULL)
+
+  p <- res$p
+  # BH within the module, over EVERY tested term. 09's note applies verbatim:
+  # correcting a pre-filtered subset shrinks m to terms already known to be small
+  # and makes the adjusted values anti-conservative.
+  padj_local <- p.adjust(p, method = "BH")
+
+  rows <- NULL
+  if (length(res$keep)) {
+    st <- suppressMessages(termStat(res$gd, res$keep))
+    rows <- data.table(
+      module      = mod,
+      GO.ID       = res$keep,
+      Term        = unname(go_terms[res$keep]),
+      Annotated   = st$Annotated,
+      Significant = st$Significant,
+      Expected    = round(st$Expected, 3),
+      pvalue      = unname(p[res$keep]),
+      p.adj       = signif(unname(padj_local[res$keep]), 4),
+      # position of each retained term inside this module's full p-vector, so the
+      # cross-module BH below can be computed on the complete set of tests
+      local_idx   = match(res$keep, names(p)))
+  }
+  list(mod = mod, p = unname(p), n_terms = length(p), rows = rows)
+}
+
+t0 <- Sys.time()
+idx <- seq_len(nrow(testable))
+if (CORES > 1) {
+  say("testing ", fmt_n(length(idx)), " modules on ", CORES, " cores ...")
+  out <- parallel::mclapply(idx, test_one, mc.cores = CORES, mc.preschedule = FALSE)
+} else {
+  say("testing ", fmt_n(length(idx)), " modules ...")
+  out <- vector("list", length(idx))
+  for (i in idx) {
+    out[[i]] <- test_one(i)
+    if (i %% 50 == 0)
+      say(sprintf("  %s/%s  (%.1f min)", fmt_n(i), fmt_n(length(idx)),
+                  as.numeric(difftime(Sys.time(), t0, units = "mins"))))
+  }
+}
+failed <- vapply(out, is.null, logical(1))
+if (any(failed)) say("modules that errored: ", sum(failed))
+out <- out[!failed]
+say(sprintf("scored %s modules in %.1f min", fmt_n(length(out)),
+            as.numeric(difftime(Sys.time(), t0, units = "mins"))))
+
+# --- cross-module BH ---------------------------------------------------------
+# Per-module testing introduces a second burden 09 never faced: ~650 modules x
+# ~thousands of terms. p.adj_global is BH over ALL of those tests at once. It is
+# reported, NOT used to select -- weight01 p-values are not an exchangeable
+# family, and pooling them across modules only compounds that -- but a term that
+# survives it is on much firmer ground than one that only clears the raw p.
+#
+# The full p-vector of every module is kept for this, not just the retained
+# terms: BH takes a cumulative minimum from the largest p downwards, so the
+# non-significant tail genuinely changes the adjusted values of the head.
+lens    <- vapply(out, function(o) o$n_terms, integer(1))
+offsets <- c(0L, head(cumsum(lens), -1L))
+all_p   <- unlist(lapply(out, function(o) o$p), use.names = FALSE)
+all_padj <- p.adjust(all_p, method = "BH")
+say("cross-module BH over ", fmt_n(length(all_p)), " module x term tests")
+
+rows <- rbindlist(lapply(seq_along(out), function(j) {
+  r <- out[[j]]$rows
+  if (is.null(r)) return(NULL)
+  r[, p.adj_global := signif(all_padj[offsets[j] + local_idx], 4)]
+  r[, local_idx := NULL]
+  r
+}))
+
+# --- write -------------------------------------------------------------------
+info <- testable[, .(module, finding, n_genes, pc1_var_pct, n_annotated)]
+tag  <- file.path(OUT_DIR, sprintf("module_GO_%s_%s", ONTOLOGY, STUDY))
+
+if (nrow(rows)) {
+  rows <- merge(rows, info, by = "module", all.x = TRUE)
+  setcolorder(rows, c("module", "finding", "n_genes", "n_annotated", "pc1_var_pct",
+                      "GO.ID", "Term", "Annotated", "Significant", "Expected",
+                      "pvalue", "p.adj", "p.adj_global"))
+  setorder(rows, pvalue)
+  write_tsv(rows, paste0(tag, ".tsv"))
+} else {
+  say("NOTE: no term cleared p <= ", GO_P, " in any module")
+  write_tsv(data.table(module = character(), finding = character(),
+                       n_genes = integer(), n_annotated = integer(),
+                       pc1_var_pct = numeric(),
+                       GO.ID = character(), Term = character(),
+                       Annotated = integer(), Significant = integer(),
+                       Expected = numeric(), pvalue = numeric(),
+                       p.adj = numeric(), p.adj_global = numeric()),
+            paste0(tag, ".tsv"))
+}
+
+# One row per module, INCLUDING the ones that returned nothing and the ones the
+# annotation gate excluded. 09 drops skipped networks from its summary; here the
+# denominator is the result -- "8 of 647 modules have any enriched term" is only
+# readable if all 647 are in the file.
+best <- if (nrow(rows)) rows[order(pvalue), .SD[1L], by = module,
+                             .SDcols = c("GO.ID", "Term", "pvalue")] else
+        data.table(module = character(), GO.ID = character(),
+                   Term = character(), pvalue = numeric())
+setnames(best, c("GO.ID", "Term", "pvalue"), c("top_GO", "top_Term", "top_pvalue"))
+nsig <- if (nrow(rows)) rows[, .(n_sig_terms = .N), by = module] else
+        data.table(module = character(), n_sig_terms = integer())
+
+summ <- sel[, .(module, finding, n_genes, pc1_var_pct, n_annotated)]
+summ[, tested := module %chin% testable$module]
+summ <- merge(summ, nsig, by = "module", all.x = TRUE)
+summ <- merge(summ, best, by = "module", all.x = TRUE)
+summ[is.na(n_sig_terms), n_sig_terms := 0L]
+summ[tested == FALSE, n_sig_terms := NA_integer_]
+setorder(summ, -n_sig_terms, -n_annotated, na.last = TRUE)
+write_tsv(summ, paste0(tag, "_summary.tsv"))
+
+# --- readout -----------------------------------------------------------------
+banner(paste0("per-module GO ", ONTOLOGY, " — ", STUDY))
+n_hit <- summ[n_sig_terms > 0, .N]
+say(sprintf("%s of %s tested modules have >= 1 enriched %s term (raw p <= %.2g)",
+            fmt_n(n_hit), fmt_n(nrow(testable)), ONTOLOGY, GO_P))
+say(sprintf("  %s of %s responsive modules cleared the annotation gate",
+            fmt_n(nrow(testable)), fmt_n(nrow(sel))))
+if (nrow(rows)) {
+  say(sprintf("  terms written: %s  |  clearing cross-module BH 0.05: %s",
+              fmt_n(nrow(rows)), fmt_n(rows[p.adj_global <= 0.05, .N])))
+  say("")
+  say("most recurrent terms across modules:")
+  top <- rows[, .(modules = uniqueN(module), best_p = min(pvalue)), by = .(GO.ID, Term)]
+  setorder(top, -modules, best_p)
+  print(head(top, 15), row.names = FALSE)
+  say("")
+  say("modules by enriched-term count:")
+  print(head(summ[n_sig_terms > 0,
+                  .(module, finding, n_genes, n_annotated, n_sig_terms, top_Term)], 15),
+        row.names = FALSE)
+}
+say("")
+say("done: ", STUDY)

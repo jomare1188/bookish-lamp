@@ -209,6 +209,24 @@ SUMMARY_MAX_MODULES=250
 # columns apart and the tissue effect reads as striping across the figure.
 HEATMAP_GROUP_BY="tissue"
 
+# Per-module GO enrichment (18_module_go.r). One topGO run per responsive module,
+# with the response classes pooled -- the question is what responsive modules do,
+# not what separates the classes. Ontology is a knob so MF/CC are a re-run rather
+# than an edit; GO_P below is reused unchanged, same threshold and same reasoning.
+MODULE_GO_ONTOLOGY=BP
+
+# Minimum GO-annotated members for a module to be tested at all. Deliberately
+# low: a 3-gene module CAN reach p < 0.05 against a ~25,000-gene background, so
+# this only skips modules where the test is undefined, it does not pre-judge
+# small ones. n_annotated is written per module, so filtering harder afterwards
+# needs no re-run. The median responsive module holds 5 genes -- most of the
+# module set is small, and that fact belongs in the output rather than in a cut.
+MODULE_GO_MIN_ANNOTATED=3
+
+# Modules are independent topGO runs over one shared graph, so this forks cleanly
+# (copy-on-write: the graph is not duplicated per worker).
+MODULE_GO_CORES=16
+
 # --- GO ----------------------------------------------------------------------
 ONTOLOGIES="BP MF CC"
 # Threshold on the RAW weight01 p-value, topGO's own convention: weight01
