@@ -675,6 +675,13 @@ modules were testable. `mi_only` is not enriched for anything the other classes
 lack; with 22 testable modules it could not be shown either way. No class-level
 claim is supported here.
 
+**Figures.** `module_GO_BP_<study>_global.{png,pdf}` ranks terms by how many
+modules share them — for sugarcane the top is *glycosyl compound metabolic
+process* in 6 modules, then long-day photoperiodism, water transport and
+regulation of cell shape in 4 each. Per-module panels live in
+`module_go/modules/<Module>/`, one directory per tested module, with terms that
+survive the cross-module BH marked in red so a panel cannot be over-read.
+
 **Purple is 3 modules.** 35 of its 38 responsive modules have fewer than 3
 annotated members. The three that survive (Module_334, Module_4168, Module_097)
 give phenylpropanoid biosynthesis, anion and phosphate transport, and acetyl-CoA

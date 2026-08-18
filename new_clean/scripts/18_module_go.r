@@ -32,12 +32,24 @@
 # does not apply to them. Two BH columns are written for reference and neither
 # selects -- see the note above p.adj_global below.
 #
+# TWO GRAINS OF OUTPUT. The joined table across all modules is what you read to
+# see whether the responsive set has a coherent function; the per-module
+# directories are what you read to decide whether ONE module is worth following
+# up. Those are different questions and they do not fit in one file, so each gets
+# its own artefact and its own plot:
+#
+#   module_go/module_GO_<ONT>_<study>.tsv        joined, every module
+#   module_go/..._global.{png,pdf}               GLOBAL: which terms recur
+#   module_go/modules/<Module>/GO_..._<mod>.tsv  that module alone
+#   module_go/modules/<Module>/GO_..._<mod>.png  GRAIN: that module's terms
+#
 # RUN: through run.sh  ->  ./run.sh modulego sugarcane
 # =============================================================================
 
 suppressMessages({
   library(topGO)
   library(data.table)
+  library(ggplot2)
 })
 
 source(file.path(dirname(sub("--file=", "",
@@ -51,6 +63,7 @@ EMAPPER    <- env_req("CLEAN_EMAPPER")
 ONTOLOGY   <- env_opt("CLEAN_ONTOLOGY", "BP")
 GO_P       <- env_num("CLEAN_GO_P", 0.05)
 MIN_ANN    <- as.integer(env_num("CLEAN_MODULE_GO_MIN_ANNOTATED", 3))
+NTOP       <- as.integer(env_num("CLEAN_GO_NTOP", 20))   # terms drawn per figure
 CORES      <- as.integer(env_num("CLEAN_MODULE_GO_CORES", 1))
 LIMIT      <- as.integer(env_num("CLEAN_MODULE_GO_LIMIT", 0))   # 0 = all; smoke tests
 OUT_DIR    <- ensure_dir(env_req("CLEAN_OUT_DIR"))
@@ -248,6 +261,109 @@ rows <- rbindlist(lapply(seq_along(out), function(j) {
   r
 }))
 
+# --- plotting ----------------------------------------------------------------
+# Both figures are dot plots in 09_go_enrichment.r's idiom, so a module figure and
+# the conserved-set figure can be read side by side without relearning the axes.
+# The p = 0 flooring is carried over from there too: -log10(0) is infinite and
+# silently drops the most significant term off the panel.
+floor_zero <- function(p) {
+  z <- p == 0
+  if (any(z)) {
+    nz <- p[!z]
+    p[z] <- if (length(nz)) min(nz) / 2 else GO_P / 1000
+  }
+  p
+}
+
+# Counts of genes and of modules are integers; pretty() happily returns 1.5 and a
+# legend reading "1.5 genes" is nonsense.
+int_breaks <- function(x) { b <- unique(round(pretty(x))); b[b >= 1] }
+
+# Long subtitles are silently clipped at the device edge, and they carry the
+# denominators, so they get wrapped rather than trimmed.
+wrap_sub <- function(x, width = 78) paste(strwrap(x, width), collapse = "\n")
+
+save_plot <- function(gg, base, w, h) {
+  suppressMessages(ggsave(paste0(base, ".png"), gg, device = "png",
+                          width = w, height = h, units = "cm", dpi = 300, limitsize = FALSE))
+  suppressMessages(ggsave(paste0(base, ".pdf"), gg, device = "pdf",
+                          width = w, height = h, units = "cm", limitsize = FALSE))
+}
+
+# GRAIN: one module. -log10(p) per term, sized by how many of the module's genes
+# carry it, and filled by whether the term also survives the cross-module BH --
+# that fill is the honest part of the figure, because most terms do not.
+plot_module <- function(d, mod, base) {
+  d <- head(d[order(pvalue)], NTOP)
+  d[, pv := floor_zero(pvalue)]
+  d[, Term := factor(Term, levels = rev(unique(Term)))]
+  d[, robust := fifelse(p.adj_global <= 0.05, "survives cross-module BH", "raw p only")]
+  r <- testable[module == mod]
+  gg <- ggplot(d, aes(x = Term, y = -log10(pv), size = Significant, colour = robust)) +
+    geom_point() +
+    scale_size(range = c(2.5, 9), breaks = int_breaks) +
+    scale_colour_manual(values = c(`survives cross-module BH` = "#B2182B",
+                                   `raw p only` = "grey55"), drop = FALSE) +
+    coord_flip() +
+    labs(title = sprintf("GO %s - %s (%s)", ONTOLOGY, mod, STUDY),
+         subtitle = wrap_sub(sprintf(
+           "%s, %s genes (%s GO-annotated), PC1 %.0f%% var  |  %d terms at raw p <= %.2g",
+           r$finding, fmt_n(r$n_genes), fmt_n(r$n_annotated),
+           r$pc1_var_pct, nrow(d), GO_P)),
+         x = NULL, y = expression(-log[10](p)),
+         size = "genes in\nthe module", colour = NULL) +
+    theme_bw(base_size = 11) +
+    theme(plot.title = element_text(face = "bold"),
+          plot.title.position = "plot",
+          legend.position = "bottom", legend.box = "horizontal",
+          axis.text.y = element_text(size = 9))
+  save_plot(gg, base, 24, max(9, 4 + 0.65 * nrow(d)))
+}
+
+# GLOBAL: all modules at once. Terms are RANKED by how many distinct modules they
+# are enriched in -- a term found once is a lead, a term found in six independent
+# modules is a pathway -- and recurrence gets the size channel, reinforced by
+# colour. It is deliberately NOT the x axis: when no term recurs, as in purple,
+# that axis collapses onto a single value and the figure says nothing. -log10(p)
+# on x is informative in both cases, so one layout serves both studies.
+plot_global <- function(rows, base) {
+  top <- rows[, .(modules = uniqueN(module), best_p = min(pvalue),
+                  genes = sum(Significant)), by = .(GO.ID, Term)]
+  setorder(top, -modules, best_p)
+  n_terms <- nrow(top)
+  top <- head(top, NTOP)
+  top[, bp := floor_zero(best_p)]
+  top[, Term := factor(Term, levels = rev(unique(Term)))]
+  recurs <- top[modules > 1, .N]
+  # When nothing recurs -- purple, where 3 modules share no term -- the module
+  # channel is constant. A legend showing a single value is noise, so it goes and
+  # the points fall back to one size and colour; the subtitle still states it.
+  gg <- if (recurs == 0)
+    ggplot(top, aes(x = Term, y = -log10(bp))) +
+      geom_point(size = 4, colour = "#7B3294")
+  else
+    ggplot(top, aes(x = Term, y = -log10(bp), size = modules, colour = modules)) +
+      geom_point() +
+      scale_size(range = c(2.5, 10), breaks = int_breaks) +
+      scale_colour_viridis_c(option = "magma", end = 0.85, direction = -1,
+                             breaks = int_breaks) +
+      guides(colour = guide_colourbar(order = 1), size = guide_legend(order = 2))
+  gg <- gg +
+    coord_flip() +
+    labs(title = sprintf("GO %s across nitrogen-responsive modules - %s", ONTOLOGY, STUDY),
+         subtitle = wrap_sub(sprintf(
+           "%s of %s responsive modules testable (>= %d GO-annotated genes); %s of those have >= 1 term at raw p <= %.2g. Top %d of %s terms, ranked by how many modules share them (%d shared by more than one).",
+           fmt_n(nrow(testable)), fmt_n(nrow(sel)), MIN_ANN,
+           fmt_n(uniqueN(rows$module)), GO_P, nrow(top), fmt_n(n_terms), recurs), 95),
+         x = NULL, y = expression(-log[10](best~p)),
+         size = "modules", colour = "modules") +
+    theme_bw(base_size = 11) +
+    theme(plot.title = element_text(face = "bold"),
+          plot.title.position = "plot",
+          axis.text.y = element_text(size = 9))
+  save_plot(gg, base, 28, max(9, 4 + 0.65 * nrow(top)))
+}
+
 # --- write -------------------------------------------------------------------
 info <- testable[, .(module, finding, n_genes, pc1_var_pct, n_annotated)]
 tag  <- file.path(OUT_DIR, sprintf("module_GO_%s_%s", ONTOLOGY, STUDY))
@@ -291,6 +407,33 @@ summ[is.na(n_sig_terms), n_sig_terms := 0L]
 summ[tested == FALSE, n_sig_terms := NA_integer_]
 setorder(summ, -n_sig_terms, -n_annotated, na.last = TRUE)
 write_tsv(summ, paste0(tag, "_summary.tsv"))
+
+# --- per-module directories --------------------------------------------------
+# One directory per TESTED module, table always, figure only when there is
+# something to draw. Every tested module gets a directory even when it returned
+# nothing, so the presence of a directory means "this was tested" and the absence
+# of a figure inside it means "nothing cleared the threshold" -- neither has to be
+# looked up in the summary table.
+mod_root <- ensure_dir(file.path(OUT_DIR, "modules"))
+n_dirs <- 0L; n_figs <- 0L
+for (mod in testable$module) {
+  d <- if (nrow(rows)) rows[module == mod] else rows
+  md <- ensure_dir(file.path(mod_root, mod))
+  base <- file.path(md, sprintf("GO_%s_%s_%s", ONTOLOGY, mod, STUDY))
+  fwrite(d, paste0(base, ".tsv"), sep = "\t", quote = FALSE)
+  n_dirs <- n_dirs + 1L
+  if (nrow(d)) { plot_module(copy(d), mod, base); n_figs <- n_figs + 1L }
+}
+say("wrote ", fmt_n(n_dirs), " per-module directories under ", basename(mod_root),
+    "/  (", fmt_n(n_figs), " with a figure)")
+
+# --- the global figure -------------------------------------------------------
+if (nrow(rows)) {
+  plot_global(rows, paste0(tag, "_global"))
+  say("wrote ", basename(tag), "_global.{png,pdf}")
+} else {
+  say("no global figure — nothing enriched anywhere")
+}
 
 # --- readout -----------------------------------------------------------------
 banner(paste0("per-module GO ", ONTOLOGY, " — ", STUDY))

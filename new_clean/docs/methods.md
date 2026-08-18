@@ -381,10 +381,38 @@ practice it is the binding constraint on the whole stage** — see
 [results.md](results.md). `n_annotated` is written for every module, gated ones
 included, so filtering harder needs no re-run.
 
-Outputs, in `results/<study>/module_go/`: `module_GO_<ONT>_<study>.tsv` (one row
-per enriched term per module) and `..._summary.tsv` (**one row per responsive
-module, including the ones that returned nothing and the ones the gate
-excluded** — the denominator is the result here, so it cannot be dropped).
+**Two grains of output.** The joined table answers "does the responsive set have
+a coherent function"; the per-module directories answer "is *this* module worth
+following up". Different questions, so each gets its own artefact and its own
+figure, in `results/<study>/module_go/`:
+
+```
+module_GO_<ONT>_<study>.tsv           joined — one row per term per module
+module_GO_<ONT>_<study>_summary.tsv   one row per responsive module
+module_GO_<ONT>_<study>_global.{png,pdf}      GLOBAL figure
+modules/<Module_NNN>/GO_<ONT>_<Module_NNN>_<study>.tsv
+modules/<Module_NNN>/GO_<ONT>_<Module_NNN>_<study>.{png,pdf}   GRAIN figure
+```
+
+The summary carries **one row per responsive module, including the ones that
+returned nothing and the ones the gate excluded** — the denominator is the result
+here, so it cannot be dropped. A directory exists for every *tested* module, so
+its presence means "tested" and a missing figure inside it means "nothing cleared
+the threshold", without consulting the summary.
+
+Both figures are dot plots in 09's idiom, with its p = 0 flooring carried over
+(`-log10(0)` is infinite and silently drops the best term off the panel).
+
+- **Grain**: one module, terms by `-log10(p)`, sized by how many of the module's
+  genes carry the term, and **coloured by whether the term also survives the
+  cross-module BH** — the honest part of the panel, because most do not.
+- **Global**: terms **ranked by how many distinct modules** they are enriched in —
+  a term found once is a lead, a term found in six independent modules is a
+  pathway. Recurrence gets the size and colour channels; `-log10(best p)` is the
+  x axis rather than recurrence itself, because when nothing recurs (purple, where
+  3 modules share no term) a recurrence axis collapses onto one value and the
+  figure says nothing. In that case the degenerate legend is dropped and the
+  subtitle states it.
 
 ---
 
