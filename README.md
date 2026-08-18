@@ -218,9 +218,10 @@ discrete. Flooring only one side is worse than flooring neither — it inflates
 
 ### What the responsive modules are for
 
-One topGO BP enrichment **per responsive module**, response classes pooled,
-against each network's own nodes — the same background the gene-level GO and the
-TF test use.
+One topGO enrichment **per responsive module** in **all three ontologies**,
+response classes pooled, against each network's own nodes — the same background
+the gene-level GO and the TF test use. The universe and the testable set are
+identical across BP/MF/CC, so the three are comparable module by module.
 
 **The binding constraint is annotation coverage, not statistics.** Only 8% of
 sugarcane's network nodes carry any eggNOG GO term, and the median responsive
@@ -233,9 +234,21 @@ finding different parts of one pathway: nitrate assimilation (Module_026,
 Module_100), the ammonia assimilation cycle and glutamate biosynthesis
 (Module_440), ammonium ion metabolism and the polyamines (Module_469), proline
 and asparagine biosynthesis, urea transport, nitric oxide, and response to
-nitrogen starvation. 359 terms in total, 91 of which survive BH across all
-171,252 module × term tests. The largest module (521 genes) is photosynthesis and
-translation, which is the check that the gene→GO join is sound.
+nitrogen starvation. 359 BP terms, 91 of which survive BH across all 171,252
+module × term tests; MF adds 213 terms (49 surviving) and CC 96 (20).
+
+**MF names the enzymes BP inferred, in the same modules** — the strongest
+internal check available, since the three ontologies are separate term sets
+scored in separate runs. Module_100 and Module_026 are *nitrate assimilation* in
+BP and **nitrate reductase (NADH) activity** in MF; Module_440 is the *ammonia
+assimilation cycle* in BP and **glutamate synthase activity** in MF — GS/GOGAT,
+the primary ammonium assimilation route, sitting downstream of the nitrate
+reductase step the other two modules carry. Module_1820 pairs *proline
+biosynthesis* with glutamate-5-semialdehyde dehydrogenase. CC mostly reports
+localisation and is the least informative of the three, but where it is sharp it
+agrees: the largest module (521 genes) is *chloroplast thylakoid membrane* at
+p = 4.8e-51 against BP's photosynthesis call, which is the check that the
+gene→GO join is sound.
 
 No class-level claim is made: 45 of 367 `both` and 22 of 239 `mi_only` modules
 were testable, which cannot settle it either way.

@@ -317,7 +317,9 @@ plot_module <- function(d, mod, base) {
           plot.title.position = "plot",
           legend.position = "bottom", legend.box = "horizontal",
           axis.text.y = element_text(size = 9))
-  save_plot(gg, base, 24, max(9, 4 + 0.65 * nrow(d)))
+  # Floor is per-row, not a fixed minimum: MF and CC often return one or two terms
+  # and a 9 cm device stretches a single point across an empty panel.
+  save_plot(gg, base, 24, max(6.5, 4 + 0.65 * nrow(d)))
 }
 
 # GLOBAL: all modules at once. Terms are RANKED by how many distinct modules they
@@ -361,7 +363,7 @@ plot_global <- function(rows, base) {
     theme(plot.title = element_text(face = "bold"),
           plot.title.position = "plot",
           axis.text.y = element_text(size = 9))
-  save_plot(gg, base, 28, max(9, 4 + 0.65 * nrow(top)))
+  save_plot(gg, base, 28, max(7, 4 + 0.65 * nrow(top)))
 }
 
 # --- write -------------------------------------------------------------------

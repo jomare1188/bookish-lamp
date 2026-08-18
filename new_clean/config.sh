@@ -222,8 +222,13 @@ HEATMAP_GROUP_BY="tissue"
 
 # Per-module GO enrichment (18_module_go.r). One topGO run per responsive module,
 # with the response classes pooled -- the question is what responsive modules do,
-# not what separates the classes. Ontology is a knob so MF/CC are a re-run rather
-# than an edit; GO_P below is reused unchanged, same threshold and same reasoning.
+# not what separates the classes. GO_P below is reused unchanged, same threshold
+# and same reasoning.
+#
+# This is only the DEFAULT ontology; all three are run and kept
+# (`./run.sh modulego <study> MF`). The universe is ontology-agnostic, so the same
+# modules are testable in each and the three are comparable module by module --
+# which is what makes MF's enzyme names a check on BP's process calls.
 MODULE_GO_ONTOLOGY=BP
 
 # Minimum GO-annotated members for a module to be tested at all. Deliberately

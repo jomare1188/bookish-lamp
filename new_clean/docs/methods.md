@@ -406,6 +406,15 @@ Both figures are dot plots in 09's idiom, with its p = 0 flooring carried over
 - **Grain**: one module, terms by `-log10(p)`, sized by how many of the module's
   genes carry the term, and **coloured by whether the term also survives the
   cross-module BH** — the honest part of the panel, because most do not.
+**All three ontologies run on the same universe.** `parse_eggnog` keeps every GO
+id regardless of ontology, so `geneUniverse` — and therefore which modules clear
+`MODULE_GO_MIN_ANNOTATED` — is identical for BP, MF and CC (71 sugarcane, 3
+purple). topGO filters to the requested ontology when it builds the graph, exactly
+as in 09. Because the outputs are ontology-tagged, `modules/<Module_NNN>/` ends up
+holding all three side by side, which is the useful unit: the BP, MF and CC panels
+for one module answer "what process", "what enzyme" and "where" about the same
+gene set.
+
 - **Global**: terms **ranked by how many distinct modules** they are enriched in —
   a term found once is a lead, a term found in six independent modules is a
   pathway. Recurrence gets the size and colour channels; `-log10(best p)` is the

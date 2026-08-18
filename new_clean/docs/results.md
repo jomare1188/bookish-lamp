@@ -675,7 +675,47 @@ modules were testable. `mi_only` is not enriched for anything the other classes
 lack; with 22 testable modules it could not be shown either way. No class-level
 claim is supported here.
 
-**Figures.** `module_GO_BP_<study>_global.{png,pdf}` ranks terms by how many
+#### MF and CC, and why they matter here
+
+All three ontologies were run. The universe and the testable set are identical
+across them (71 sugarcane modules, 3 purple), so the three are directly
+comparable module by module.
+
+| | BP | MF | CC |
+|---|---|---|---|
+| terms in the shared universe (sugarcane) | 2,412 | 978 | 407 |
+| sugarcane: modules with ≥ 1 term | 65 of 71 | 62 of 71 | 47 of 71 |
+| sugarcane: terms written | 359 | 213 | 96 |
+| sugarcane: clearing cross-module BH | 91 | 49 | 20 |
+| purple: modules with ≥ 1 term | 3 of 3 | 3 of 3 | 2 of 3 |
+| purple: terms written | 20 | 9 | 4 |
+
+**MF independently names the enzymes BP inferred from process terms, in the same
+modules.** This is the strongest internal check the module-level analysis has,
+because the three ontologies are separate term sets scored in separate runs:
+
+| module | BP said | MF said | global BH (MF) |
+|---|---|---|---|
+| Module_100 | nitrate assimilation | **nitrate reductase (NADH) activity** | 2.3e-04 |
+| Module_026 | nitrate assimilation | **nitrate reductase (NADH) activity** | 4.2e-03 |
+| Module_440 | ammonia assimilation cycle | **glutamate synthase activity** | 3.9e-07 |
+| Module_1820 | proline biosynthetic process | **glutamate-5-semialdehyde dehydrogenase** | 4.6e-13 |
+| Module_117 | urea transmembrane transport | urea transmembrane transporter activity | 1 |
+
+Module_440's pairing is GS/GOGAT — the primary ammonium assimilation route — and
+Module_100/Module_026's is the nitrate reductase step upstream of it. Different
+ontologies, different tests, same modules.
+
+CC is mostly localisation and behaves as CC usually does — its most recurrent
+term is *nucleus* in 9 modules at p = 1.9e-03, which says little. Where it is
+sharp it corroborates: Module_009 is *chloroplast thylakoid membrane* at
+p = 4.8e-51 against BP's photosynthesis/light-harvesting call, and Module_036 is
+*plastid* / *chloroplast* at 1.2e-21 against BP's translation call — chloroplast
+ribosomes. MF's most recurrent terms are DNA-binding transcription factor activity
+and beta-glucosidase activity (5 modules each), then magnesium ion binding and
+water channel activity (4 each), the latter matching BP's *water transport*.
+
+**Figures.** `module_GO_<ONT>_<study>_global.{png,pdf}` ranks terms by how many
 modules share them — for sugarcane the top is *glycosyl compound metabolic
 process* in 6 modules, then long-day photoperiodism, water transport and
 regulation of cell shape in 4 each. Per-module panels live in

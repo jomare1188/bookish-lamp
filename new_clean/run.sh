@@ -25,7 +25,7 @@
 #   ./run.sh moduleprofile <study>           + TF enrichment per module
 #   ./run.sh moduleheatmap <study> [mods]    heatmaps for responsive modules
 #   ./run.sh modulesummary <study>           one figure: all responsive modules
-#   ./run.sh modulego  <study>               GO enrichment per responsive module
+#   ./run.sh modulego  <study> [BP|MF|CC]    GO enrichment per responsive module
 #   ./run.sh conscor   [0|1] [selection]     conserved N response; 1 = directed test
 #   ./run.sh go        BP|MF|CC              GO enrichment
 #   ./run.sh gosem                           GO semantic clustering
