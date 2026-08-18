@@ -61,7 +61,9 @@ every underpowered result below traces back to it.
 dds ──► VST export ──┬──► GPU Pearson  (analytic t null)  ──┐
                      └──► GPU KSG      (permutation null)  ──┴──► merge ──► network
                                                                               │
-     topology ──► MCL modules ──► cross-species conservation ──► trait ──► GO ──► H1 readouts
+     topology ──► MCL modules ──┬─ cross-species conservation ─► trait ─► GO ─► H1 readouts
+                                │
+                                └─ eigengenes ─► module response ─► TF ─► per-module GO
 ```
 
 All-pairs dependence runs on the GPU straight to a thresholded, FDR-corrected
@@ -179,6 +181,65 @@ labelled uncorrected.)
 conservation directions.** n = 18 with 0/2/6 mM in triplicate is a design limit,
 not a method limit.
 
+### Module-level nitrogen response
+
+The gene level died on a testing burden of 39,226 / 44,118 genes. One eigengene
+per MCL module cuts that to ~6,500 tests, and a module-level signal can survive
+where a single gene cannot. PC1 per module (≥ 3 genes): **6,576 sugarcane /
+6,318 purple**, covering 92% and 87% of each network's genes, median PC1 variance
+explained 81.1% and 65.0%.
+
+| | sugarcane (n=48) | purple (n=18) |
+|---|---|---|
+| modules tested | 6,576 | 6,318 |
+| **responsive** | **647** | **38** |
+| both statistics | 367 | 1 |
+| **`mi_only`** — non-linear only | **239** | **0** |
+| `pearson_only` | 41 | 37 |
+
+Permuting the trait labels against the same eigengenes gives **0** significant
+modules. Both sides carry an effect-size floor: `|r| ≥ 0.6` on the linear side,
+and an MI floor *calibrated from the data* rather than derived, because the
+network's nats-to-|r| identity assumes two continuous variables and this trait is
+discrete. Flooring only one side is worse than flooring neither — it inflates
+`mi_only` from 253 to 786 with modules that are not non-linear at all.
+
+**Two results that did not survive scrutiny, and are reported as such:**
+
+- **TF enrichment among responsive modules is weak.** An unfloored run had `both`
+  at OR 3.23, p = 4.7e-06 — "TFs concentrate in the modules both statistics agree
+  on". With the floors applied that becomes OR 1.96, p = 0.061, and the strongest
+  class is `pearson_only` at 3 of 41 modules. The classes are too small to
+  separate.
+- **A third of the `mi_only` modules are sample-driven.** They explain 0.229 of
+  their variance by the nitrogen split against 0.484 for `both`, and 35% have two
+  of 48 samples carrying over a quarter of the eigengene variance. A minority, but
+  the class needs filtering on that diagnostic before any member is followed up.
+
+### What the responsive modules are for
+
+One topGO BP enrichment **per responsive module**, response classes pooled,
+against each network's own nodes — the same background the gene-level GO and the
+TF test use.
+
+**The binding constraint is annotation coverage, not statistics.** Only 8% of
+sugarcane's network nodes carry any eggNOG GO term, and the median responsive
+module holds 5 genes: **401 of the 647 have zero annotated members**. So
+**71 modules (11%) are testable**, 65 of them return at least one term, and the
+71 skew large. Purple gets 3 of 38.
+
+Within that 11% the signal is coherent and it is nitrogen — different modules
+finding different parts of one pathway: nitrate assimilation (Module_026,
+Module_100), the ammonia assimilation cycle and glutamate biosynthesis
+(Module_440), ammonium ion metabolism and the polyamines (Module_469), proline
+and asparagine biosynthesis, urea transport, nitric oxide, and response to
+nitrogen starvation. 359 terms in total, 91 of which survive BH across all
+171,252 module × term tests. The largest module (521 genes) is photosynthesis and
+translation, which is the check that the gene→GO join is sound.
+
+No class-level claim is made: 45 of 367 `both` and 22 of 239 `mi_only` modules
+were testable, which cannot settle it either way.
+
 ### Function and H1 readouts
 
 - **GO** (topGO weight01, raw p ≤ 0.05, background = each network's own nodes):
@@ -201,7 +262,8 @@ not a method limit.
 new_clean/            THE PIPELINE — scripts, config, docs, and results
   run.sh              one command per stage; nothing is edited between runs
   config.sh           every path and parameter
-  scripts/            01 export ... 13 conservation null, + H1 readouts
+  scripts/            01 export ... 13 conservation null, 14-18 module level,
+                      + H1 readouts
   docs/               decisions, methods, thresholds, results
   results/            all output (gitignored — regenerable)
 
@@ -226,6 +288,8 @@ cd new_clean
 ./run.sh build sugarcane         # VST -> both layers -> network
 ./run.sh build purple
 # then: stats, mcl, conserve, conservenull, trait, traitmi, conscor, go, gosem
+# module level, per study (~5 min):
+#   eigengene, moduletrait, moduleprofile, modulego, moduleheatmap, modulesummary
 ```
 
 `new_clean/README.md` has the full stage list with measured runtimes. Every stage
@@ -249,3 +313,12 @@ resumes.
    linear layer cannot see, but those edges are not better conserved. What is
    robust is that edges *both* estimators find are better conserved than either
    alone.
+6. **GO annotation coverage, not statistics, limits the module-level function
+   results.** Only 8,251 of sugarcane's 103,336 network nodes and 12,255 of
+   purple's 170,736 carry any eggNOG GO term. Combined with a median responsive
+   module of 5 genes, that leaves 11% of responsive modules testable. The
+   per-module GO section describes those, not the responsive set.
+7. **`mi_only` is not a list of non-linear responders.** 35% of the class is
+   sample-driven on the eigengene diagnostic, and its members are 88% individually
+   non-responsive, so the signal is emergent in PC1 rather than a collection of
+   non-linear genes. Filter on the diagnostic before following any member up.

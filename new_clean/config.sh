@@ -173,7 +173,11 @@ TRAIT_PADJ_THR=0.05
 TRAIT_MI_K=3
 TRAIT_MI_PERM=10000000
 
-# Used by the H1 readouts when they call a gene "nitrogen-responsive".
+# R_THR is the H1 readouts' own effect-size cut when they call a gene
+# "nitrogen-responsive". PADJ_THR is NOT readout-only despite where it sits: the
+# module stages take it as their significance threshold too (`moduletrait
+# --alpha`, and `moduleprofile`'s final call). Changing it moves the module
+# results as well as the readouts.
 R_THR=0.7
 PADJ_THR=0.05
 
@@ -187,10 +191,17 @@ MIN_MODULE_SIZE_EIGEN=3
 
 # Effect-size floor on a module's LINEAR response, mirroring TRAIT_R_THR at the
 # gene level. Without it padj alone admits modules down to |r| = 0.36 at n = 48,
-# and the module counts are not comparable to the gene-level ones. No floor is
-# applied to MI: the nats-to-|r| identity the network uses assumes two continuous
-# variables and the trait here is discrete, so `mi_norm` (MI / H(trait)) is
-# reported instead as a 0-1 effect size.
+# and the module counts are not comparable to the gene-level ones.
+#
+# MI GETS A FLOOR TOO, and it is not this number. Flooring only the linear side
+# pushes every modestly-linear module out of `both` and into `mi_only`, which then
+# reads as "non-linear" when it is not (measured: mi_only 253 -> 786). The network's
+# nats-to-|r| identity cannot supply the MI equivalent -- it assumes two continuous
+# variables and this trait is discrete, capped at H(trait) -- so 15_module_profile.r
+# CALIBRATES it from the data instead: the median MI among modules sitting at
+# |r| ~ MODULE_R_THR. It is printed on every run and is a calibration, not a
+# theoretical equivalence. `mi_norm` (MI / H(trait)) is reported alongside as a
+# 0-1 effect size.
 MODULE_R_THR=0.6
 
 # Heatmaps: how many responsive modules to draw, and how many genes of each.

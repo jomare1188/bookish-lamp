@@ -160,9 +160,13 @@ are wrong. All of it now comes from `config.sh` through `run.sh <stage> <arg>`.
   `conserved_edges_*_FULL.tsv` (the join's output that actually completes) — the
   names differ by one underscore and they are different files.
 - **`eigengene.r`, `module_trait_cor.r`, `comparative_networks2.r`.** The
-  module-trait branch. If it is wanted, `module_trait_cor.r:183` must get a
-  `select=` first: it is `fread(EDGE_FILE)` with no column restriction, i.e. the
-  whole purple edge file, all 9 columns, into RAM.
+  module-trait branch. **Superseded, not skipped** — this is now stages 14–18
+  (`14_module_eigengene.r` … `18_module_go.r`), rebuilt rather than ported. Three
+  bugs in `eigengene.r` did not survive the rewrite and are listed in
+  `14_module_eigengene.r`'s header. `module_trait_cor.r` was not ported at all:
+  its `module_trait_cor.r:183` reads the whole purple edge file, all 9 columns,
+  into RAM with no `select=`, and the module-level test does not need edges —
+  `moduletrait` runs on the eigengene matrix instead.
 - **Nothing outside `new_clean/` was modified or deleted.** The 804 GB of dense
   matrices and 105 GB of intermediate edge lists are now unreferenced and
   reclaimable, but this pipeline does not touch them.
