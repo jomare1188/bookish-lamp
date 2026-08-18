@@ -603,7 +603,17 @@ enrichment, 0 of 37.
 - `module_summary_<study>.{png,pdf}` — every responsive module's eigengene in one
   panel, split by response class, with PC1 variance explained and module size as
   row annotations. This is the figure that made the sample-driven `mi_only`
-  problem visible.
+  problem visible. Purple's shows textbook monotone dose responses across
+  0N/2N/6N, splitting cleanly into modules that fall and rise with nitrogen.
+  Sample labels are dropped (the design is carried by the annotation bars), which
+  lets the cells shrink to 2 mm.
+
+  **Columns group replicates.** Sorting by sample name alone interleaves
+  sugarcane's three leaf positions -- the names run `B0_1, B_1, M_1, P_1, B0_2,
+  ...`, so replicates of one tissue sit four columns apart and the tissue effect
+  reads as vertical striping right across the figure. Ordering by treatment,
+  genotype, tissue, then sample (`HEATMAP_GROUP_BY`) puts replicates adjacent and
+  the treatment blocks resolve.
 - `heatmaps/module_<id>_<study>.{png,pdf}` — per-module gene-level z-scores, top
   20 per response class. Height scales at 30.5 px per gene (r = 0.9998), so a
   3-gene and a 100-gene module are both legible.

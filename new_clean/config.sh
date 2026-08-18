@@ -203,6 +203,12 @@ HEATMAP_MAX_GENES=100
 # significance are shown, so the smaller non-linear class is not crowded out.
 SUMMARY_MAX_MODULES=250
 
+# Extra sample-metadata columns to group heatmap columns by, after the two
+# traits. Sugarcane's three leaf positions otherwise interleave -- its sample
+# names run B0_1, B_1, M_1, P_1, B0_2, ... so replicates of one tissue sit four
+# columns apart and the tissue effect reads as striping across the figure.
+HEATMAP_GROUP_BY="tissue"
+
 # --- GO ----------------------------------------------------------------------
 ONTOLOGIES="BP MF CC"
 # Threshold on the RAW weight01 p-value, topGO's own convention: weight01

@@ -72,7 +72,17 @@ m <- meta[match(colnames(E), sample)]
 if (anyNA(m$sample)) stop("eigengene samples missing from ", basename(META_FILE),
                           call. = FALSE)
 t1 <- names(TRAITS)[1]; t2 <- names(TRAITS)[2]
-ord <- order(m[[t1]], m[[t2]], m$sample)
+# Column order groups REPLICATES of the same condition next to each other.
+# Sorting by sample name alone interleaves the leaf positions -- sugarcane's
+# names run B0_1, B_1, M_1, P_1, B0_2, ... so the three replicates of one tissue
+# land four columns apart, and the tissue effect reads as vertical striping that
+# obscures the treatment pattern the figure is for. Ordering by the split trait,
+# then the other trait, then any CLEAN_HEATMAP_GROUP_BY columns (tissue), then
+# the sample puts replicates adjacent.
+grp_cols <- env_list("CLEAN_HEATMAP_GROUP_BY", character(0))
+grp_cols <- intersect(grp_cols, names(m))
+ord_cols <- c(t2, t1, grp_cols, "sample")
+ord <- do.call(order, lapply(ord_cols, function(cc) m[[cc]]))
 m <- m[ord]; E <- E[, m$sample, drop = FALSE]
 
 # --- which modules -----------------------------------------------------------
@@ -128,9 +138,14 @@ right_ann <- rowAnnotation(
 zl <- as.numeric(quantile(abs(M), 0.98, na.rm = TRUE)); if (zl == 0) zl <- 1
 col_z <- colorRamp2(seq(-zl, zl, length.out = 256), rev(scico(256, palette = "roma")))
 
-CELL_W <- unit(4, "mm")
-CELL_H <- unit(if (nrow(M) > 120) 1.2 else if (nrow(M) > 40) 2.2 else 4, "mm")
+# Sample labels are dropped on this figure -- with 48 columns they add ~4 cm of
+# rotated text for names nobody reads at this scale, and the design is already
+# carried by the column annotation bars and the treatment split. That frees the
+# cells to shrink.
+CELL_W <- unit(2, "mm")
+CELL_H <- unit(if (nrow(M) > 120) 1 else if (nrow(M) > 40) 1.8 else 3.5, "mm")
 cell_h_cm <- as.numeric(gsub("mm", "", format(CELL_H))) / 10
+cell_w_cm <- 0.2
 
 ht <- Heatmap(M, col = col_z, name = "eigengene z",
   cluster_rows = TRUE, cluster_columns = FALSE,
@@ -139,18 +154,20 @@ ht <- Heatmap(M, col = col_z, name = "eigengene z",
   column_split = f2,
   top_annotation = top_ann, right_annotation = right_ann,
   show_row_names = nrow(M) <= 60, row_names_gp = gpar(fontsize = 5),
-  show_column_names = TRUE, column_names_gp = gpar(fontsize = 6),
+  show_column_names = FALSE,
   row_title_gp = gpar(fontsize = 9, fontface = "bold"), row_title_rot = 0,
   column_title_gp = gpar(fontsize = 9, fontface = "bold"),
   width = CELL_W * ncol(M), height = CELL_H * nrow(M),
   border = TRUE, row_gap = unit(2, "mm"), column_gap = unit(1, "mm"))
 
-sub <- sprintf("%s responsive modules of %s tested  |  median PC1 var %.0f%%  |  |r| >= %s, MI >= calibrated floor",
+# Kept short and wrapped: the figure is ~23 cm wide and a single long title line
+# is clipped at the edges rather than shrunk to fit.
+sub <- sprintf("%s of %s modules responsive  |  median PC1 var %.0f%%\n|r| >= %s, MI >= calibrated floor",
                fmt_n(nrow(sel)), fmt_n(nrow(prof)), median(sel$pc1_var_pct),
                env_opt("CLEAN_MODULE_R_THR", "0.6"))
 
-w <- 0.4 * ncol(M) + (if (nrow(M) <= 60) 5 else 1.5) + 12
-h <- cell_h_cm * nrow(M) + 10
+w <- cell_w_cm * ncol(M) + (if (nrow(M) <= 60) 5 else 1.5) + 12
+h <- cell_h_cm * nrow(M) + 7
 
 invisible(ensure_dir(dirname(OUT_PREFIX)))
 for (dev in c("png", "pdf")) {
@@ -158,7 +175,7 @@ for (dev in c("png", "pdf")) {
   if (dev == "png") png(f, width = w, height = h, units = "cm", res = 300)
   else pdf(f, width = w / 2.54, height = h / 2.54)
   draw(ht, column_title = paste0("Nitrogen-responsive modules - ", STUDY, "\n", sub),
-       column_title_gp = gpar(fontsize = 11, fontface = "bold"),
+       column_title_gp = gpar(fontsize = 9, fontface = "bold"),
        merge_legends = TRUE, heatmap_legend_side = "right")
   dev.off()
 }

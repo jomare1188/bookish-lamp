@@ -93,8 +93,18 @@ for (tr in names(TRAITS))
   if (!tr %in% names(m)) stop("trait column '", tr, "' not in the samplesheet",
                               call. = FALSE)
 
-# order samples by the design so the annotation reads left-to-right
-ord <- order(m[[names(TRAITS)[1]]], m[[names(TRAITS)[2]]], m$sample)
+t1 <- names(TRAITS)[1]; t2 <- names(TRAITS)[2]
+# Column order groups REPLICATES of the same condition next to each other.
+# Sorting by sample name alone interleaves the leaf positions -- sugarcane's
+# names run B0_1, B_1, M_1, P_1, B0_2, ... so the three replicates of one tissue
+# land four columns apart, and the tissue effect reads as vertical striping that
+# obscures the treatment pattern the figure is for. Ordering by the split trait,
+# then the other trait, then any CLEAN_HEATMAP_GROUP_BY columns (tissue), then
+# the sample puts replicates adjacent.
+grp_cols <- env_list("CLEAN_HEATMAP_GROUP_BY", character(0))
+grp_cols <- intersect(grp_cols, names(m))
+ord_cols <- c(t2, t1, grp_cols, "sample")
+ord <- do.call(order, lapply(ord_cols, function(cc) m[[cc]]))
 m <- m[ord]; vst <- vst[, m$sample, drop = FALSE]
 
 tf_genes <- character(0)
@@ -117,7 +127,6 @@ say("modules to draw: ", nrow(sel), "  (",
 if (!nrow(sel)) { say("nothing to draw"); quit(save = "no", status = 0) }
 
 # --- annotation, built once --------------------------------------------------
-t1 <- names(TRAITS)[1]; t2 <- names(TRAITS)[2]
 f1 <- factor(m[[t1]], levels = names(TRAITS[[t1]]))
 f2 <- factor(m[[t2]], levels = names(TRAITS[[t2]]))
 c1 <- structure(scico(nlevels(f1) + 1, palette = "batlow")[seq_len(nlevels(f1))],

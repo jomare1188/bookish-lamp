@@ -310,6 +310,7 @@ main() {
     CLEAN_HEATMAP_TOP_N="$HEATMAP_TOP_N" \
     CLEAN_HEATMAP_MAX_GENES="$HEATMAP_MAX_GENES" \
     CLEAN_HEATMAP_MODULES="${EXTRA[0]:-}" \
+    CLEAN_HEATMAP_GROUP_BY="$HEATMAP_GROUP_BY" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/16_module_heatmaps.r"
     ;;
@@ -324,6 +325,7 @@ main() {
     CLEAN_OUT_PREFIX="$(study_dir "$ARG")/module_summary_${ARG}" \
     CLEAN_SUMMARY_MAX_MODULES="$SUMMARY_MAX_MODULES" \
     CLEAN_MODULE_R_THR="$MODULE_R_THR" \
+    CLEAN_HEATMAP_GROUP_BY="$HEATMAP_GROUP_BY" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/17_module_summary.r"
     ;;
