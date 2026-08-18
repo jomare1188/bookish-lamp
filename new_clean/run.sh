@@ -24,6 +24,7 @@
 #   ./run.sh moduletrait <study>             module response: linear + non-linear
 #   ./run.sh moduleprofile <study>           + TF enrichment per module
 #   ./run.sh moduleheatmap <study> [mods]    heatmaps for responsive modules
+#   ./run.sh modulesummary <study>           one figure: all responsive modules
 #   ./run.sh conscor   [0|1] [selection]     conserved N response; 1 = directed test
 #   ./run.sh go        BP|MF|CC              GO enrichment
 #   ./run.sh gosem                           GO semantic clustering
@@ -50,7 +51,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${HERE}/config.sh"
 
-usage() { sed -n '3,38p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 1; }
+usage() { sed -n '3,39p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 1; }
 die()   { echo "ERROR: $*" >&2; exit 1; }
 
 # Per-study value lookup, e.g. cfg DDS sugarcane -> $DDS_sugarcane
@@ -291,6 +292,7 @@ main() {
     CLEAN_NODE_METRICS="$(study_dir "$ARG")/network_${ARG}_node_metrics.tsv" \
     CLEAN_OUT_FILE="$(study_dir "$ARG")/module_profile_${ARG}.tsv" \
     CLEAN_PADJ_THR="$PADJ_THR" \
+    CLEAN_MODULE_R_THR="$MODULE_R_THR" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_NET" "${SCRIPTS}/15_module_profile.r"
     ;;
@@ -310,6 +312,20 @@ main() {
     CLEAN_HEATMAP_MODULES="${EXTRA[0]:-}" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/16_module_heatmaps.r"
+    ;;
+
+  modulesummary)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_EIGENGENE_PREFIX="$(study_dir "$ARG")/modules/${ARG}_eigengenes" \
+    CLEAN_MODULE_PROFILE="$(study_dir "$ARG")/module_profile_${ARG}.tsv" \
+    CLEAN_META="$(cfg META "$ARG")" \
+    CLEAN_TRAITS="$(cfg TRAITS "$ARG")" \
+    CLEAN_OUT_PREFIX="$(study_dir "$ARG")/module_summary_${ARG}" \
+    CLEAN_SUMMARY_MAX_MODULES="$SUMMARY_MAX_MODULES" \
+    CLEAN_MODULE_R_THR="$MODULE_R_THR" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_PLOT" "${SCRIPTS}/17_module_summary.r"
     ;;
 
   # --- 09-10 GO ---------------------------------------------------------------

@@ -280,7 +280,8 @@ be misread as absent shared response when it is really absent orthology coverage
 ./run.sh eigengene    <study>          # PC1 per module -> a VST-format matrix
 ./run.sh moduletrait  <study>          # 12_gene_trait_mi.py, unchanged, on it
 ./run.sh moduleprofile <study>         # + TF hypergeometric per module
-./run.sh moduleheatmap <study> [mods]  # heatmaps for the responsive ones
+./run.sh moduleheatmap <study> [mods]  # per-module gene heatmaps
+./run.sh modulesummary <study>         # one figure: all responsive modules
 ```
 
 | | |
@@ -308,11 +309,21 @@ TF enrichment is a hypergeometric per module against the **network** node
 universe, BH across modules; a gene's isoform-driven multi-family calls are
 collapsed to one row first or every enrichment is inflated.
 
-Heatmaps draw paired absolute-VST and per-gene z-score panels — a z-score panel
-alone rescales a gene varying by 0.01 VST units to look as structured as one
-varying by 5. Ramps are percentile-clipped (99th absolute, 98th of |z|). Modules
-above `HEATMAP_MAX_GENES` are subset by intramodular strength, stated in the
-subtitle; the largest are 19,604 and 47,887 genes.
+**Effect-size floors.** `MODULE_R_THR=0.6` on the linear side, mirroring the gene
+level. MI gets a floor calibrated from the data — the median MI among modules at
+|r| ~ 0.6 — because the network's nats-to-|r| identity assumes two continuous
+variables and the trait here is discrete. Flooring only one side inflates
+`mi_only` badly; see [results.md](results.md).
+
+Heatmaps show **per-gene z-scores only**. Ramps are clipped at the 98th
+percentile of |z|. Device size is derived from the actual body size
+(`CELL_W x CELL_H` per cell plus fixed overhead), so height scales with gene
+count instead of every figure being forced into one frame. Modules above
+`HEATMAP_MAX_GENES` are subset by intramodular strength, stated in the subtitle.
+
+`modulesummary` draws every responsive module's eigengene in one panel, split by
+response class, with PC1 variance explained and module size as row annotations —
+the view that exposes whether a class is coherent or sample-driven.
 
 ---
 

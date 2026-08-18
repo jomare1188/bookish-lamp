@@ -7,16 +7,18 @@
 # could not have caught -- a non-monotone dose response, a dispersion change --
 # or reveals itself as an artifact.
 #
-# TWO PANELS, always, and the pairing is the point:
-#   A  absolute expression (VST), sequential palette. Shows which genes are
-#      actually expressed and how much.
-#   B  per-gene z-score, diverging palette. Shows pattern across samples.
-#   A z-score panel ALONE is misleading: it rescales a gene that varies by 0.01
-#      VST units to look exactly as structured as one that varies by 5.
+# PER-GENE Z-SCORE, one panel. The pattern across samples is what a module
+# heatmap is read for, and an absolute-VST panel alongside it mostly duplicated
+# the row labels while doubling the figure width.
 #
-# Both colour ramps are PERCENTILE-CLIPPED (99th for absolute, 98th of |z| for
-# the diverging one). A handful of very highly expressed genes otherwise flatten
-# the entire panel; colorRamp2 clamps out-of-range values to the endpoints.
+# The trade-off that costs: a z-score rescales a gene varying by 0.01 VST units
+# to look exactly as structured as one varying by 5. Nothing in the figure now
+# distinguishes them. Absolute expression per gene remains available in the VST
+# export if a specific gene's magnitude matters.
+#
+# The colour ramp is PERCENTILE-CLIPPED at the 98th percentile of |z|; a few
+# extreme cells otherwise flatten the whole panel. colorRamp2 clamps
+# out-of-range values to the endpoints.
 #
 # Rendering is adapted from 11_readouts/module20/05_module20_heatmaps.r, whose
 # plotting half is good. Three changes: expression comes from read_vst() (the
@@ -130,7 +132,6 @@ top_ann <- do.call(HeatmapAnnotation, c(
        annotation_name_gp = gpar(fontsize = 8),
        simple_anno_size = unit(3.5, "mm"))))
 
-PAL_ABS <- scico(256, palette = "batlow")
 PAL_Z   <- rev(scico(256, palette = "roma"))
 
 # --- draw --------------------------------------------------------------------
@@ -150,9 +151,6 @@ for (i in seq_len(nrow(sel))) {
   X <- vst[genes, , drop = FALSE]
   Z <- t(scale(t(X))); Z[!is.finite(Z)] <- 0
 
-  amax <- as.numeric(quantile(X, 0.99, na.rm = TRUE))
-  amin <- as.numeric(quantile(X, 0.01, na.rm = TRUE))
-  col_abs <- colorRamp2(seq(amin, amax, length.out = 256), PAL_ABS)
   zl <- as.numeric(quantile(abs(Z), 0.98, na.rm = TRUE)); if (zl == 0) zl <- 1
   col_z <- colorRamp2(seq(-zl, zl, length.out = 256), PAL_Z)
 
@@ -170,37 +168,40 @@ for (i in seq_len(nrow(sel))) {
                  r$finding, fmt_n(r$n_genes), r$pc1_var_pct, r$pearson,
                  r$pearson_padj, r$mi, r$padj, subset_note)
 
-  common <- list(
+  show_names <- length(genes) <= 60
+
+  ht <- Heatmap(Z, col = col_z, name = "z",
     cluster_rows = TRUE, cluster_columns = FALSE,   # keep the design column order
     cluster_row_slices = FALSE,
     column_split = f2,                              # split by the nitrogen axis
     top_annotation = top_ann, left_annotation = left_ann,
-    show_row_names = length(genes) <= 60,
-    row_names_gp = gpar(fontsize = 5),
+    show_row_names = show_names, row_names_gp = gpar(fontsize = 5),
     show_column_names = TRUE, column_names_gp = gpar(fontsize = 5),
     width = CELL_W * ncol(X), height = CELL_H * nrow(X),
     border = TRUE, row_gap = unit(0.8, "mm"), column_gap = unit(0.8, "mm"),
     column_title_gp = gpar(fontsize = 8, fontface = "bold"))
 
-  hA <- do.call(Heatmap, c(list(X, col = col_abs, name = "VST"), common))
-  hB <- do.call(Heatmap, c(list(Z, col = col_z, name = "z"), common))
+  # Device size derived from the ACTUAL body size, not a guess: body is
+  # CELL_W x CELL_H per cell, everything else is fixed overhead in cm.
+  body_w_cm <- 0.32 * ncol(X)
+  body_h_cm <- 0.26 * nrow(X)
+  w <- body_w_cm + (if (show_names) 5 else 1.5) + 6.5
+  h <- body_h_cm + 8
+  h <- max(h, 9)                                  # a 3-gene module still needs a title
 
-  w <- 10 + 0.32 * ncol(X); h <- 4 + 0.30 * nrow(X)
   for (dev in c("png", "pdf")) {
     f <- file.path(OUT_DIR, sprintf("module_%s_%s.%s", mod, STUDY, dev))
     if (dev == "png") png(f, width = w, height = h, units = "cm", res = 300)
     else pdf(f, width = w / 2.54, height = h / 2.54)
-    grid.newpage()
-    pushViewport(viewport(layout = grid.layout(2, 1)))
-    pushViewport(viewport(layout.pos.row = 1))
-    draw(hA, column_title = paste0(mod, " - ", STUDY, "  (absolute VST)\n", sub),
-         newpage = FALSE); popViewport()
-    pushViewport(viewport(layout.pos.row = 2))
-    draw(hB, column_title = paste0(mod, " - per-gene z-score"), newpage = FALSE)
-    popViewport(); popViewport()
+    draw(ht,
+         column_title = paste0(mod, " - ", STUDY, "\n", sub),
+         column_title_gp = gpar(fontsize = 10, fontface = "bold"),
+         merge_legends = TRUE, heatmap_legend_side = "right")
     dev.off()
   }
-  say(sprintf("  %-14s %s  %d genes drawn", mod, r$finding, length(genes)))
+
+  say(sprintf("  %-14s %s  %d genes drawn  (%.0f x %.0f cm)",
+              mod, r$finding, length(genes), w, h))
 }
 
 say("wrote ", nrow(sel), " module heatmaps to ", OUT_DIR)

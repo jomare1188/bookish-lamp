@@ -41,6 +41,11 @@ TF_FILE    <- env_req("CLEAN_TF_FILE")
 NODES      <- env_req("CLEAN_NODE_METRICS")
 OUT_FILE   <- env_req("CLEAN_OUT_FILE")
 ALPHA      <- env_num("CLEAN_PADJ_THR", 0.05)
+# Effect-size floor on the LINEAR side, matching the gene-level TRAIT_R_THR.
+# Without it a module with |r| = 0.36 -- 13% of the eigengene's variance -- counts
+# as "responsive" at n = 48, and the module count is not comparable to the
+# gene-level one that did apply this floor.
+R_THR      <- env_num("CLEAN_MODULE_R_THR", 0.6)
 setDTthreads(as.integer(env_num("CLEAN_CORES", 100)))
 
 banner(paste("module profile:", STUDY))
@@ -99,11 +104,62 @@ if (file.exists(TF_FILE)) {
               top_tf_families = NA_character_)]
 }
 
+# --- effect-size floor, on BOTH sides ---------------------------------------
+# Flooring only the linear side is not a neutral choice: it moves every module
+# with a modest linear response out of `both`/`pearson_only` and into `mi_only`,
+# which then reads as "non-linear" when it is nothing of the kind. Measured here:
+# flooring Pearson alone took mi_only from 253 to 786 in sugarcane.
+#
+# So MI needs an equivalent floor. The Gaussian identity the network layer uses
+# to convert nats to |r| does NOT apply -- it assumes two continuous variables,
+# and here the trait is discrete with MI capped at H(trait). Instead the floor is
+# CALIBRATED EMPIRICALLY on this data: among modules whose linear response sits
+# at |r| ~ R_THR, what MI do they carry? That median is the MI equivalent of the
+# linear cut, at this n, this class structure, and this estimator.
+#
+# It is a calibration, not a theoretical equivalence, and it is reported so the
+# reader can see the number rather than trust the label.
+null_file <- sub("\\.tsv$", ".null.tsv", TRAIT_FILE)
+H <- NA_real_
+if (file.exists(null_file)) {
+  nl <- fread(null_file, header = TRUE, fill = TRUE)
+  hit <- nl[[1]] == "trait_entropy"
+  if (any(hit, na.rm = TRUE)) H <- as.numeric(nl[[2]][which(hit)[1]])
+}
+prof[, mi_norm := if (is.finite(H) && H > 0) mi / H else NA_real_]
+
+near <- prof[abs(abs(pearson) - R_THR) < 0.03 & is.finite(mi)]
+if (nrow(near) >= 30) {
+  MI_THR <- median(near$mi)
+  say(sprintf("MI floor calibrated on %s modules at |r| ~ %.2f: MI >= %.3f (%.2f of H)",
+              fmt_n(nrow(near)), R_THR, MI_THR, MI_THR / H))
+} else {
+  MI_THR <- 0
+  say(sprintf("WARNING: only %d modules near |r| = %.2f -- cannot calibrate an MI",
+              nrow(near), R_THR))
+  say("         floor, so the MI side keeps no effect-size cut and `mi_only` will")
+  say("         include modules whose linear response merely fell below the floor.")
+}
+
+prof[, finding_stat := finding]                 # the unfloored, padj-only call
+pass_pearson <- prof$pearson_padj <= ALPHA & abs(prof$pearson) >= R_THR
+pass_mi      <- prof$padj <= ALPHA & prof$mi >= MI_THR
+prof[, finding := fifelse(pass_pearson & pass_mi, "both",
+                  fifelse(pass_mi, "mi_only",
+                  fifelse(pass_pearson, "pearson_only", "neither")))]
+
+say(sprintf("effect-size floors: |r| >= %.2f (linear), MI >= %.3f (non-linear)",
+            R_THR, MI_THR))
+say("  padj only:    ", paste(sprintf("%s %s", prof[, .N, by = finding_stat]$finding_stat,
+                                fmt_n(prof[, .N, by = finding_stat]$N)), collapse = " | "))
+say("  with floors:  ", paste(sprintf("%s %s", prof[, .N, by = finding]$finding,
+                                fmt_n(prof[, .N, by = finding]$N)), collapse = " | "))
+
 prof[, responsive := finding != "neither"]
 prof[, tf_enriched := !is.na(tf_padj) & tf_padj <= ALPHA]
 setorder(prof, padj, pearson_padj)
-setcolorder(prof, c("module", "n_genes", "pc1_var_pct", "finding",
-                    "pearson", "pearson_padj", "mi", "padj",
+setcolorder(prof, c("module", "n_genes", "pc1_var_pct", "finding", "finding_stat",
+                    "pearson", "pearson_padj", "mi", "mi_norm", "padj",
                     "n_tf", "tf_frac", "tf_p", "tf_padj", "top_tf_families"))
 write_tsv(prof, OUT_FILE)
 

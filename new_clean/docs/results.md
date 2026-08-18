@@ -520,72 +520,93 @@ information that 18 libraries do not contain.
 ## Module-level nitrogen response
 
 One eigengene per MCL module (PC1 of member genes' VST, z-scored, oriented to
-mean expression), for modules with **≥ 3 genes**: 6,576 sugarcane / 6,318 purple,
+mean expression), for modules with ≥ 3 genes: 6,576 sugarcane / 6,318 purple,
 covering 92% and 87% of each network's genes. Median PC1 variance explained
-**81.1%** (sugarcane) and **65.0%** (purple) — purple's modules are the less
-coherent, which is worth carrying into any reading of its module results.
+**81.1%** (sugarcane) and **65.0%** (purple).
 
-Each eigengene is tested against nitrogen by **both** statistics, by running
-`12_gene_trait_mi.py` unchanged on the eigengene matrix. That is deliberate: the
-eigengenes are written in the VST export's own format, so the module-level
-linear/non-linear call comes from the identical validated code path as the gene
-level and the two cannot diverge for methodological reasons.
+Each eigengene is tested by **both** statistics, by running `12_gene_trait_mi.py`
+unchanged on the eigengene matrix — the same validated code path as the gene
+level, so the two answers cannot diverge for methodological reasons.
 
-### Sugarcane (n = 48)
+### Effect-size floors, and why both sides need one
 
-| response | modules | median size | median \|r\| | median MI | TF-enriched |
-|---|---|---|---|---|---|
-| neither | 4,614 | 4 | 0.152 | 0.004 | 0.98% |
-| **both** | 939 | 5 | 0.580 | 0.236 | **3.09%** |
-| pearson_only | 770 | 4 | 0.422 | 0.084 | 1.82% |
-| **mi_only** | **253** | 5 | 0.241 | 0.183 | 1.19% |
+`padj <= 0.05` alone admits sugarcane modules down to **|r| = 0.356** (13% of the
+eigengene's variance) and is not comparable to the gene-level selection, which
+required `|r| >= 0.6`. Applying that floor to the linear side **only** is worse
+than not applying it: it moves every modestly-linear module out of `both` and
+into `mi_only`, which then reads as "non-linear" when it is nothing of the kind.
+Measured: `mi_only` went 253 → **786**.
 
-**1,962 of 6,576 modules respond to nitrogen, and 253 of them respond only
-non-linearly** — invisible to a correlation, median |r| = 0.24.
+So MI needs an equivalent floor. The nats-to-|r| identity the network layer uses
+does **not** apply — it assumes two continuous variables, and here the trait is
+discrete with MI capped at H(trait). The floor is instead **calibrated on this
+data**: among the 192 sugarcane modules sitting at |r| ≈ 0.60, the median MI is
+**0.218 nats (0.31 of H)**. That is the MI equivalent of the linear cut at this
+n and class structure. A calibration, not a theoretical equivalence, and the
+number is printed on every run.
 
-**Negative control:** permuting the trait labels against the same eigengenes
-gives **0 significant modules** by either statistic.
-
-**TFs concentrate in the `both` class.** Against the 0.98% TF-enrichment rate of
-non-responsive modules (hypergeometric per module, network node universe, BH):
-
-| class | TF-enriched | odds ratio | Fisher p |
-|---|---|---|---|
-| both | 3.09% | **3.23** | **4.7e-06** |
-| pearson_only | 1.82% | 1.88 | 0.058 |
-| mi_only | 1.19% | 1.22 | 0.74 |
-
-Modules that *both* statistics agree on are the regulatory ones. That is the same
-shape as the edge-level result, where `both`-layer edges were the best conserved
-— agreement between two independent estimators marks the real signal, in both
-analyses, and neither was tuned to produce it.
-
-### The `mi_only` modules are an emergent signal, not a bag of non-linear genes
-
-Cross-checked against the gene-level results, and this changes how they read:
-
-| module class | member genes individually responsive | members that are `mi_only` genes |
+| sugarcane | padj only | **both floors** |
 |---|---|---|
-| both | **100%** | 1.3% |
-| pearson_only | 50% | 1.5% |
-| **mi_only** | **4.2%** | 6.8% |
+| neither | 4,614 | 5,929 |
+| both | 939 | **367** |
+| mi_only | 253 | **239** |
+| pearson_only | 770 | **41** |
 
-`mi_only` modules are built from genes that are **88% non-responsive
-individually** (Wilcoxon against non-responsive modules p = 4.4e-54, so the 4.2%
-is a real excess over 0% — but it is still 4.2%). Their nitrogen response exists
-in the module's collective PC1 and not in its members.
+**647 of 6,576 modules respond; 239 only non-linearly.** Permuting the trait
+labels against the same eigengenes gives **0** significant modules.
 
-That is what an eigengene is *for*, and the permutation null rules out noise. But
-they must not be described as "modules of non-linear nitrogen genes" — they are
-modules whose **summary** tracks nitrogen non-monotonically while no individual
-member does. Whether that is coordinated weak regulation or a PC1 artifact of
-correlated non-responsive genes is not settled by these data.
+### TF enrichment is weak once the floors are applied
+
+| class | modules | TF-enriched | OR | Fisher p |
+|---|---|---|---|---|
+| pearson_only | 41 | 7.32% | 6.16 | 0.016 |
+| both | 367 | 2.45% | 1.96 | 0.061 |
+| mi_only | 239 | 1.67% | 1.33 | 0.55 |
+
+An earlier unfloored run had `both` at OR 3.23, p = 4.7e-06, and that no longer
+holds. The strongest enrichment is now in `pearson_only`, but that is **3 of 41
+modules**, `both` is marginal, and `mi_only` is null. The honest reading: TF
+enrichment among responsive modules is weak and the classes are too small to
+separate confidently. Do not report "TFs concentrate in the modules both
+statistics agree on" — that was an artifact of the missing effect-size floor.
+
+### A third of the `mi_only` modules are sample-driven
+
+Visible in `module_summary_sugarcane.png` as vertical streaks in the `mi_only`
+block, and quantified:
+
+| class | median top-2 sample share of variance | R² of the High/Low split | 2 samples carry >25% |
+|---|---|---|---|
+| both | 0.182 | **0.484** | 14% |
+| pearson_only | 0.185 | 0.384 | — |
+| **mi_only** | **0.218** | **0.229** | **35%** |
+
+(under a flat null one of 48 samples carries 0.021)
+
+`mi_only` modules explain **less than half** as much of their variance by the
+nitrogen split as `both` modules do, and **35% have two samples carrying over a
+quarter of the eigengene's variance**. An omnibus dependence test will fire on a
+distributional quirk in one or two libraries, and some of these are that.
+
+It is a minority — 65% are not obviously sample-driven — but the class should be
+filtered on this diagnostic before any individual `mi_only` module is followed
+up, not taken as a list of non-linear responders.
 
 ### Purple (n = 18)
 
-**38 responsive modules: 37 `pearson_only`, 1 `both`, 0 `mi_only`.** Against 30
-responsive genes, so modules help a little — the burden falls from 44,118 tests to
-6,318 — but not enough. No TF enrichment (0 of 37). The n = 18 wall again.
+**38 responsive: 37 `pearson_only`, 1 `both`, 0 `mi_only`**, unchanged by the
+floors (all 38 already cleared |r| = 0.6 — FDR binds that hard at n = 18). No TF
+enrichment, 0 of 37.
+
+### Figures
+
+- `module_summary_<study>.{png,pdf}` — every responsive module's eigengene in one
+  panel, split by response class, with PC1 variance explained and module size as
+  row annotations. This is the figure that made the sample-driven `mi_only`
+  problem visible.
+- `heatmaps/module_<id>_<study>.{png,pdf}` — per-module gene-level z-scores, top
+  20 per response class. Height scales at 30.5 px per gene (r = 0.9998), so a
+  3-gene and a 100-gene module are both legible.
 
 ---
 

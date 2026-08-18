@@ -185,11 +185,23 @@ PADJ_THR=0.05
 # eigengenes of larger modules do not change if this is raised later.
 MIN_MODULE_SIZE_EIGEN=3
 
+# Effect-size floor on a module's LINEAR response, mirroring TRAIT_R_THR at the
+# gene level. Without it padj alone admits modules down to |r| = 0.36 at n = 48,
+# and the module counts are not comparable to the gene-level ones. No floor is
+# applied to MI: the nats-to-|r| identity the network uses assumes two continuous
+# variables and the trait here is discrete, so `mi_norm` (MI / H(trait)) is
+# reported instead as a 0-1 effect size.
+MODULE_R_THR=0.6
+
 # Heatmaps: how many responsive modules to draw, and how many genes of each.
 # The largest modules are 19,604 (sugarcane) and 47,887 (purple) genes, which no
 # heatmap can render; those are subset to the top genes by intramodular strength.
 HEATMAP_TOP_N=20
 HEATMAP_MAX_GENES=100
+
+# Summary figure: cap on rows. Above this, the top N per response class by
+# significance are shown, so the smaller non-linear class is not crowded out.
+SUMMARY_MAX_MODULES=250
 
 # --- GO ----------------------------------------------------------------------
 ONTOLOGIES="BP MF CC"
