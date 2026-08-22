@@ -524,209 +524,266 @@ mean expression), for modules with ≥ 3 genes: 6,576 sugarcane / 6,318 purple,
 covering 92% and 87% of each network's genes. Median PC1 variance explained
 **81.1%** (sugarcane) and **65.0%** (purple).
 
-Each eigengene is tested by **both** statistics, by running `12_gene_trait_mi.py`
-unchanged on the eigengene matrix — the same validated code path as the gene
-level, so the two answers cannot diverge for methodological reasons.
+Each eigengene is tested against nitrogen by **Spearman's rho alone**
+(`19_module_trait_spearman.r`), at the same two thresholds the gene level uses:
 
-### Effect-size floors, and why both sides need one
+> **padj ≤ 0.05 (BH over every module in the study) and |rho| ≥ 0.6.**
 
-`padj <= 0.05` alone admits sugarcane modules down to **|r| = 0.356** (13% of the
-eigengene's variance) and is not comparable to the gene-level selection, which
-required `|r| >= 0.6`. Applying that floor to the linear side **only** is worse
-than not applying it: it moves every modestly-linear module out of `both` and
-into `mi_only`, which then reads as "non-linear" when it is nothing of the kind.
-Measured: `mi_only` went 253 → **786**.
+### Why one rank correlation, and not the three statistics this used to report
 
-So MI needs an equivalent floor. The nats-to-|r| identity the network layer uses
-does **not** apply — it assumes two continuous variables, and here the trait is
-discrete with MI capped at H(trait). The floor is instead **calibrated on this
-data**: among the 192 sugarcane modules sitting at |r| ≈ 0.60, the median MI is
-**0.218 nats (0.31 of H)**. That is the MI equivalent of the linear cut at this
-n and class structure. A calibration, not a theoretical equivalence, and the
-number is printed on every run.
+The module response was previously called by running `12_gene_trait_mi.py` on the
+eigengene matrix, which returned Pearson *and* mutual information and sorted every
+module into `pearson_only` / `mi_only` / `both`. That is gone. Three reasons, in
+order of how much they mattered:
 
-| sugarcane | padj only | **both floors** |
-|---|---|---|
-| neither | 4,614 | 5,929 |
-| both | 939 | **367** |
-| mi_only | 253 | **239** |
-| pearson_only | 770 | **41** |
+**1. The trait is ordinal, and Pearson reads it as interval.** Purple's nitrogen
+is a dose — 0, 2 and 6 mM — and Pearson asks whether a module moves exactly twice
+as far from 2 to 6 mM as it does from 0 to 2. Nothing in the design justifies
+that arithmetic. A module whose response saturates above 2 mM is a perfectly good
+monotone nitrogen response and Pearson penalises it. Measured on the identical
+eigengenes at the identical thresholds:
 
-**647 of 6,576 modules respond; 239 only non-linearly.** Permuting the trait
-labels against the same eigengenes gives **0** significant modules.
+| | Pearson | **Spearman** | in both | Spearman only | Pearson only |
+|---|---|---|---|---|---|
+| sugarcane (n = 48) | 408 | **465** | 394 | 71 | 14 |
+| **purple (n = 18)** | **38** | **79** | 34 | **45** | 4 |
 
-### TF enrichment is weak once the floors are applied
+**Purple's responsive set more than doubles.** That is the single largest effect
+of this change, and it is exactly where the ordinal argument predicts it: purple
+is the study with the three-level gradient. Sugarcane's trait is two-level, where
+Spearman is the rank-biserial correlation, so the gain there is smaller (and is
+mostly robustness to the outliers a PC1 can carry).
 
-| class | modules | TF-enriched | OR | Fisher p |
-|---|---|---|---|---|
-| pearson_only | 41 | 7.32% | 6.16 | 0.016 |
-| both | 367 | 2.45% | 1.96 | 0.061 |
-| mi_only | 239 | 1.67% | 1.33 | 0.55 |
+**2. MI at this level was an omnibus test finding artifacts.** MI fires on *any*
+dependence, including a dispersion change or a quirk in one or two libraries.
+Under the old call, 35% of the 239 `mi_only` sugarcane modules had two of 48
+samples carrying over a quarter of the eigengene's variance, against 14% for
+`both`. Under the Spearman call the responsive set is *cleaner than the
+background it is drawn from*:
 
-An earlier unfloored run had `both` at OR 3.23, p = 4.7e-06, and that no longer
-holds. The strongest enrichment is now in `pearson_only`, but that is **3 of 41
-modules**, `both` is marginal, and `mi_only` is null. The honest reading: TF
-enrichment among responsive modules is weak and the classes are too small to
-separate confidently. Do not report "TFs concentrate in the modules both
-statistics agree on" — that was an artifact of the missing effect-size floor.
-
-### A third of the `mi_only` modules are sample-driven
-
-Visible in `module_summary_sugarcane.png` as vertical streaks in the `mi_only`
-block, and quantified:
-
-| class | median top-2 sample share of variance | R² of the High/Low split | 2 samples carry >25% |
+| sugarcane | median top-2 sample share of eigengene variance | 2 samples carry > 25% | median R² of the nitrogen split |
 |---|---|---|---|
-| both | 0.182 | **0.484** | 14% |
-| pearson_only | 0.185 | 0.384 | — |
-| **mi_only** | **0.218** | **0.229** | **35%** |
+| responsive (465) | **0.190** | **20%** | **0.447** |
+| not responsive (6,111) | 0.249 | 50% | 0.040 |
+| (flat null, 2 of 48 samples) | 0.042 | — | — |
 
-(under a flat null one of 48 samples carries 0.021)
+The old `mi_only` class sat at 0.218 and 35%, i.e. *worse* than the non-responsive
+background. Selecting on a monotone rank association removes that class of
+artifact instead of concentrating it.
 
-`mi_only` modules explain **less than half** as much of their variance by the
-nitrogen split as `both` modules do, and **35% have two samples carrying over a
-quarter of the eigengene's variance**. An omnibus dependence test will fire on a
-distributional quirk in one or two libraries, and some of these are that.
+**3. The MI floor could only be calibrated, never derived.** `padj ≤ 0.05` alone
+admitted modules down to |r| = 0.356, so an effect-size floor was needed; but
+flooring only the linear side pushed every modestly-linear module into `mi_only`
+(253 → 786), and the network's nats-to-|r| identity could not supply the MI
+equivalent because it assumes two continuous variables and this trait is
+discrete. The floor was therefore set to the median MI among modules at
+|r| ≈ 0.6 — a calibration against the statistic it was supposed to be
+independent of. One statistic needs one threshold and no calibration.
 
-It is a minority — 65% are not obviously sample-driven — but the class should be
-filtered on this diagnostic before any individual `mi_only` module is followed
-up, not taken as a list of non-linear responders.
+Everything downstream is simpler for it: no response classes to read the TF test,
+the figures or the per-module GO by, and one rule for what "responsive" means,
+owned by `19_module_trait_spearman.r` alone.
 
-### Purple (n = 18)
+### What responds
 
-**38 responsive: 37 `pearson_only`, 1 `both`, 0 `mi_only`**, unchanged by the
-floors (all 38 already cleared |r| = 0.6 — FDR binds that hard at n = 18). No TF
-enrichment, 0 of 37.
+| | sugarcane (n = 48) | purple (n = 18) |
+|---|---|---|
+| modules tested | 6,576 | 6,318 |
+| padj ≤ 0.05 | 1,792 | **79** |
+| \|rho\| ≥ 0.6 | **465** | 274 |
+| **responsive (both)** | **465** | **79** |
+| — rises with nitrogen | 242 | 32 |
+| — falls with nitrogen | 223 | 47 |
+| median \|rho\| (range) | 0.695 (0.602–0.866) | 0.787 (0.734–0.944) |
+| median PC1 var | 80.6% | 79.9% |
+| median module size | 5 genes | 5 genes |
+| genes covered | 4,824 | 662 |
+
+**The two studies are limited by different things, and it shows in which
+threshold binds.** At n = 48 an |rho| of 0.6 already implies p ≈ 6e-06, so BH
+never binds for sugarcane — the effect-size floor is the *only* active
+constraint, and the corrected and uncorrected readings are the same 465 modules.
+At n = 18 it is the reverse: 274 modules clear |rho| ≥ 0.6 and only 79 survive
+BH. Purple's uncorrected count is therefore 274, and should be labelled that way
+if it is ever used.
+
+### The permutation null, and one caveat it raises
+
+The same eigengenes against 1,000 shuffled trait label sets, counting how many
+clear both thresholds:
+
+| | observed | null median | null p99 | null max | permutations ≥ observed |
+|---|---|---|---|---|---|
+| sugarcane | 465 | 0 | 1 | 16 | **0 / 1,000** |
+| purple | 79 | 0 | 10 | **244** | **2 / 1,000** (p = 0.002) |
+
+Sugarcane is unambiguous. **Purple is significant but its null has a heavy tail**
+— one shuffle in a thousand produced 244 "responsive" modules, three times the
+observed count. That is what a single dense giant component does to a
+permutation test: purple's eigengenes are strongly correlated with each other, so
+one lucky label assignment lights up many modules at once and BH, which is
+adaptive, then loosens for all of them. Purple's 79 modules are a real signal
+(p = 0.002) but they are **not 79 independent findings**, and no per-module claim
+from purple should be made without looking at the module itself.
+
+### TF enrichment: real in sugarcane, and it is the falling modules
+
+Hypergeometric per module against the network node universe, BH across modules,
+then Fisher against the non-responsive modules (`15_module_profile.r`):
+
+| sugarcane | modules | TF-enriched | OR | Fisher p |
+|---|---|---|---|---|
+| **responsive** | 465 | **3.23%** | **2.65** | **0.0016** |
+| — falls with nitrogen | 223 | 4.04% | 3.34 | 0.0028 |
+| — rises with nitrogen | 242 | 2.48% | 2.02 | 0.13 |
+| not responsive | 6,111 | 1.24% | — | — |
+
+This is a **restored** result, and the restoration is the point. Under the old
+three-class call the same data gave `both` at OR 1.96, p = 0.061 and the
+strongest class was `pearson_only` at 3 of 41 modules — a null spread across
+three classes too small to separate. One responsive set of 465 recovers it:
+**nitrogen-responsive modules are TF-enriched at OR 2.65**, and the effect sits
+in the modules that go *down* with nitrogen. Do not over-read the direction split
+— 9 enriched modules against 6 — but the pooled result is solid.
+
+**Purple: 0 of 79, against 8 of 6,239 non-responsive (0.13%).** Nothing, as
+before, and its TF-enrichment rate is an order of magnitude below sugarcane's
+everywhere in the network.
 
 ### Figures
 
 - `module_summary_<study>.{png,pdf}` — every responsive module's eigengene in one
-  panel, split by response class, with PC1 variance explained and module size as
-  row annotations. This is the figure that made the sample-driven `mi_only`
-  problem visible. Purple's shows textbook monotone dose responses across
-  0N/2N/6N, splitting cleanly into modules that fall and rise with nitrogen.
-  Sample labels are dropped (the design is carried by the annotation bars), which
-  lets the cells shrink to 2 mm.
+  panel, **split by the sign of rho**: modules that rise with nitrogen above,
+  modules that fall below. That replaces the old split by response class, and it
+  is the more useful cut — the two halves are different biology rather than two
+  ways of detecting the same thing. PC1 variance explained and module size ride
+  as row annotations. Sugarcane draws the top 125 per direction of its 465;
+  purple draws all 79. The vertical streaking that exposed the sample-driven
+  `mi_only` block is gone from both, which is the visual form of the diagnostic
+  table above.
 
   **Columns group replicates.** Sorting by sample name alone interleaves
-  sugarcane's three leaf positions -- the names run `B0_1, B_1, M_1, P_1, B0_2,
+  sugarcane's three leaf positions — the names run `B0_1, B_1, M_1, P_1, B0_2,
   ...`, so replicates of one tissue sit four columns apart and the tissue effect
   reads as vertical striping right across the figure. Ordering by treatment,
   genotype, tissue, then sample (`HEATMAP_GROUP_BY`) puts replicates adjacent and
-  the treatment blocks resolve.
+  the treatment blocks resolve. Sample labels are dropped (the design is carried
+  by the annotation bars), which lets the cells shrink to 2 mm.
 - `heatmaps/module_<id>_<study>.{png,pdf}` — per-module gene-level z-scores, top
-  20 per response class. Height scales at 30.5 px per gene (r = 0.9998), so a
-  3-gene and a 100-gene module are both legible.
+  20 per direction. Height scales at 30.5 px per gene (r = 0.9998), so a 3-gene
+  and a 100-gene module are both legible.
 
-### What the responsive modules are for — GO BP, one test per module
+### What the responsive modules are for — GO, one test per module
 
-One topGO BP enrichment per responsive module, response classes pooled, against
-the same network-node background the gene-level GO and the TF hypergeometric use
-(`./run.sh modulego <study>`).
+One topGO enrichment per responsive module against the same network-node
+background the gene-level GO and the TF hypergeometric use
+(`./run.sh modulego <study> [BP|MF|CC]`). With one responsive set there are no
+classes to pool; `direction` rides through as a column but does not partition
+the run.
 
 **The annotation gate is the binding constraint, and it is severe.**
 
 | | sugarcane | purple |
 |---|---|---|
-| responsive modules | 647 | 38 |
+| responsive modules | 465 | 79 |
 | GO-annotated network nodes (background) | 8,251 of 103,336 | 12,255 of 170,736 |
 | median GO-annotated members per responsive module | **0** | **0** |
-| **modules testable (≥ 3 annotated members)** | **71 (11%)** | **3 (8%)** |
-| modules with ≥ 1 enriched term | 65 of 71 | 3 of 3 |
-| terms written | 359 | 20 |
-| terms clearing cross-module BH ≤ 0.05 | 91 | 5 |
+| modules with *zero* annotated members | 293 (63%) | 51 (64%) |
+| **modules testable (≥ 3 annotated members)** | **49 (11%)** | **10 (13%)** |
 
-**89% of the responsive modules cannot be tested at all.** Two facts multiply:
-only 8% of sugarcane's network nodes carry any eggNOG GO annotation, and the
-median responsive module holds 5 genes. **401 of the 647 (62%) have *zero*
-annotated members**; purple's figure is 27 of 38. So this section describes 71 modules, not 647, and the 71 are biased
-toward the large ones — nothing here should be read as characterising the
-responsive set as a whole.
+**89% of sugarcane's responsive modules cannot be tested at all.** Two facts
+multiply: only 8% of sugarcane's network nodes carry any eggNOG GO annotation,
+and the median responsive module holds 5 genes. So this section describes 49
+modules, not 465, and the 49 are biased toward the large ones — nothing here
+should be read as characterising the responsive set as a whole.
 
-Within that 11%, the signal is strong and it is about nitrogen:
-
-| module | class | genes | ann. | top BP term | p | global BH |
-|---|---|---|---|---|---|---|
-| Module_267 | both | 26 | 12 | response to chitin | 1.2e-26 | 1.0e-21 |
-| Module_514 | both | 16 | 10 | monoterpene biosynthetic process | 5.0e-27 | 8.6e-22 |
-| Module_469 | both | 16 | 5 | spermine / spermidine biosynthesis | 1.0e-17 | 2.0e-13 |
-| Module_1820 | both | 7 | 6 | proline biosynthetic process | 1.6e-17 | 2.8e-13 |
-| Module_440 | both | 17 | 4 | ammonia assimilation cycle | 4.1e-11 | 3.5e-07 |
-| Module_100 | both | 78 | 14 | **nitrate assimilation** | 9.6e-08 | 3.5e-04 |
-| Module_026 | both | 324 | 34 | nitric oxide biosynthetic process | 1.1e-06 | 3.0e-03 |
-| Module_009 | both | 521 | 96 | photosynthesis, light harvesting in PSI | 3.7e-10 | 2.3e-06 |
-
-Nitrogen assimilation recurs across independent modules — nitrate assimilation
-(Module_026, Module_100), the ammonia assimilation cycle and glutamate
-biosynthesis (Module_440, Module_106), ammonium ion metabolism and the polyamines
-(Module_469), proline and asparagine biosynthesis (Module_1820, Module_009,
-Module_146, Module_191), urea transport (Module_117), nitric oxide, and cellular
-response to nitrogen starvation (Module_417). These are different modules finding
-different parts of the same pathway, which is the shape a real result has.
-
-Module_009 (521 genes, the largest responsive module) is photosynthesis and
-translation; Module_026 (324 genes, |r| = 0.96) carries both nitrate assimilation
-and nitric oxide biosynthesis. That the two largest, strongest-responding modules
-return interpretable primary metabolism is the check that the gene→GO join is
-sound.
-
-**By class:** 45 of 367 `both`, 22 of 239 `mi_only` and 4 of 41 `pearson_only`
-modules were testable. `mi_only` is not enriched for anything the other classes
-lack; with 22 testable modules it could not be shown either way. No class-level
-claim is supported here.
-
-#### MF and CC, and why they matter here
-
-All three ontologies were run. The universe and the testable set are identical
-across them (71 sugarcane modules, 3 purple), so the three are directly
-comparable module by module.
+**Purple gains here.** It had 3 testable modules under the Pearson call and has
+**10** under Spearman, because the responsive set it draws from more than
+doubled. Ten gene sets is still a report of ten gene sets, not a
+characterisation of purple's nitrogen response, but it is no longer a footnote.
 
 | | BP | MF | CC |
 |---|---|---|---|
-| terms in the shared universe (sugarcane) | 2,412 | 978 | 407 |
-| sugarcane: modules with ≥ 1 term | 65 of 71 | 62 of 71 | 47 of 71 |
-| sugarcane: terms written | 359 | 213 | 96 |
-| sugarcane: clearing cross-module BH | 91 | 49 | 20 |
-| purple: modules with ≥ 1 term | 3 of 3 | 3 of 3 | 2 of 3 |
-| purple: terms written | 20 | 9 | 4 |
+| sugarcane: modules with ≥ 1 term | 44 of 49 | 40 of 49 | 34 of 49 |
+| sugarcane: terms written | 246 | 137 | 66 |
+| sugarcane: clearing cross-module BH | 73 | 36 | 14 |
+| purple: modules with ≥ 1 term | 10 of 10 | 10 of 10 | 7 of 10 |
+| purple: terms written | 50 | 30 | 13 |
+| purple: clearing cross-module BH | 7 | 4 | 1 |
 
-**MF independently names the enzymes BP inferred from process terms, in the same
-modules.** This is the strongest internal check the module-level analysis has,
-because the three ontologies are separate term sets scored in separate runs:
+Within sugarcane's 11%, the signal is strong and it is about nitrogen:
+
+| module | dir | genes | ann. | top BP term | p | global BH |
+|---|---|---|---|---|---|---|
+| Module_514 | ↑ | 16 | 10 | monoterpene biosynthetic process | 5.0e-27 | 5.9e-22 |
+| Module_267 | ↑ | 26 | 12 | response to chitin | 1.2e-26 | 7.0e-22 |
+| Module_469 | ↑ | 16 | 5 | spermine / spermidine biosynthesis | 1.0e-17 | 1.4e-13 |
+| Module_1820 | ↑ | 7 | 6 | proline biosynthetic process | 1.6e-17 | 1.9e-13 |
+| Module_613 | ↑ | 14 | 10 | protein folding in the ER | 4.8e-17 | 5.2e-13 |
+| Module_469 | ↑ | 16 | 5 | ammonium ion metabolic process | 1.3e-14 | 1.2e-10 |
+| Module_162 | ↓ | 45 | 7 | cellular response to cold | 4.3e-13 | 3.7e-09 |
+| Module_215 | ↓ | 31 | 6 | flavonoid biosynthetic process | 7.4e-12 | 5.1e-08 |
+| Module_440 | ↑ | 17 | 4 | ammonia assimilation cycle | 2.3e-11 | 2.3e-07 |
+| Module_100 | ↑ | 78 | 14 | **nitrate assimilation** | 9.6e-08 | 2.8e-04 |
+| Module_026 | ↑ | 324 | 34 | nitrate assimilation / nitric oxide | 1.1e-06 | 2.5e-03 |
+
+Nitrogen assimilation recurs across independent modules — nitrate assimilation
+(Module_026, Module_100), the ammonia assimilation cycle and glutamate
+biosynthesis (Module_440), ammonium ion metabolism and the polyamines
+(Module_469), proline and asparagine biosynthesis (Module_1820, Module_009,
+Module_146, Module_191), and nitric oxide. These are different modules finding
+different parts of the same pathway, which is the shape a real result has. **All
+of them rise with nitrogen**, which is the direction they should.
+
+**Every one of the previous build's headline modules survives the change of
+statistic**, all in the positive direction: Module_026 (rho = 0.87, the strongest
+responsive module in the study), Module_100 (0.81), Module_440 (0.78), Module_267
+(0.75), Module_469 (0.73), Module_1820 (0.70), Module_009 (0.64), Module_514
+(0.63). One drops out: **Module_117** (urea transmembrane transport) reaches only
+|rho| = 0.43 and is now below the effect-size floor.
+
+#### MF and CC as an internal check
+
+The universe and the testable set are identical across the three ontologies (49
+sugarcane modules, 10 purple), so they are comparable module by module — and
+they are separate term sets scored in separate runs, which makes MF an
+independent check on BP:
 
 | module | BP said | MF said | global BH (MF) |
 |---|---|---|---|
-| Module_100 | nitrate assimilation | **nitrate reductase (NADH) activity** | 2.3e-04 |
-| Module_026 | nitrate assimilation | **nitrate reductase (NADH) activity** | 4.2e-03 |
-| Module_440 | ammonia assimilation cycle | **glutamate synthase activity** | 3.9e-07 |
-| Module_1820 | proline biosynthetic process | **glutamate-5-semialdehyde dehydrogenase** | 4.6e-13 |
-| Module_117 | urea transmembrane transport | urea transmembrane transporter activity | 1 |
+| Module_100 | nitrate assimilation | **nitrate reductase (NADH) activity** | 2.0e-04 |
+| Module_026 | nitrate assimilation | **nitrate reductase (NADH) activity** | 4.0e-03 |
+| Module_440 | ammonia assimilation cycle | **glutamate synthase activity** | 3.4e-07 |
+| Module_1820 | proline biosynthetic process | **glutamate-5-semialdehyde dehydrogenase** | 4.2e-13 |
+| Module_514 | monoterpene biosynthesis | **S-linalool synthase activity** | 5.3e-22 |
+| Module_215 | flavonoid biosynthesis | **naringenin 3-dioxygenase activity** | 1.9e-10 |
 
 Module_440's pairing is GS/GOGAT — the primary ammonium assimilation route — and
 Module_100/Module_026's is the nitrate reductase step upstream of it. Different
 ontologies, different tests, same modules.
 
-CC is mostly localisation and behaves as CC usually does — its most recurrent
-term is *nucleus* in 9 modules at p = 1.9e-03, which says little. Where it is
-sharp it corroborates: Module_009 is *chloroplast thylakoid membrane* at
-p = 4.8e-51 against BP's photosynthesis/light-harvesting call, and Module_036 is
-*plastid* / *chloroplast* at 1.2e-21 against BP's translation call — chloroplast
-ribosomes. MF's most recurrent terms are DNA-binding transcription factor activity
-and beta-glucosidase activity (5 modules each), then magnesium ion binding and
-water channel activity (4 each), the latter matching BP's *water transport*.
+CC behaves as CC usually does: its most recurrent term is *nucleus* in 8 modules,
+which says little. Where it is sharp it corroborates — Module_009 is *chloroplast
+thylakoid membrane* at p = 9.6e-47 against BP's photosynthesis and light-harvesting
+call. MF's most recurrent terms are water channel activity and magnesium ion
+binding (4 modules each), the former matching BP's *water transport*, which is
+also BP's most recurrent term (4 modules).
 
 **Figures.** `module_GO_<ONT>_<study>_global.{png,pdf}` ranks terms by how many
-modules share them — for sugarcane the top is *glycosyl compound metabolic
-process* in 6 modules, then long-day photoperiodism, water transport and
-regulation of cell shape in 4 each. Per-module panels live in
-`module_go/modules/<Module>/`, one directory per tested module, with terms that
-survive the cross-module BH marked in red so a panel cannot be over-read.
+modules share them. Per-module panels live in `module_go/modules/<Module>/`, one
+directory per tested module, with terms that survive the cross-module BH marked
+in red so a panel cannot be over-read.
 
-**Purple is 3 modules.** 35 of its 38 responsive modules have fewer than 3
-annotated members. The three that survive (Module_334, Module_4168, Module_097)
-give phenylpropanoid biosynthesis, anion and phosphate transport, and acetyl-CoA
-biosynthesis. That is a report of three gene sets, not a characterisation of
-purple's nitrogen response, and it should not be compared with sugarcane's.
+**Purple's 10 modules** give phenylpropanoid biosynthesis and protein
+arginylation (Module_334, falls with nitrogen; MF: **phenylalanine ammonia-lyase
+activity**, BH 2.8e-06), cellulose biosynthesis and primary cell wall biogenesis
+(Module_455, rises; MF: **cellulose synthase activity**, BH 7.2e-06), sulfate
+assimilation (Module_636; MF: phosphoadenylyl-sulfate reductase), and iron and
+manganese homeostasis (Module_053, falls). Sulfate assimilation moving with
+nitrogen is the one that connects to the nitrogen literature; the rest is a
+report of gene sets. It should not be compared with sugarcane's — different n,
+different annotation depth, and purple's permutation null has the heavy tail
+described above.
 
 ---
 
@@ -749,3 +806,14 @@ purple's nitrogen response, and it should not be compared with sugarcane's.
   purple MI layer recovers a conservation ratio above 1.
 - Local transitivity was never computed (`COMPUTE_TRANSITIVITY=0`). It is only a
   reported column, but the TF and MYB61 tables carry NA for it.
+- **The gene level is still Pearson + MI; only the module level moved to
+  Spearman.** The ordinal-trait argument that motivated the module change applies
+  just as much to purple's 0/2/6 mM gradient at the gene level, and the module
+  result suggests it would matter there too — Spearman found 45 purple modules
+  Pearson missed. Re-running the gene selection on Spearman would, however,
+  invalidate the conserved-response, edge-level and GO results that depend on it,
+  so it is a deliberate open item rather than an oversight.
+- **Purple's 79 responsive modules are not 79 independent findings.** Its
+  permutation null reaches 244 in the worst of 1,000 shuffles because the network
+  is one dense component. Any per-module claim from purple needs the module
+  looked at, not just the padj.

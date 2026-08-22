@@ -13,6 +13,17 @@ Pipeline: `new_clean/` — see the top-level `README.md` for how to run it, and
 > changed is the mechanics: both layers now come out of one engine from one VST,
 > so the thresholds are applied at build time instead of being filtered in
 > afterwards. §0, §5 and §6 have been rewritten accordingly.
+>
+> **Scope.** This note is about the two *network* layers and nothing else. It is
+> not an argument that MI belongs everywhere: the module-level nitrogen response
+> is called by **Spearman alone**, MI having proved to be an omnibus test firing
+> on two-library quirks at that resolution — see
+> [decisions.md](decisions.md#2026-08-22--the-module-response-is-spearman-only-not-pearson-not-mi).
+> The two positions are consistent. At the edge level the question is whether
+> non-linear co-expression exists at all, and an omnibus test is the right tool.
+> At the module level the question is whether one eigengene tracks one ordinal
+> trait, and there a rank correlation answers it with a threshold that can be
+> derived instead of calibrated.
 
 ---
 

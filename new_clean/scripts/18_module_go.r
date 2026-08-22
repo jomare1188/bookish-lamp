@@ -7,12 +7,12 @@
 # background, so a module can be named -- "Module_026 is photosynthesis" --
 # rather than only counted.
 #
-# THE MODULE SET IS THE RESPONSE CLASSES POOLED. `both`, `mi_only` and
-# `pearson_only` all go in as one set; `finding` rides through as a column so the
-# classes can be split afterwards, but it does not partition the run. The
-# question here is what responsive modules do, not what distinguishes the
-# classes -- 15_module_profile.r already showed the classes are too small to
-# separate on TF content.
+# THE MODULE SET IS EVERY RESPONSIVE MODULE. With the response called by Spearman
+# alone there are no response classes to pool -- what used to be `both` /
+# `mi_only` / `pearson_only` is one set. `direction` (rises or falls with
+# nitrogen) rides through as a column so it can be split afterwards, but it does
+# not partition the run: the question here is what responsive modules do, not
+# what separates the two halves.
 #
 # ONE topGOdata OBJECT, REUSED. 09 builds a fresh one per gene set, which re-runs
 # the DAG mapping every time; at ~650 modules that is hours. `updateGenes()`
@@ -126,11 +126,11 @@ if (!length(geneUniverse)) stop("empty GO background", call. = FALSE)
 
 # --- which modules -----------------------------------------------------------
 prof <- fread(PROFILE)
-sel  <- prof[finding != "neither"]
+sel  <- prof[responsive == TRUE]
 setorder(sel, padj)
-say("responsive modules (all classes pooled): ", fmt_n(nrow(sel)), "  (",
-    paste(sprintf("%s %d", sel[, .N, by = finding]$finding,
-                  sel[, .N, by = finding]$N), collapse = " | "), ")")
+say("responsive modules: ", fmt_n(nrow(sel)), "  (",
+    paste(sprintf("%s %d", sel[, .N, by = direction]$direction,
+                  sel[, .N, by = direction]$N), collapse = " | "), ")")
 if (!nrow(sel)) { say("nothing to test"); quit(save = "no", status = 0) }
 
 mem <- fread(MEMBERSHIP, select = c("gene", "module_name"))
@@ -308,7 +308,7 @@ plot_module <- function(d, mod, base) {
     labs(title = sprintf("GO %s - %s (%s)", ONTOLOGY, mod, STUDY),
          subtitle = wrap_sub(sprintf(
            "%s, %s genes (%s GO-annotated), PC1 %.0f%% var  |  %d terms at raw p <= %.2g",
-           r$finding, fmt_n(r$n_genes), fmt_n(r$n_annotated),
+           r$direction, fmt_n(r$n_genes), fmt_n(r$n_annotated),
            r$pc1_var_pct, nrow(d), GO_P)),
          x = NULL, y = expression(-log[10](p)),
          size = "genes in\nthe module", colour = NULL) +
@@ -367,19 +367,19 @@ plot_global <- function(rows, base) {
 }
 
 # --- write -------------------------------------------------------------------
-info <- testable[, .(module, finding, n_genes, pc1_var_pct, n_annotated)]
+info <- testable[, .(module, direction, n_genes, pc1_var_pct, n_annotated)]
 tag  <- file.path(OUT_DIR, sprintf("module_GO_%s_%s", ONTOLOGY, STUDY))
 
 if (nrow(rows)) {
   rows <- merge(rows, info, by = "module", all.x = TRUE)
-  setcolorder(rows, c("module", "finding", "n_genes", "n_annotated", "pc1_var_pct",
+  setcolorder(rows, c("module", "direction", "n_genes", "n_annotated", "pc1_var_pct",
                       "GO.ID", "Term", "Annotated", "Significant", "Expected",
                       "pvalue", "p.adj", "p.adj_global"))
   setorder(rows, pvalue)
   write_tsv(rows, paste0(tag, ".tsv"))
 } else {
   say("NOTE: no term cleared p <= ", GO_P, " in any module")
-  write_tsv(data.table(module = character(), finding = character(),
+  write_tsv(data.table(module = character(), direction = character(),
                        n_genes = integer(), n_annotated = integer(),
                        pc1_var_pct = numeric(),
                        GO.ID = character(), Term = character(),
@@ -401,7 +401,7 @@ setnames(best, c("GO.ID", "Term", "pvalue"), c("top_GO", "top_Term", "top_pvalue
 nsig <- if (nrow(rows)) rows[, .(n_sig_terms = .N), by = module] else
         data.table(module = character(), n_sig_terms = integer())
 
-summ <- sel[, .(module, finding, n_genes, pc1_var_pct, n_annotated)]
+summ <- sel[, .(module, direction, n_genes, pc1_var_pct, n_annotated)]
 summ[, tested := module %chin% testable$module]
 summ <- merge(summ, nsig, by = "module", all.x = TRUE)
 summ <- merge(summ, best, by = "module", all.x = TRUE)
@@ -455,7 +455,7 @@ if (nrow(rows)) {
   say("")
   say("modules by enriched-term count:")
   print(head(summ[n_sig_terms > 0,
-                  .(module, finding, n_genes, n_annotated, n_sig_terms, top_Term)], 15),
+                  .(module, direction, n_genes, n_annotated, n_sig_terms, top_Term)], 15),
         row.names = FALSE)
 }
 say("")

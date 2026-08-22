@@ -21,7 +21,7 @@
 #   ./run.sh trait     <study>               gene-trait correlations
 #   ./run.sh traitmi   <study>               gene-vs-trait MI (non-linear)
 #   ./run.sh eigengene <study>               one eigengene per MCL module
-#   ./run.sh moduletrait <study>             module response: linear + non-linear
+#   ./run.sh moduletrait <study>             module response: Spearman rho vs trait
 #   ./run.sh moduleprofile <study>           + TF enrichment per module
 #   ./run.sh moduleheatmap <study> [mods]    heatmaps for responsive modules
 #   ./run.sh modulesummary <study>           one figure: all responsive modules
@@ -268,19 +268,23 @@ main() {
       "$RSCRIPT_NET" "${SCRIPTS}/14_module_eigengene.r"
     ;;
 
-  # Reuses 12_gene_trait_mi.py unchanged: the eigengene matrix is written in the
-  # VST export's own format, so the module-level linear/non-linear call comes
-  # from the same validated code path as the gene-level one.
+  # Spearman only. The module response used to be called by Pearson AND mutual
+  # information (12_gene_trait_mi.py run on the eigengene matrix); it is now one
+  # rank correlation, because the trait is ordinal and MI at this level was an
+  # omnibus test firing on sample-driven quirks. See 19_module_trait_spearman.r.
   moduletrait)
     check_study "$ARG"
-    "$PYTORCH" -u "${SCRIPTS}/12_gene_trait_mi.py" \
-      --matrix "$(study_dir "$ARG")/modules/${ARG}_eigengenes" \
-      --meta   "$(cfg META "$ARG")" \
-      --traits "$(cfg TRAITS "$ARG")" \
-      --trait  "$SELECT_TRAIT" \
-      --out    "$(study_dir "$ARG")/module_trait_${ARG}" \
-      --k "$TRAIT_MI_K" --n-perm "$TRAIT_MI_PERM" --alpha "$PADJ_THR" \
-      "${EXTRA[@]}"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_EIGENGENE_PREFIX="$(study_dir "$ARG")/modules/${ARG}_eigengenes" \
+    CLEAN_META="$(cfg META "$ARG")" \
+    CLEAN_TRAITS="$(cfg TRAITS "$ARG")" \
+    CLEAN_SELECT_TRAIT="$SELECT_TRAIT" \
+    CLEAN_OUT_FILE="$(study_dir "$ARG")/module_trait_${ARG}.tsv" \
+    CLEAN_MODULE_R_THR="$MODULE_R_THR" \
+    CLEAN_MODULE_PADJ_THR="$MODULE_PADJ_THR" \
+    CLEAN_MODULE_PERM="$MODULE_PERM" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_NET" "${SCRIPTS}/19_module_trait_spearman.r"
     ;;
 
   moduleprofile)
@@ -292,8 +296,7 @@ main() {
     CLEAN_TF_FILE="${RESULTS}/readouts/get_tfs/${ARG}/TF_in_network.tsv" \
     CLEAN_NODE_METRICS="$(study_dir "$ARG")/network_${ARG}_node_metrics.tsv" \
     CLEAN_OUT_FILE="$(study_dir "$ARG")/module_profile_${ARG}.tsv" \
-    CLEAN_PADJ_THR="$PADJ_THR" \
-    CLEAN_MODULE_R_THR="$MODULE_R_THR" \
+    CLEAN_PADJ_THR="$MODULE_PADJ_THR" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_NET" "${SCRIPTS}/15_module_profile.r"
     ;;
@@ -326,6 +329,7 @@ main() {
     CLEAN_OUT_PREFIX="$(study_dir "$ARG")/module_summary_${ARG}" \
     CLEAN_SUMMARY_MAX_MODULES="$SUMMARY_MAX_MODULES" \
     CLEAN_MODULE_R_THR="$MODULE_R_THR" \
+    CLEAN_MODULE_PADJ_THR="$MODULE_PADJ_THR" \
     CLEAN_HEATMAP_GROUP_BY="$HEATMAP_GROUP_BY" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/17_module_summary.r"

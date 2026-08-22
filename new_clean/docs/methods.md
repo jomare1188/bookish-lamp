@@ -274,11 +274,11 @@ be misread as absent shared response when it is really absent orthology coverage
 
 ---
 
-## 14-18 · module-level analysis
+## 14-19 · module-level analysis
 
 ```
 ./run.sh eigengene    <study>          # PC1 per module -> a VST-format matrix
-./run.sh moduletrait  <study>          # 12_gene_trait_mi.py, unchanged, on it
+./run.sh moduletrait  <study>          # Spearman rho vs the trait, on it
 ./run.sh moduleprofile <study>         # + TF hypergeometric per module
 ./run.sh moduleheatmap <study> [mods]  # per-module gene heatmaps
 ./run.sh modulesummary <study>         # one figure: all responsive modules
@@ -287,14 +287,16 @@ be misread as absent shared response when it is really absent orthology coverage
 
 | | |
 |---|---|
-| cost | eigengene ~1 min · moduletrait 0.5 min · profile seconds · heatmaps ~2 min · modulego ~45 s |
-| env | `r_net_env`, except heatmaps (`r_env`: ComplexHeatmap, circlize, scico), moduletrait (`docling`) and modulego (`topGO_env`) |
+| cost | eigengene ~1 min · moduletrait ~10 s (incl. 1,000 permutations) · profile seconds · heatmaps ~1 min · modulego ~45 s |
+| env | `r_net_env`, except heatmaps and modulesummary (`r_env`: ComplexHeatmap, circlize, scico) and modulego (`topGO_env`) |
 
 **Why the eigengene matrix is written in the VST export's format.** `.f32` +
-`.genes.txt` + `.meta.json`, module names where gene names go. That lets
-`12_gene_trait_mi.py` run on modules with no modification, so the module-level
-linear/non-linear classification is the *same code path* as the gene-level one.
-Its log says "genes" throughout; read "modules".
+`.genes.txt` + `.meta.json`, module names where gene names go. Anything that can
+read the VST export can read the eigengenes — `read_vst()` in `lib/common.R`
+does, unchanged, in three of these five stages. (It also let the module response
+be computed by `12_gene_trait_mi.py` when that was the statistic; it no longer
+is, but the format is the reason swapping the statistic cost one script and no
+plumbing.)
 
 The eigengene is `prcomp(t(vst_sub), center=TRUE, scale.=TRUE)`, PC1 scores,
 oriented so it correlates positively with mean module expression, then z-scored.
@@ -310,34 +312,71 @@ TF enrichment is a hypergeometric per module against the **network** node
 universe, BH across modules; a gene's isoform-driven multi-family calls are
 collapsed to one row first or every enrichment is inflated.
 
-**Effect-size floors.** `MODULE_R_THR=0.6` on the linear side, mirroring the gene
-level. MI gets a floor calibrated from the data — the median MI among modules at
-|r| ~ 0.6 — because the network's nats-to-|r| identity assumes two continuous
-variables and the trait here is discrete. Flooring only one side inflates
-`mi_only` badly; see [results.md](results.md).
+### The response call — `19_module_trait_spearman.r`
+
+**One statistic: Spearman's rho.** `padj <= MODULE_PADJ_THR` (0.05, BH over every
+module in the study) **and** `|rho| >= MODULE_R_THR` (0.6), mirroring the gene
+level's `TRAIT_PADJ_THR` / `TRAIT_R_THR` so the two sets of counts are comparable.
+The rule lives in this one script, with the statistic it applies to; nothing
+downstream recomputes it, they read `responsive` and `direction`.
+
+Pearson and mutual information are gone from this level. The trait is ORDINAL —
+purple's nitrogen is a dose (0/2/6 mM) and Pearson reads that spacing literally —
+and MI is an omnibus test that at the module level was firing on two-library
+quirks. The measured consequences of both, including the 38 → 79 jump in purple's
+responsive set, are in [results.md](results.md#why-one-rank-correlation-and-not-the-three-statistics-this-used-to-report).
+
+**Ties.** Both traits are heavily tied by design (sugarcane 24/24, purple 6/6/6),
+so the exact/AS-89 p-value is invalid and is not used. `rho` is Pearson on
+MIDRANKS and the p-value is the asymptotic t approximation on it — exactly what
+`cor.test(method = "spearman", exact = FALSE)` computes. The script verifies that
+against `cor.test` on 25 modules every run and dies if it disagrees beyond 1e-8.
+
+**The null** is 1,000 trait-label permutations against the same eigengenes,
+counting how many clear both thresholds. It is a null for the TRAIT association
+only: the eigengenes stay exactly as correlated with each other as they really
+are, which is why purple's null has a long right tail worth reading before any
+single purple module is believed.
+
+`pval` is written alongside `padj` so an uncorrected reading needs no re-run.
+
+### Figures — 16 and 17
 
 Heatmaps show **per-gene z-scores only**. Ramps are clipped at the 98th
 percentile of |z|. Device size is derived from the actual body size
 (`CELL_W x CELL_H` per cell plus fixed overhead), so height scales with gene
 count instead of every figure being forced into one frame. Modules above
 `HEATMAP_MAX_GENES` are subset by intramodular strength, stated in the subtitle.
+`HEATMAP_TOP_N` modules are drawn per DIRECTION, so the smaller of "rises with
+nitrogen" and "falls with nitrogen" is not crowded out by the larger.
 
-`modulesummary` draws every responsive module's eigengene in one panel, split by
-response class, with PC1 variance explained and module size as row annotations —
-the view that exposes whether a class is coherent or sample-driven.
+**Column order groups replicates, on both figures.** Sorting by sample name alone
+interleaves sugarcane's three leaf positions — the names run `B0_1, B_1, M_1,
+P_1, B0_2, ...`, so the three replicates of one tissue land four columns apart
+and the tissue effect reads as vertical striping right across the panel,
+obscuring the treatment pattern the figure exists to show. Columns are ordered by
+the split trait, then the other trait, then `HEATMAP_GROUP_BY` (tissue), then the
+sample name.
+
+`modulesummary` draws every responsive module's eigengene in one panel, **split by
+the sign of rho** — rises with nitrogen above, falls below — with PC1 variance
+explained, module size and TF enrichment as row annotations. Sample labels are
+dropped (the design is carried by the annotation bars), which lets the cells
+shrink to 2 mm. Above `SUMMARY_MAX_MODULES` rows the top N per direction by
+significance are shown and the title says so.
 
 ### 18 · per-module GO — `./run.sh modulego <study> [BP|MF|CC]`
 
 `09_go_enrichment.r` asks what the *conserved gene set* is for, one test per
 species. It cannot name an individual module. `18_module_go.r` does: **one topGO
 run per responsive module**, so `Module_100` can be reported as nitrate
-assimilation rather than only as `both, |r| = 0.93`.
+assimilation rather than only as `positive, rho = 0.81`.
 
-**The response classes are pooled.** `both`, `mi_only` and `pearson_only` all go
-in as one module set; `finding` rides through as a column so the classes can be
-split afterwards, but it does not partition the run. The question is what
-responsive modules *do*, and 15's TF result already showed the classes are too
-small to separate on their own.
+**Every responsive module goes in as one set.** There are no response classes to
+pool any more — the Spearman call produces one responsive set. `direction` (rises
+or falls with nitrogen) rides through as a column so it can be split afterwards,
+but it does not partition the run: the question is what responsive modules *do*,
+not what separates the two halves.
 
 Background, algorithm and threshold are **identical to 09** and deliberately so:
 GO-annotated nodes of that species' network as the universe (the same denominator

@@ -1,13 +1,19 @@
 # =============================================================================
 # 15_module_profile.r — one row per module: response, coherence, TF content
 #
-# Joins the module-trait result (linear + non-linear, from 12_gene_trait_mi.py
-# run on the eigengene matrix) with module size, eigengene coherence, and a
-# transcription-factor enrichment test, into a single table per study.
+# Joins the module-trait result (Spearman, from 19_module_trait_spearman.r) with
+# module size, eigengene coherence, and a transcription-factor enrichment test,
+# into a single table per study.
 #
-# THE QUESTION THIS EXISTS TO ANSWER: are the modules that respond to nitrogen --
-# and in particular the ones that respond NON-LINEARLY, which a correlation
-# cannot see -- the TF-rich ones? A regulatory module should be.
+# THE QUESTION THIS EXISTS TO ANSWER: are the modules that respond to nitrogen
+# the TF-rich ones? A regulatory module should be.
+#
+# THE RESPONSE CALL IS NOT MADE HERE. It used to be: this script owned the
+# effect-size floors and the pearson_only/mi_only/both classification. With one
+# statistic there is one rule -- padj <= MODULE_PADJ_THR and |rho| >= MODULE_R_THR
+# -- and it lives in 19 with the statistic it applies to, so there is a single
+# source of truth for what "responsive" means. This script reads `responsive`
+# and `direction` and does not recompute them.
 #
 # TF ENRICHMENT is a hypergeometric test per module against the network's own
 # node universe:
@@ -40,12 +46,8 @@ PC1_FILE   <- env_req("CLEAN_PC1_VARIANCE")
 TF_FILE    <- env_req("CLEAN_TF_FILE")
 NODES      <- env_req("CLEAN_NODE_METRICS")
 OUT_FILE   <- env_req("CLEAN_OUT_FILE")
+# Alpha for the TF hypergeometric only; the response call arrives pre-made.
 ALPHA      <- env_num("CLEAN_PADJ_THR", 0.05)
-# Effect-size floor on the LINEAR side, matching the gene-level TRAIT_R_THR.
-# Without it a module with |r| = 0.36 -- 13% of the eigengene's variance -- counts
-# as "responsive" at n = 48, and the module count is not comparable to the
-# gene-level one that did apply this floor.
-R_THR      <- env_num("CLEAN_MODULE_R_THR", 0.6)
 setDTthreads(as.integer(env_num("CLEAN_CORES", 100)))
 
 banner(paste("module profile:", STUDY))
@@ -54,12 +56,19 @@ for (f in c(TRAIT_FILE, MEMBERSHIP, PC1_FILE, NODES))
   if (!file.exists(f)) stop("missing ", basename(f), call. = FALSE)
 
 # --- module response ---------------------------------------------------------
-# 12_gene_trait_mi.py names its first column `gene`; here those are module names.
 tr <- fread(TRAIT_FILE)
-setnames(tr, "gene", "module")
+need <- c("module", "rho", "pval", "padj", "responsive", "direction")
+if (length(setdiff(need, names(tr))))
+  stop(basename(TRAIT_FILE), " is missing column(s): ",
+       paste(setdiff(need, names(tr)), collapse = ", "),
+       "\n  found: ", paste(names(tr), collapse = ", "),
+       "\n  this stage expects the 19_module_trait_spearman.r schema; re-run",
+       "\n  ./run.sh moduletrait <study>", call. = FALSE)
 say("modules tested: ", fmt_n(nrow(tr)))
-say("  response: ", paste(sprintf("%s %s", tr[, .N, by = finding]$finding,
-                                  fmt_n(tr[, .N, by = finding]$N)), collapse = " | "))
+say(sprintf("  responsive: %s  (%s positive, %s negative)",
+            fmt_n(tr[responsive == TRUE, .N]),
+            fmt_n(tr[direction == "positive", .N]),
+            fmt_n(tr[direction == "negative", .N])))
 
 pc1 <- fread(PC1_FILE)
 prof <- merge(tr, pc1, by = "module", all.x = TRUE)
@@ -104,86 +113,41 @@ if (file.exists(TF_FILE)) {
               top_tf_families = NA_character_)]
 }
 
-# --- effect-size floor, on BOTH sides ---------------------------------------
-# Flooring only the linear side is not a neutral choice: it moves every module
-# with a modest linear response out of `both`/`pearson_only` and into `mi_only`,
-# which then reads as "non-linear" when it is nothing of the kind. Measured here:
-# flooring Pearson alone took mi_only from 253 to 786 in sugarcane.
-#
-# So MI needs an equivalent floor. The Gaussian identity the network layer uses
-# to convert nats to |r| does NOT apply -- it assumes two continuous variables,
-# and here the trait is discrete with MI capped at H(trait). Instead the floor is
-# CALIBRATED EMPIRICALLY on this data: among modules whose linear response sits
-# at |r| ~ R_THR, what MI do they carry? That median is the MI equivalent of the
-# linear cut, at this n, this class structure, and this estimator.
-#
-# It is a calibration, not a theoretical equivalence, and it is reported so the
-# reader can see the number rather than trust the label.
-null_file <- sub("\\.tsv$", ".null.tsv", TRAIT_FILE)
-H <- NA_real_
-if (file.exists(null_file)) {
-  nl <- fread(null_file, header = TRUE, fill = TRUE)
-  hit <- nl[[1]] == "trait_entropy"
-  if (any(hit, na.rm = TRUE)) H <- as.numeric(nl[[2]][which(hit)[1]])
-}
-prof[, mi_norm := if (is.finite(H) && H > 0) mi / H else NA_real_]
-
-near <- prof[abs(abs(pearson) - R_THR) < 0.03 & is.finite(mi)]
-if (nrow(near) >= 30) {
-  MI_THR <- median(near$mi)
-  say(sprintf("MI floor calibrated on %s modules at |r| ~ %.2f: MI >= %.3f (%.2f of H)",
-              fmt_n(nrow(near)), R_THR, MI_THR, MI_THR / H))
-} else {
-  MI_THR <- 0
-  say(sprintf("WARNING: only %d modules near |r| = %.2f -- cannot calibrate an MI",
-              nrow(near), R_THR))
-  say("         floor, so the MI side keeps no effect-size cut and `mi_only` will")
-  say("         include modules whose linear response merely fell below the floor.")
-}
-
-prof[, finding_stat := finding]                 # the unfloored, padj-only call
-pass_pearson <- prof$pearson_padj <= ALPHA & abs(prof$pearson) >= R_THR
-pass_mi      <- prof$padj <= ALPHA & prof$mi >= MI_THR
-prof[, finding := fifelse(pass_pearson & pass_mi, "both",
-                  fifelse(pass_mi, "mi_only",
-                  fifelse(pass_pearson, "pearson_only", "neither")))]
-
-say(sprintf("effect-size floors: |r| >= %.2f (linear), MI >= %.3f (non-linear)",
-            R_THR, MI_THR))
-say("  padj only:    ", paste(sprintf("%s %s", prof[, .N, by = finding_stat]$finding_stat,
-                                fmt_n(prof[, .N, by = finding_stat]$N)), collapse = " | "))
-say("  with floors:  ", paste(sprintf("%s %s", prof[, .N, by = finding]$finding,
-                                fmt_n(prof[, .N, by = finding]$N)), collapse = " | "))
-
-prof[, responsive := finding != "neither"]
 prof[, tf_enriched := !is.na(tf_padj) & tf_padj <= ALPHA]
-setorder(prof, padj, pearson_padj)
-setcolorder(prof, c("module", "n_genes", "pc1_var_pct", "finding", "finding_stat",
-                    "pearson", "pearson_padj", "mi", "mi_norm", "padj",
+prof <- prof[order(padj, -abs(rho))]
+setcolorder(prof, c("module", "n_genes", "pc1_var_pct", "responsive", "direction",
+                    "rho", "pval", "padj",
                     "n_tf", "tf_frac", "tf_p", "tf_padj", "top_tf_families"))
 write_tsv(prof, OUT_FILE)
 
 # --- the headline cross-tab --------------------------------------------------
+# One statistic means one comparison: responsive vs not. The direction split is
+# reported underneath because "modules that rise with nitrogen" and "modules that
+# fall" are different biology, but it is a description, not a second test family.
 banner("response x TF enrichment")
-ct <- prof[, .(modules = .N, tf_enriched = sum(tf_enriched, na.rm = TRUE)), by = finding]
+ct <- prof[, .(modules = .N, tf_enriched = sum(tf_enriched, na.rm = TRUE)),
+           by = .(group = fifelse(responsive, "responsive", "not responsive"))]
 ct[, pct_tf_enriched := round(100 * tf_enriched / modules, 2)]
 setorder(ct, -modules)
 print(ct, row.names = FALSE)
 
-base_rate <- prof[finding == "neither", mean(tf_enriched, na.rm = TRUE)]
+# Fisher against the non-responsive modules -- the honest comparison, since every
+# module here passed the same size and coherence filters.
+base <- prof[responsive == FALSE]
+base_rate <- mean(base$tf_enriched, na.rm = TRUE)
 say("")
-for (f in c("mi_only", "pearson_only", "both")) {
-  r <- prof[finding == f]
+for (g in list(list("responsive", prof[responsive == TRUE]),
+               list("  positive", prof[direction == "positive"]),
+               list("  negative", prof[direction == "negative"]))) {
+  r <- g[[2]]
   if (!nrow(r)) next
-  obs <- mean(r$tf_enriched, na.rm = TRUE)
-  # Fisher against the non-responsive modules -- the honest comparison, since
-  # every module here passed the same size and coherence filters
   tab <- matrix(c(sum(r$tf_enriched, na.rm = TRUE), nrow(r) - sum(r$tf_enriched, na.rm = TRUE),
-                  prof[finding == "neither", sum(tf_enriched, na.rm = TRUE)],
-                  prof[finding == "neither", .N - sum(tf_enriched, na.rm = TRUE)]), nrow = 2)
+                  sum(base$tf_enriched, na.rm = TRUE), nrow(base) - sum(base$tf_enriched, na.rm = TRUE)),
+                nrow = 2)
   ft <- fisher.test(tab)
-  say(sprintf("  %-13s TF-enriched %5.2f%% vs %5.2f%% in non-responsive   OR %.2f  p %.3g",
-              f, 100 * obs, 100 * base_rate, ft$estimate, ft$p.value))
+  say(sprintf("  %-13s %5s modules, TF-enriched %5.2f%% vs %5.2f%% in non-responsive   OR %.2f  p %.3g",
+              g[[1]], fmt_n(nrow(r)), 100 * mean(r$tf_enriched, na.rm = TRUE),
+              100 * base_rate, ft$estimate, ft$p.value))
 }
 say("")
 say("done: ", STUDY)

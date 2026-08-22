@@ -189,20 +189,34 @@ PADJ_THR=0.05
 # eigengenes of larger modules do not change if this is raised later.
 MIN_MODULE_SIZE_EIGEN=3
 
-# Effect-size floor on a module's LINEAR response, mirroring TRAIT_R_THR at the
-# gene level. Without it padj alone admits modules down to |r| = 0.36 at n = 48,
-# and the module counts are not comparable to the gene-level ones.
+# The module response is called by SPEARMAN ONLY (19_module_trait_spearman.r).
 #
-# MI GETS A FLOOR TOO, and it is not this number. Flooring only the linear side
-# pushes every modestly-linear module out of `both` and into `mi_only`, which then
-# reads as "non-linear" when it is not (measured: mi_only 253 -> 786). The network's
-# nats-to-|r| identity cannot supply the MI equivalent -- it assumes two continuous
-# variables and this trait is discrete, capped at H(trait) -- so 15_module_profile.r
-# CALIBRATES it from the data instead: the median MI among modules sitting at
-# |r| ~ MODULE_R_THR. It is printed on every run and is a calibration, not a
-# theoretical equivalence. `mi_norm` (MI / H(trait)) is reported alongside as a
-# 0-1 effect size.
+# NOT PEARSON: the trait is ordinal, not interval. Purple's nitrogen is a dose
+# (0/2/6 mM) and Pearson reads that spacing literally -- it asks whether a module
+# moves exactly twice as far from 2 to 6 mM as it does from 0 to 2. Nothing in
+# the design justifies that. Spearman asks what the experiment poses: does the
+# module move monotonically with nitrogen? Sugarcane's two-level trait makes it
+# the rank-biserial correlation, robust to the outliers a PC1 can carry.
+#
+# NOT MI: it is an omnibus test, firing on any dependence at all including a
+# dispersion change in one or two libraries -- which is what a third of the old
+# `mi_only` modules turned out to be. It also needed an effect-size floor that
+# could only be CALIBRATED against the linear one, never derived, because the
+# network's nats-to-|r| identity assumes two continuous variables and this trait
+# is discrete. One statistic, one responsive set, no response classes.
+#
+# The two thresholds mirror the gene-level TRAIT_R_THR / TRAIT_PADJ_THR so the
+# module counts stay comparable with the gene ones. padj is BH over every module
+# tested in the study; the raw `pval` is kept in the output so an uncorrected
+# reading needs no re-run.
 MODULE_R_THR=0.6
+MODULE_PADJ_THR=0.05
+
+# Label-permutation null for the module response: the same eigengenes against
+# shuffled trait labels, counting how many clear both thresholds. This is a null
+# for the TRAIT association only -- the eigengenes stay exactly as correlated
+# with each other as they really are. 1,000 permutations cost seconds.
+MODULE_PERM=1000
 
 # Heatmaps: how many responsive modules to draw, and how many genes of each.
 # The largest modules are 19,604 (sugarcane) and 47,887 (purple) genes, which no
@@ -210,8 +224,8 @@ MODULE_R_THR=0.6
 HEATMAP_TOP_N=20
 HEATMAP_MAX_GENES=100
 
-# Summary figure: cap on rows. Above this, the top N per response class by
-# significance are shown, so the smaller non-linear class is not crowded out.
+# Summary figure: cap on rows. Above this, the top N per response DIRECTION
+# by significance are shown, so the smaller direction is not crowded out.
 SUMMARY_MAX_MODULES=250
 
 # Extra sample-metadata columns to group heatmap columns by, after the two

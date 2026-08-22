@@ -160,8 +160,9 @@ are wrong. All of it now comes from `config.sh` through `run.sh <stage> <arg>`.
   `conserved_edges_*_FULL.tsv` (the join's output that actually completes) — the
   names differ by one underscore and they are different files.
 - **`eigengene.r`, `module_trait_cor.r`, `comparative_networks2.r`.** The
-  module-trait branch. **Superseded, not skipped** — this is now stages 14–18
-  (`14_module_eigengene.r` … `18_module_go.r`), rebuilt rather than ported. Three
+  module-trait branch. **Superseded, not skipped** — this is now stages 14–19
+  (`14_module_eigengene.r` … `19_module_trait_spearman.r`), rebuilt rather than
+  ported. Three
   bugs in `eigengene.r` did not survive the rewrite and are listed in
   `14_module_eigengene.r`'s header. `module_trait_cor.r` was not ported at all:
   its `module_trait_cor.r:183` reads the whole purple edge file, all 9 columns,
@@ -170,3 +171,90 @@ are wrong. All of it now comes from `config.sh` through `run.sh <stage> <arg>`.
 - **Nothing outside `new_clean/` was modified or deleted.** The 804 GB of dense
   matrices and 105 GB of intermediate edge lists are now unreferenced and
   reclaimable, but this pipeline does not touch them.
+
+---
+
+## 2026-08-22 — The module response is Spearman only: not Pearson, not MI
+
+**The problem.** The module-level nitrogen call was made by running
+`12_gene_trait_mi.py` on the eigengene matrix, which returned Pearson *and*
+mutual information and sorted every module into `pearson_only` / `mi_only` /
+`both`. Reusing the gene-level script was a genuinely good structural decision —
+one validated code path, no second implementation of the statistics — but it
+imported two statistics that do not suit this question, and a three-way
+classification that nothing downstream could use.
+
+**Pearson reads an ordinal trait as an interval one.** Purple's nitrogen is a
+dose: 0, 2 and 6 mM. Pearson on `{0, 2, 6}` asks whether a module moves exactly
+twice as far from 2 to 6 mM as from 0 to 2 — an arithmetic claim about the
+response curve that the design never made and the experiment cannot test. A
+module that responds and then saturates above 2 mM is a real monotone nitrogen
+response, and Pearson discounts it. Spearman asks only the question the gradient
+poses: does this module move monotonically with nitrogen? On sugarcane's
+two-level trait it becomes the rank-biserial correlation, which is the same test
+with a different name and is robust to the outliers a PC1 can carry.
+
+The cost of the wrong choice was measured on the identical eigengenes at the
+identical thresholds (padj ≤ 0.05, |r| ≥ 0.6):
+
+| | Pearson | Spearman | Spearman only | Pearson only |
+|---|---|---|---|---|
+| sugarcane | 408 | 465 | 71 | 14 |
+| **purple** | **38** | **79** | **45** | 4 |
+
+**Purple's responsive set more than doubled**, and purple is exactly the study
+with the three-level gradient. This is the largest single effect of the change.
+
+**MI at this level was an omnibus test finding artifacts.** MI fires on any
+dependence at all, including a dispersion change or a distributional quirk in one
+or two libraries. That is a virtue at the edge level, where the question is
+whether non-linear co-expression exists. At the module level it produced a
+`mi_only` class of 239 sugarcane modules of which 35% had two of 48 samples
+carrying over a quarter of the eigengene's variance — worse than the
+non-responsive background at 14%. The Spearman-selected set runs the other way:
+20% against 50% in the modules it did not select.
+
+**And the MI threshold could not be derived, only calibrated.** `padj ≤ 0.05`
+alone admitted modules down to |r| = 0.356, so an effect-size floor was needed.
+Flooring the linear side alone was worse than no floor — it pushed every
+modestly-linear module into `mi_only`, 253 → 786, where it then read as
+"non-linear" when it was nothing of the kind. But the network's nats-to-|r|
+identity could not supply the MI equivalent, because it assumes two continuous
+variables and this trait is discrete with MI capped at H(trait). The floor was
+therefore set to the median MI among modules sitting at |r| ≈ 0.6 — calibrated
+against the very statistic it was meant to be independent of. A threshold that
+can only be defined by reference to the alternative is not an independent test.
+
+**What changed.** `19_module_trait_spearman.r` replaces `12_gene_trait_mi.py` in
+the `moduletrait` stage. One statistic, one rule — `padj <= MODULE_PADJ_THR` and
+`|rho| >= MODULE_R_THR` — owned by that script alone; 15, 16, 17 and 18 read
+`responsive` and `direction` and do not recompute anything. The three response
+classes are gone; the figures and the per-module GO now split by the sign of rho,
+which is different biology rather than two ways of detecting the same thing.
+
+**What it bought, beyond purple's modules.** The TF result came back. Under the
+three-class call, TF enrichment among responsive modules was a null spread thin:
+`both` at OR 1.96, p = 0.061, the "strongest" class `pearson_only` at 3 of 41
+modules. One responsive set of 465 gives **OR 2.65, p = 0.0016**, concentrated in
+the modules that fall with nitrogen. The signal was there; three classes too
+small to separate had been hiding it. Purple's testable module count for GO also
+went from 3 to 10.
+
+**What it did not change.** Every headline module survives: Module_026, _100,
+_440, _267, _469, _1820, _009, _514, all rising with nitrogen, and the BP↔MF
+cross-check (nitrate assimilation ↔ nitrate reductase activity; ammonia
+assimilation ↔ glutamate synthase) holds unchanged. Module_117 (urea transport)
+drops out at |rho| = 0.43.
+
+**Scope.** This is the module level only. The gene-level selection
+(`07_gene_trait_cor.r` Pearson, `12_gene_trait_mi.py` MI) is untouched, because
+the conserved-response, edge-level and GO results all depend on it and changing
+it would invalidate them. The ordinal argument applies there too and is recorded
+as an open item in [results.md](results.md#open-items), not as a settled choice.
+
+**The one thing to read carefully.** Purple's permutation null has a long right
+tail — 1,000 label shuffles gave a median of 0 responsive modules but a maximum
+of 244, against 79 observed (empirical p = 0.002). Purple's network is a single
+dense component, so its eigengenes are strongly correlated and one lucky shuffle
+lights up many at once. The 79 are a real signal and are **not** 79 independent
+findings.

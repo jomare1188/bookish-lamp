@@ -4,13 +4,15 @@
 # The per-module heatmaps (16) show the genes inside one module. This shows the
 # MODULES themselves: each row is a module's eigengene across the study's
 # samples, so the whole responsive set can be read in one picture -- how many
-# distinct nitrogen response shapes there are, whether the linear and non-linear
-# classes look different, and which modules carry enough of their members'
-# variance to be worth believing.
+# distinct nitrogen response shapes there are, and which modules carry enough of
+# their members' variance to be worth believing.
 #
-# ROWS are eigengenes, already z-scored by 14_module_eigengene.r, split by
-# response class (`both` / `mi_only` / `pearson_only`). Clustering runs inside
-# each class, not across them, so the classes stay visually separated.
+# ROWS are eigengenes, already z-scored by 14_module_eigengene.r, split by the
+# SIGN of the module's Spearman rho: modules that rise with nitrogen above,
+# modules that fall below. That replaces the old split by response class, which
+# is gone with the MI and Pearson layers -- and it is the more useful split
+# anyway, since the two halves are different biology rather than two ways of
+# detecting the same thing. Clustering runs inside each half, not across them.
 #
 # ROW ANNOTATIONS carry what a reader needs to judge each row:
 #   PC1 var %   how much of the module's gene-level variance the eigengene
@@ -44,6 +46,7 @@ META_FILE  <- env_req("CLEAN_META")
 TRAIT_SPEC <- env_req("CLEAN_TRAITS")
 OUT_PREFIX <- env_req("CLEAN_OUT_PREFIX")
 MAX_MODULES <- as.integer(env_num("CLEAN_SUMMARY_MAX_MODULES", 250))
+DIRS <- c("positive", "negative")
 setDTthreads(as.integer(env_num("CLEAN_CORES", 100)))
 
 banner(paste("module summary figure:", STUDY))
@@ -86,20 +89,21 @@ ord <- do.call(order, lapply(ord_cols, function(cc) m[[cc]]))
 m <- m[ord]; E <- E[, m$sample, drop = FALSE]
 
 # --- which modules -----------------------------------------------------------
-sel <- prof[finding != "neither" & module %chin% rownames(E)]
+sel <- prof[responsive == TRUE & module %chin% rownames(E)]
 if (!nrow(sel)) { say("no responsive modules — nothing to draw"); quit(save = "no") }
-setorder(sel, finding, padj, pearson_padj)
+sel[, direction := factor(direction, levels = DIRS)]
+sel <- sel[order(direction, padj, -abs(rho))]
 n_all <- nrow(sel)
 if (n_all > MAX_MODULES) {
-  per <- max(1L, floor(MAX_MODULES / uniqueN(sel$finding)))
-  sel <- sel[, head(.SD, per), by = finding]
-  say(sprintf("showing %s of %s responsive modules (top %d per class by significance)",
+  per <- max(1L, floor(MAX_MODULES / uniqueN(sel$direction)))
+  sel <- sel[, head(.SD, per), by = direction]
+  say(sprintf("showing %s of %s responsive modules (top %d per direction by significance)",
               fmt_n(nrow(sel)), fmt_n(n_all), per))
 } else {
   say("showing all ", fmt_n(n_all), " responsive modules")
 }
-say("  ", paste(sprintf("%s %s", sel[, .N, by = finding]$finding,
-                        fmt_n(sel[, .N, by = finding]$N)), collapse = " | "))
+say("  ", paste(sprintf("%s %s", sel[, .N, by = direction]$direction,
+                        fmt_n(sel[, .N, by = direction]$N)), collapse = " | "))
 
 M <- E[sel$module, , drop = FALSE]
 
@@ -150,7 +154,7 @@ cell_w_cm <- 0.2
 ht <- Heatmap(M, col = col_z, name = "eigengene z",
   cluster_rows = TRUE, cluster_columns = FALSE,
   cluster_row_slices = FALSE,
-  row_split = factor(sel$finding, levels = c("both", "mi_only", "pearson_only")),
+  row_split = factor(as.character(sel$direction), levels = DIRS),
   column_split = f2,
   top_annotation = top_ann, right_annotation = right_ann,
   show_row_names = nrow(M) <= 60, row_names_gp = gpar(fontsize = 5),
@@ -162,9 +166,12 @@ ht <- Heatmap(M, col = col_z, name = "eigengene z",
 
 # Kept short and wrapped: the figure is ~23 cm wide and a single long title line
 # is clipped at the edges rather than shrunk to fit.
-sub <- sprintf("%s of %s modules responsive  |  median PC1 var %.0f%%\n|r| >= %s, MI >= calibrated floor",
-               fmt_n(nrow(sel)), fmt_n(nrow(prof)), median(sel$pc1_var_pct),
-               env_opt("CLEAN_MODULE_R_THR", "0.6"))
+drawn <- if (nrow(sel) < n_all)
+  sprintf("  |  %s drawn, top per direction", fmt_n(nrow(sel))) else ""
+sub <- sprintf("%s of %s modules responsive%s  |  median PC1 var %.0f%%\nSpearman |rho| >= %s, padj <= %s",
+               fmt_n(n_all), fmt_n(nrow(prof)), drawn, median(sel$pc1_var_pct),
+               env_opt("CLEAN_MODULE_R_THR", "0.6"),
+               env_opt("CLEAN_MODULE_PADJ_THR", "0.05"))
 
 w <- cell_w_cm * ncol(M) + (if (nrow(M) <= 60) 5 else 1.5) + 12
 h <- cell_h_cm * nrow(M) + 7

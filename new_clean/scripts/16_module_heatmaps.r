@@ -2,10 +2,10 @@
 # 16_module_heatmaps.r — expression heatmaps for nitrogen-responsive modules
 #
 # Draws the member genes of selected modules across the study's samples, so a
-# module called "responsive" can be looked at rather than taken on faith. This is
-# the step where an `mi_only` module either visibly does something a correlation
-# could not have caught -- a non-monotone dose response, a dispersion change --
-# or reveals itself as an artifact.
+# module called "responsive" can be looked at rather than taken on faith. With
+# the response now called by Spearman alone, this is the step where a module said
+# to move monotonically with nitrogen either visibly does so across its genes, or
+# turns out to be a couple of libraries pulling the eigengene.
 #
 # PER-GENE Z-SCORE, one panel. The pattern across samples is what a module
 # heatmap is read for, and an absolute-VST panel alongside it mostly duplicated
@@ -115,15 +115,15 @@ if (nzchar(TF_FILE) && file.exists(TF_FILE))
 if (nzchar(ONLY)) {
   sel <- prof[module %chin% strsplit(trimws(ONLY), "[[:space:],]+")[[1L]]]
 } else {
-  sel <- prof[finding != "neither"]
-  setorder(sel, padj, pearson_padj)
-  # take the top N of EACH response class, so the non-linear ones are not
-  # crowded out by the far more numerous linear ones
-  sel <- sel[, head(.SD, TOP_N), by = finding]
+  sel <- prof[responsive == TRUE]
+  sel <- sel[order(padj, -abs(rho))]
+  # take the top N of EACH direction, so modules that fall with nitrogen are not
+  # crowded out by modules that rise, or the other way round
+  sel <- sel[, head(.SD, TOP_N), by = direction]
 }
 say("modules to draw: ", nrow(sel), "  (",
-    paste(sprintf("%s %d", sel[, .N, by = finding]$finding,
-                  sel[, .N, by = finding]$N), collapse = " | "), ")")
+    paste(sprintf("%s %d", sel[, .N, by = direction]$direction,
+                  sel[, .N, by = direction]$N), collapse = " | "), ")")
 if (!nrow(sel)) { say("nothing to draw"); quit(save = "no", status = 0) }
 
 # --- annotation, built once --------------------------------------------------
@@ -173,9 +173,9 @@ for (i in seq_len(nrow(sel))) {
   }
 
   r <- sel[i]
-  sub <- sprintf("%s  |  %s genes, PC1 %.0f%% var  |  r = %.2f (padj %.1e), MI = %.2f (padj %.1e)%s",
-                 r$finding, fmt_n(r$n_genes), r$pc1_var_pct, r$pearson,
-                 r$pearson_padj, r$mi, r$padj, subset_note)
+  sub <- sprintf("%s  |  %s genes, PC1 %.0f%% var  |  Spearman rho = %.2f (p %.1e, padj %.1e)%s",
+                 r$direction, fmt_n(r$n_genes), r$pc1_var_pct, r$rho,
+                 r$pval, r$padj, subset_note)
 
   show_names <- length(genes) <= 60
 
@@ -210,7 +210,7 @@ for (i in seq_len(nrow(sel))) {
   }
 
   say(sprintf("  %-14s %s  %d genes drawn  (%.0f x %.0f cm)",
-              mod, r$finding, length(genes), w, h))
+              mod, r$direction, length(genes), w, h))
 }
 
 say("wrote ", nrow(sel), " module heatmaps to ", OUT_DIR)

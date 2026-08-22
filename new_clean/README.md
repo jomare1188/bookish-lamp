@@ -60,10 +60,10 @@ cd /dados04/jorge/comparative_saccharum/new_clean
 
 # module level, per study                                              ~5 min
 ./run.sh eigengene <study>         # PC1 per MCL module                  1 min
-./run.sh moduletrait <study>       # module response, linear + non-linear
+./run.sh moduletrait <study>       # module response: Spearman rho      10 s
 ./run.sh moduleprofile <study>     # + TF hypergeometric per module
 ./run.sh modulego <study>          # topGO BP per responsive module      45 s
-./run.sh moduleheatmap <study>     # per-module gene heatmaps            2 min
+./run.sh moduleheatmap <study>     # per-module gene heatmaps            1 min
 ./run.sh modulesummary <study>     # one figure: all responsive modules
 ```
 
@@ -106,8 +106,8 @@ dds ──► 01_export_vst.r ──► <study>.f32 + .genes.txt + .meta.json
                      │            │
                      │      13_conservation_null
                      ▼
-              14_eigengene ─► moduletrait ─► 15_profile ─┬─► 16/17 figures
-                                                         └─► 18_module_go
+         14_eigengene ─► 19_spearman ─► 15_profile ─┬─► 16/17 figures
+                                                    └─► 18_module_go
                                   │
                             11_readouts/  (TFs, MYB61, Module 20)
 ```
@@ -159,6 +159,7 @@ scripts/
   16_module_heatmaps.r   gene-level heatmap per responsive module
   17_module_summary.r    every responsive module's eigengene in one figure
   18_module_go.r         topGO per responsive module (topGO_env)
+  19_module_trait_spearman.r  module eigengene vs trait, Spearman only
   11_readouts/           get_tfs, myb61, module20 (H1); cached sequence work is
                          read from the original GET_TFS tree, output lands here
   validate.py            engine correctness suite
