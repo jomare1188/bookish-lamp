@@ -676,12 +676,33 @@ and the nitrogen response nevertheless fails to transfer at all.
 **A — observed against the permutation null, per direction.** The raw rates
 differ ~7× between directions and that difference is *meaningless* on its own —
 purple has 9.3× more edges, so a sugarcane edge has far more opportunity. Error
-bars are the full null range over `NULL_REPS` permutations.
+bars are the full null range over `NULL_REPS` permutations. The axis carries the
+percentage, the bars carry the **absolute edge counts**, and the axis label
+carries the denominator, so all three are readable without arithmetic. The null
+bar's count is the number its rate implies over the same full edge set.
 
-**B — fold over null, by direction and layer.** The comparable quantity, and the
-two directions agree on it (2.57× and 2.49× overall). The empirical p is 1/21 for
-every bar, which is the floor set by 20 permutations, not a precise p — the
-legend says so and quotes z instead.
+**B — what the conserved genes are *for*.** Panel A is a structural statement;
+this asks whether the structure that transfers does anything recognisable. One
+topGO enrichment per species over the genes on ≥1 conserved edge, against that
+network's own GO-annotated nodes, showing the terms enriched in **both**. Ranked
+by the *worse* of the two p-values, so the panel shows agreement rather than
+terms one species drives. 69 of 192 BP terms are shared (Jaccard 0.36), and two
+of them speak directly to the trait — *glutamate biosynthetic process* and the
+*ammonia assimilation cycle*.
+
+> `CONS_GO_NTERMS=12`, not 10, because those two nitrogen terms rank 11th and
+> 12th by agreement and drop off the panel at 10.
+
+> **topGO truncates term names** at 40 characters with an ellipsis, so 18 of the
+> 69 shared BP terms arrive cut in the CSV. `GO.db` has the full names but lives
+> in `topGO_env`, not the plotting env, so `run.sh` dumps an id → term cache once
+> (`conservation/go_term_names.tsv`) and the figure expands from it, falling back
+> to the truncated string if an id is missing.
+
+The fold-over-null-by-layer panel this replaced is not lost: panel A's legend
+carries the overall folds (2.57× and 2.49×) and panel C carries the per-layer
+comparison. The empirical p is 1/21 for every layer, which is the floor set by 20
+permutations, not a precise p — the legend says so and quotes z instead.
 
 **C — each non-linear layer relative to Pearson-only, under both
 normalisations.** This is the opportunity-bias argument in one panel: MI-only

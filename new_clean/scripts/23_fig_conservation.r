@@ -16,8 +16,14 @@
 #      the observed rate beside the null built for that direction, which is the
 #      only way the two are readable together.
 #
-#   B  FOLD OVER NULL, by direction and by which estimator found the edge. This
-#      is the comparable quantity, and the two directions agree on it.
+#   B  WHAT THE CONSERVED GENES ARE FOR. One topGO BP enrichment per species over
+#      the genes sitting on at least one conserved edge, against that network's
+#      own GO-annotated nodes as background, showing the terms enriched in BOTH.
+#      Conservation of edges is a structural statement; this is the panel that
+#      says whether the structure that transfers is doing anything recognisable.
+#      Terms are ranked by their WORSE p-value across the two species, so the
+#      panel shows terms both species agree on rather than terms one species
+#      drives.
 #
 #   C  THE SAME LAYERS AS RAW RATE AND AS FOLD, both relative to the Pearson-only
 #      layer. MI-only edges look better conserved than Pearson-only ones in the
@@ -54,6 +60,8 @@ CONS_DIR   <- env_req("CLEAN_CONS_DIR")
 OUT_PREFIX <- env_req("CLEAN_OUT_PREFIX")
 FIG        <- env_opt("CLEAN_FIG_NUM", "4")
 SELECTION  <- env_opt("CLEAN_SELECTION", "union")
+GO_ONT     <- env_opt("CLEAN_GO_ONTOLOGY", "BP")
+GO_NTERMS  <- as.integer(env_num("CLEAN_GO_NTERMS", 12))
 NODES_SUG  <- env_req("CLEAN_NODES_SUGARCANE")
 NODES_PUR  <- env_req("CLEAN_NODES_PURPLE")
 setDTthreads(as.integer(env_num("CLEAN_CORES", 8)))
@@ -87,6 +95,29 @@ CORR <- fread(file.path(CONS_DIR,
                         sprintf("conserved_correlated_summary_%s.tsv", SELECTION)))
 cv <- function(k) as.numeric(CORR[metric == k, value])
 
+GO_DIR <- file.path(CONS_DIR, "enrichment_conserved")
+GO_SHARED <- fread(file.path(GO_DIR, sprintf("GO_%s_conserved_shared_terms.csv", GO_ONT)))
+# topGO's GenTable truncates term names at 40 characters with an ellipsis, so the
+# CSV carries strings like "positive regulation of cellular cataboli...". Expand
+# them from the cached GO.db dump; anything missing keeps the truncated string
+# rather than becoming NA.
+GO_NAMES <- env_opt("CLEAN_GO_NAMES")
+if (nzchar(GO_NAMES) && file.exists(GO_NAMES)) {
+  nm <- fread(GO_NAMES)
+  GO_SHARED <- merge(GO_SHARED, nm, by = "GO.ID", all.x = TRUE, sort = FALSE)
+  n_trunc <- GO_SHARED[grepl("\\.\\.\\.$", Term), .N]
+  GO_SHARED[!is.na(Term_full) & nzchar(Term_full), Term := Term_full]
+  say(sprintf("expanded %d truncated %s term name(s) from %s",
+              n_trunc, GO_ONT, basename(GO_NAMES)))
+} else {
+  say("NOTE: no GO term-name cache; long term names stay truncated as topGO wrote them")
+}
+GO_CMP <- rbindlist(lapply(c("BP", "MF", "CC"), function(o)
+  fread(file.path(GO_DIR, sprintf("GO_%s_conserved_comparison_summary.csv", o)))))
+GO_SUM <- fread(file.path(GO_DIR, sprintf("GO_%s_conserved_summary.csv", GO_ONT)))
+gc_ <- function(o, col) GO_CMP[Ontology == o][[col]]
+gs_ <- function(sp, col) GO_SUM[Network == sp][[col]]
+
 NULLS[, dir_lab := factor(DIR_LAB[direction], levels = unname(DIR_LAB))]
 NULLS[, layer := factor(fifelse(source == "ALL", "ALL", LAYERS[source]),
                         levels = c("ALL", unname(LAYERS)))]
@@ -101,37 +132,74 @@ print(SUMS[, .(dir_lab, layer, total_edges = fmt_n(total_edges),
 # A — observed vs null, per direction (ALL edges)
 # =============================================================================
 alld <- NULLS[source == "ALL"]
+# Totals come from the FULL edge sets, not the 5 M null sample, so the absolute
+# counts printed on the bars are the real ones. The null bar's absolute value is
+# the count its rate implies over that same full set, i.e. edges expected to find
+# a partner by chance.
+tot <- SUMS[layer == "ALL", .(direction, total_edges, conserved_edges)]
+alld <- merge(alld, tot, by = "direction")
 obsA <- rbindlist(list(
-  alld[, .(dir_lab, what = "observed", rate = obs_rate, lo = obs_rate, hi = obs_rate)],
-  alld[, .(dir_lab, what = "permutation null", rate = null_mean_rate,
-           lo = null_min_rate, hi = null_max_rate)]))
+  alld[, .(dir_lab, total_edges, what = "observed", rate = obs_rate,
+           lo = obs_rate, hi = obs_rate, n = conserved_edges)],
+  alld[, .(dir_lab, total_edges, what = "permutation null", rate = null_mean_rate,
+           lo = null_min_rate, hi = null_max_rate,
+           n = round(null_mean_rate * total_edges))]))
 obsA[, what := factor(what, levels = names(PAL_OBS))]
+# The denominator rides on the axis label, so the panel carries the percentage,
+# the count and what the count is out of.
+ax_lab <- function(d, n) sprintf("%s\n%s edges", d, trimws(fmt_n(n)))
+obsA[, dir_ax := factor(ax_lab(dir_lab, total_edges),
+                        levels = unique(ax_lab(dir_lab, total_edges)[order(dir_lab)]))]
+say("panel A: observed vs null, with absolute counts")
+print(obsA[, .(dir_lab, what, pct = round(100 * rate, 3), n = fmt_n(n))], row.names = FALSE)
 
-pA <- ggplot(obsA, aes(dir_lab, rate, fill = what)) +
+pA <- ggplot(obsA, aes(dir_ax, rate, fill = what)) +
   geom_col(position = position_dodge(width = 0.65), width = 0.55) +
   geom_errorbar(aes(ymin = lo, ymax = hi), width = 0.14,
                 position = position_dodge(width = 0.65), linewidth = 0.3) +
-  geom_text(aes(label = sprintf("%.2f%%", 100 * rate)),
-            position = position_dodge(width = 0.65), vjust = -0.5, size = 2.2) +
+  geom_text(aes(label = fmt_n(n)), position = position_dodge(width = 0.65),
+            vjust = -0.55, size = 2.1) +
   scale_fill_manual(values = PAL_OBS, name = NULL) +
   scale_y_continuous(labels = percent_format(accuracy = 1),
-                     expand = expansion(mult = c(0, 0.18))) +
+                     expand = expansion(mult = c(0, 0.20))) +
   labs(x = NULL, y = "edges with a conserved partner") +
-  theme_f
+  theme_f + theme(axis.text.x = element_text(size = 6.8, lineheight = 1.05))
 
 # =============================================================================
 # B — fold over null, by layer and direction
 # =============================================================================
-foldB <- NULLS[source != "ALL"]
-pB <- ggplot(foldB, aes(layer, fold_over_null, fill = layer)) +
-  geom_col(width = 0.62) +
-  geom_hline(yintercept = 1, linetype = 2, linewidth = 0.3, colour = "grey35") +
-  geom_text(aes(label = sprintf("%.2f", fold_over_null)), vjust = -0.45, size = 2.2) +
-  facet_wrap(~ dir_lab, nrow = 1) +
-  scale_fill_manual(values = PAL_LAYER, guide = "none") +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
-  labs(x = NULL, y = "fold over permutation null") +
-  theme_f + theme(axis.text.x = element_text(angle = 20, hjust = 1))
+# Ranked by the WORSE of the two p-values, so the panel shows terms BOTH species
+# are enriched for rather than terms one species drives.
+gsh <- copy(GO_SHARED)
+setnames(gsh, c("pvalue_sugarcane", "pvalue_purple"), c("p_sugarcane", "p_purple"))
+gsh[, worst := pmax(p_sugarcane, p_purple)]
+setorder(gsh, worst)
+top <- head(gsh, GO_NTERMS)
+goB <- melt(top[, .(Term, p_sugarcane, p_purple)], id.vars = "Term",
+            variable.name = "species", value.name = "p")
+goB[, species := factor(sub("^p_", "", species), levels = c("sugarcane", "purple"))]
+# Full GO names run to 70+ characters and, unwrapped, the label column eats half
+# the figure width and squeezes panel A. Wrapped to two or three short lines.
+wrap_term <- function(x, w = 38)
+  vapply(x, function(t) paste(strwrap(t, w), collapse = "\n"), "")
+top[, Term_w := wrap_term(Term)]
+goB <- merge(goB, top[, .(Term, Term_w)], by = "Term")
+goB[, Term := factor(Term_w, levels = rev(top$Term_w))]
+goB[, mlp := -log10(p)]
+say(sprintf("panel B: %s terms shared by both conserved sets, showing top %d",
+            fmt_n(nrow(gsh)), nrow(top)))
+print(top[, .(Term = substr(Term, 1, 46), p_sugarcane, p_purple)], row.names = FALSE)
+
+pB <- ggplot(goB, aes(mlp, Term)) +
+  geom_line(aes(group = Term), colour = "grey70", linewidth = 0.35) +
+  geom_point(aes(fill = species), shape = 21, size = 1.9,
+             colour = "grey25", stroke = 0.25) +
+  scale_fill_manual(values = setNames(scico(3, palette = "batlow")[1:2],
+                                      c("sugarcane", "purple")), name = NULL) +
+  scale_x_continuous(expand = expansion(mult = c(0.03, 0.08))) +
+  labs(x = expression(-log[10](p)~", topGO weight01"), y = NULL) +
+  theme_f + theme(axis.text.y = element_text(size = 6, lineheight = 0.95),
+                  panel.grid.major.y = element_line(linewidth = 0.2))
 
 # =============================================================================
 # C — raw rate vs fold, both relative to the Pearson-only layer
@@ -201,11 +269,14 @@ pD <- ggplot(funD, aes(stage, n, fill = species)) +
 # =============================================================================
 # compose
 # =============================================================================
+# The GO panel needs the taller row: its labels are full GO term names wrapped
+# to two or three lines, and at equal row heights they collide.
 fig <- (pA | pB) / (pC | pD) +
+  plot_layout(heights = c(1.25, 1)) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 12))
 
-W <- 22; H <- 14
+W <- 22; H <- 17
 invisible(ensure_dir(dirname(OUT_PREFIX)))
 ggsave(paste0(OUT_PREFIX, ".png"), fig, width = W, height = H, units = "cm",
        dpi = 400, type = "cairo")
@@ -239,11 +310,25 @@ legend <- paste0(
 "more opportunity than a purple edge searching a 76-million-edge sugarcane one.\n",
 "\n",
 "(A) Share of each network's edges with a conserved partner, against a permutation null built ",
-"separately for each direction. ", DIR_LAB[[D1]], ": ",
-sprintf("%.2f%%", 100 * nl(D1, "ALL", "obs_rate")), " observed against ",
-sprintf("%.2f%%", 100 * nl(D1, "ALL", "null_mean_rate")), " expected. ", DIR_LAB[[D2]], ": ",
-sprintf("%.2f%%", 100 * nl(D2, "ALL", "obs_rate")), " against ",
-sprintf("%.2f%%", 100 * nl(D2, "ALL", "null_mean_rate")), ". Bars on the null are its full range ",
+"separately for each direction; bars carry the absolute edge counts and the axis label the ",
+"denominator. ", DIR_LAB[[D1]], ": ", fmt_n(sm(D1, "ALL", "conserved_edges")), " of ",
+fmt_n(sm(D1, "ALL", "total_edges")), " edges conserved (",
+sprintf("%.2f%%", 100 * nl(D1, "ALL", "obs_rate")), ") against ",
+fmt_n(round(nl(D1, "ALL", "null_mean_rate") * sm(D1, "ALL", "total_edges"))), " expected by ",
+"chance (", sprintf("%.2f%%", 100 * nl(D1, "ALL", "null_mean_rate")), "), a fold over null of ",
+sprintf("%.2f", nl(D1, "ALL", "fold_over_null")), "x. ", DIR_LAB[[D2]], ": ",
+fmt_n(sm(D2, "ALL", "conserved_edges")), " of ", fmt_n(sm(D2, "ALL", "total_edges")), " (",
+sprintf("%.2f%%", 100 * nl(D2, "ALL", "obs_rate")), ") against ",
+fmt_n(round(nl(D2, "ALL", "null_mean_rate") * sm(D2, "ALL", "total_edges"))), " (",
+sprintf("%.2f%%", 100 * nl(D2, "ALL", "null_mean_rate")), "), fold ",
+sprintf("%.2f", nl(D2, "ALL", "fold_over_null")), "x. The two folds agree closely even though ",
+"the raw percentages differ ~7x, and the fold is the comparable quantity: a sugarcane edge ",
+"searching a 706-million-edge purple network has far more opportunity than the reverse. Every ",
+"layer in both directions clears the null with z between ", sprintf("%.0f", min(NULLS$z)),
+" and ", sprintf("%.0f", max(NULLS$z)), "; the empirical p is ",
+sprintf("%.3f", 1 / (n_perm + 1)), " throughout, which is simply the floor set by ", n_perm,
+" permutations and should be read as \'beyond every permutation drawn\' rather than as a precise ",
+"p-value. Bars on the null are its full range ",
 "over ", n_perm, " permutations, which shuffle gene labels within the orthology map so that ",
 "orthogroup fan-out and per-gene coverage are preserved and only the pairing is randomised -- ",
 "without that the null would mostly measure how many orthologs each gene has. Nulls are computed ",
@@ -251,15 +336,30 @@ sprintf("%.2f%%", 100 * nl(D2, "ALL", "null_mean_rate")), ". Bars on the null ar
 "decimals. THE TWO RAW RATES ARE NOT COMPARABLE WITH EACH OTHER: the ~7x difference between ",
 "directions is opportunity, not biology, which is the reason panel B exists.\n",
 "\n",
-"(B) The same conservation expressed as fold over that direction's own null, split by which ",
-"estimator found the edge. This is the comparable quantity, and the two directions agree closely ",
-"on it: over all edges ", sprintf("%.2f", nl(D1, "ALL", "fold_over_null")), "x and ",
-sprintf("%.2f", nl(D2, "ALL", "fold_over_null")), "x. Conservation is therefore real and of ",
-"similar magnitude whichever network is asked. Every layer in both directions sits above 1 ",
-"(dashed line) with z between ", sprintf("%.0f", min(NULLS$z)), " and ",
-sprintf("%.0f", max(NULLS$z)), "; the empirical p is ", sprintf("%.3f", 1 / (n_perm + 1)),
-" for all of them, which is simply the floor set by ", n_perm, " permutations and should be read ",
-"as 'beyond every permutation drawn' rather than as a precise p-value.\n",
+"(B) What the conserved genes are FOR. Panel A is a structural statement; this asks whether the ",
+"structure that transfers is doing anything recognisable. One topGO ", GO_ONT, " enrichment per ",
+"species over the genes on at least one conserved edge (", fmt_n(gs_("sugarcane", "Conserved_genes")),
+" and ", fmt_n(gs_("purple", "Conserved_genes")), " genes, of which ",
+fmt_n(gs_("sugarcane", "Conserved_in_bg")), " and ", fmt_n(gs_("purple", "Conserved_in_bg")),
+" carry any GO annotation), tested against that network's OWN GO-annotated nodes as background (",
+fmt_n(gs_("sugarcane", "Node_background_w_GO")), " and ",
+fmt_n(gs_("purple", "Node_background_w_GO")), ") rather than against the genome, so the result is ",
+"not the generic \'co-expressed genes differ from the genome\' effect. Sugarcane returns ",
+gc_(GO_ONT, "Terms_sugarcane"), " enriched ", GO_ONT, " terms and purple ",
+gc_(GO_ONT, "Terms_purple"), ", of which ", gc_(GO_ONT, "Shared"), " are SHARED (Jaccard ",
+sprintf("%.2f", gc_(GO_ONT, "Jaccard")), "); MF and CC behave the same way, at ",
+gc_("MF", "Shared"), " and ", gc_("CC", "Shared"), " shared terms. Plotted are the ",
+sprintf("%d", nrow(top)), " shared terms with the strongest agreement, ranked by the WORSE of ",
+"the two p-values so the panel shows terms both species support rather than terms one species ",
+"drives; the two points on a row are the same term in the two networks. The shared set is ",
+"dominated by regulation and core metabolism -- regulation of gene expression, MAPK cascade, ",
+"proteolysis, translation, thylakoid membrane organization -- and it includes two terms that ",
+"speak directly to the trait: GLUTAMATE BIOSYNTHETIC PROCESS and the AMMONIA ASSIMILATION CYCLE, ",
+"enriched in both conserved sets. So the conserved edges are not a structural curiosity: they ",
+"connect genes doing the same recognisable jobs in both species, including nitrogen assimilation ",
+"itself. Read this alongside panel D, which shows that this shared FUNCTION coexists with almost ",
+"no shared responsive GENES -- an ordinary evolutionary pattern, but note the power gap between ",
+"the two tests before reading it as agreement.\n",
 "\n",
 "(C) Each non-linear layer relative to the Pearson-only layer of the same direction, under both ",
 "normalisations. For MI-only edges the two normalisations disagree in ", DIR_LAB[[D1]],
@@ -302,9 +402,13 @@ writeLines(wrap_at(legend), legend_file)
 say("wrote ", basename(legend_file))
 
 stats <- rbindlist(list(
-  NULLS[, .(panel = "A/B", study = DIR_LAB[direction],
+  NULLS[, .(panel = "A", study = DIR_LAB[direction],
             quantity = sprintf("%s: observed / null / fold", layer),
             value = sprintf("%.4f / %.4f / %.2f", obs_rate, null_mean_rate, fold_over_null))],
+  GO_CMP[, .(panel = "B", study = "both",
+             quantity = sprintf("%s terms: sugarcane / purple / shared", Ontology),
+             value = sprintf("%d / %d / %d (Jaccard %.3f)",
+                             Terms_sugarcane, Terms_purple, Shared, Jaccard))],
   funD[, .(panel = "D", study = as.character(species),
            quantity = gsub("\n", " ", stage), value = fmt_n(n))]))
 write_tsv(stats, paste0(OUT_PREFIX, "_stats.tsv"))

@@ -304,6 +304,17 @@ FIG_REPRODUCTION=2
 FIG_TOPOLOGY=3
 FIG_CONSERVATION=4
 
+# Conservation figure, panel B: which ontology the conserved-set GO panel draws,
+# and how many shared terms it shows. Terms are ranked by the WORSE of the two
+# species' p-values, so the panel shows agreement rather than one species' hits.
+# 10 is what fits legibly once the full GO names are wrapped -- topGO truncates
+# them at 40 characters and the figure expands them from a GO.db cache.
+CONS_GO_ONTOLOGY=BP
+# 12 rather than 10 so that `glutamate biosynthetic process` and the `ammonia
+# assimilation cycle` -- the two shared terms that speak directly to the trait --
+# stay on the panel; they rank 11th and 12th by agreement.
+CONS_GO_NTERMS=12
+
 # Genes used for the per-study PCA in the dataset figure: the most variable
 # 2,000, the usual DESeq2 plotPCA convention.
 PCA_NTOP=2000

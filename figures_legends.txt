@@ -212,22 +212,40 @@ interchangeable, because a sugarcane edge searching a 706-million-edge purple ne
 more opportunity than a purple edge searching a 76-million-edge sugarcane one.
 
 (A) Share of each network's edges with a conserved partner, against a permutation null built
-separately for each direction. sugarcane → purple: 10.76% observed against 4.18% expected.
-purple → sugarcane: 1.52% against 0.61%. Bars on the null are its full range over 20
-permutations, which shuffle gene labels within the orthology map so that orthogroup fan-out and
-per-gene coverage are preserved and only the pairing is randomised -- without that the null
-would mostly measure how many orthologs each gene has. Nulls are computed on a 5-million-edge
-sample of each direction, whose observed rate matches the full set to three decimals. THE TWO
-RAW RATES ARE NOT COMPARABLE WITH EACH OTHER: the ~7x difference between directions is
-opportunity, not biology, which is the reason panel B exists.
+separately for each direction; bars carry the absolute edge counts and the axis label the
+denominator. sugarcane → purple: 8,197,303 of 76,200,344 edges conserved (10.76%) against
+3,188,929 expected by chance (4.18%), a fold over null of 2.57x. purple → sugarcane: 10,722,788
+of 705,571,723 (1.52%) against 4,305,797 (0.61%), fold 2.49x. The two folds agree closely even
+though the raw percentages differ ~7x, and the fold is the comparable quantity: a sugarcane
+edge searching a 706-million-edge purple network has far more opportunity than the reverse.
+Every layer in both directions clears the null with z between 41 and 79; the empirical p is
+0.048 throughout, which is simply the floor set by 20 permutations and should be read as
+'beyond every permutation drawn' rather than as a precise p-value. Bars on the null are its
+full range over 20 permutations, which shuffle gene labels within the orthology map so that
+orthogroup fan-out and per-gene coverage are preserved and only the pairing is randomised --
+without that the null would mostly measure how many orthologs each gene has. Nulls are computed
+on a 5-million-edge sample of each direction, whose observed rate matches the full set to three
+decimals. THE TWO RAW RATES ARE NOT COMPARABLE WITH EACH OTHER: the ~7x difference between
+directions is opportunity, not biology, which is the reason panel B exists.
 
-(B) The same conservation expressed as fold over that direction's own null, split by which
-estimator found the edge. This is the comparable quantity, and the two directions agree closely
-on it: over all edges 2.57x and 2.49x. Conservation is therefore real and of similar magnitude
-whichever network is asked. Every layer in both directions sits above 1 (dashed line) with z
-between 41 and 79; the empirical p is 0.048 for all of them, which is simply the floor set by
-20 permutations and should be read as 'beyond every permutation drawn' rather than as a precise
-p-value.
+(B) What the conserved genes are FOR. Panel A is a structural statement; this asks whether the
+structure that transfers is doing anything recognisable. One topGO BP enrichment per species
+over the genes on at least one conserved edge (39,226 and 44,118 genes, of which 3,779 and
+4,105 carry any GO annotation), tested against that network's OWN GO-annotated nodes as
+background (8,251 and 12,255) rather than against the genome, so the result is not the generic
+'co-expressed genes differ from the genome' effect. Sugarcane returns 106 enriched BP terms and
+purple 155, of which 69 are SHARED (Jaccard 0.36); MF and CC behave the same way, at 39 and 24
+shared terms. Plotted are the 12 shared terms with the strongest agreement, ranked by the WORSE
+of the two p-values so the panel shows terms both species support rather than terms one species
+drives; the two points on a row are the same term in the two networks. The shared set is
+dominated by regulation and core metabolism -- regulation of gene expression, MAPK cascade,
+proteolysis, translation, thylakoid membrane organization -- and it includes two terms that
+speak directly to the trait: GLUTAMATE BIOSYNTHETIC PROCESS and the AMMONIA ASSIMILATION CYCLE,
+enriched in both conserved sets. So the conserved edges are not a structural curiosity: they
+connect genes doing the same recognisable jobs in both species, including nitrogen assimilation
+itself. Read this alongside panel D, which shows that this shared FUNCTION coexists with almost
+no shared responsive GENES -- an ordinary evolutionary pattern, but note the power gap between
+the two tests before reading it as agreement.
 
 (C) Each non-linear layer relative to the Pearson-only layer of the same direction, under both
 normalisations. For MI-only edges the two normalisations disagree in sugarcane → purple and

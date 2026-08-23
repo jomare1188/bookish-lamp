@@ -405,6 +405,22 @@ main() {
     ;;
 
   figconservation)
+    # topGO's GenTable truncates long term names to 40 characters with an
+    # ellipsis, and 18 of the 69 shared BP terms come out cut. GO.db has the full
+    # names but lives in topGO_env, not the plotting env, so the id -> term map is
+    # dumped once here and cached; the figure expands the truncated strings from it.
+    GO_NAMES="${RESULTS}/conservation/go_term_names.tsv"
+    if [ ! -s "$GO_NAMES" ]; then
+      echo "building GO term-name cache -> ${GO_NAMES##*/}"
+      conda run --no-capture-output -n "$CONDA_TOPGO" Rscript -e "
+        suppressMessages(library(GO.db))
+        tt <- AnnotationDbi::Term(GOTERM)
+        utils::write.table(data.frame(GO.ID = names(tt), Term_full = unname(tt)),
+                           '$GO_NAMES', sep = '\t', quote = FALSE, row.names = FALSE)"
+    fi
+    CLEAN_GO_NAMES="$GO_NAMES" \
+    CLEAN_GO_ONTOLOGY="$CONS_GO_ONTOLOGY" \
+    CLEAN_GO_NTERMS="$CONS_GO_NTERMS" \
     CLEAN_FIG_NUM="$FIG_CONSERVATION" \
     CLEAN_CONS_DIR="${RESULTS}/conservation" \
     CLEAN_SELECTION="$TRAIT_SELECTION" \
