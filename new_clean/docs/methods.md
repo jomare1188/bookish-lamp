@@ -808,9 +808,17 @@ spermidine biosynthesis) plus a defence block; what falls is the low-nitrogen
 carbon programme (flavonoid, raffinose-family oligosaccharide, triglyceride
 biosynthesis, cold response). Neither of the other two grains recovers it.
 
-Panels B and D are drawn from sugarcane (`MODULE_GO_FIG_MAIN`) because purple has
-10 individually testable modules against sugarcane's 49, and the comparison would
-be between a result and an absence.
+**Three panels.** A is the annotation gate; **B and C are the same plot for the
+two species**, side by side so the direction split can be compared. Their x
+scales are free — sugarcane reaches −log10(p) ≈ 14 and purple ≈ 8, and a shared
+axis would flatten purple into nothing.
+
+The term-overlap counts and the per-module recurrence that earlier drafts drew as
+panels are in the legend instead: the first is six numbers, and the second is a
+weak signal drawn from the ~11% of modules that are individually testable.
+
+`MODULE_GO_FIG_MAIN` still names which species leads (sugarcane), and the other
+follows in C.
 
 ### `figrepro` — reproducing each source study's own finding
 

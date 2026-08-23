@@ -22,21 +22,20 @@
 #                run's global figure; not repeated here.
 #
 #   A  THE ANNOTATION GATE, per species: how many responsive modules exist, how
-#      many are individually testable, and how many annotated genes the two
-#      direction sets carry instead. This is the panel that justifies the middle
-#      grain rather than asserting it.
+#      many are individually testable, and how many return a term. This is the
+#      panel that justifies the middle grain rather than asserting it.
 #
-#   B  DIRECTION-SPECIFIC TERMS, the headline. Top terms of each direction, drawn
-#      on one axis with the two directions opposed, so "what goes up with
-#      nitrogen" and "what goes down" can be read against each other.
+#   B, C  DIRECTION-SPECIFIC TERMS, one panel per species and the headline of the
+#      figure. Top terms of each direction drawn on one axis with the directions
+#      opposed, so "what goes up with nitrogen" and "what goes down" are read
+#      against each other. B and C are the SAME plot for the two species and sit
+#      side by side for exactly that reason; their x scales are free, because
+#      sugarcane reaches -log10(p) ~ 14 and purple ~ 8 and a shared axis would
+#      flatten purple into nothing.
 #
-#   C  HOW SEPARATE THE TWO DIRECTIONS ARE -- terms found only when the modules
-#      rise, only when they fall, or both. If the split were arbitrary this would
-#      be mostly shared.
-#
-#   D  PER-MODULE GO, the grain that survives from the previous analysis: the
-#      terms that recur across individually tested modules, coloured by the
-#      direction of the module they came from.
+# The term-overlap counts and the per-module recurrence that earlier drafts drew
+# as panels are in the legend instead: the first is six numbers and the second is
+# a weak signal from the ~11% of modules that are individually testable.
 #
 # NOTHING IS WRITTEN ON THE FIGURE THAT BELONGS IN THE LEGEND -- panel letters and
 # the labels the data needs, nothing else.
@@ -118,34 +117,42 @@ pA <- ggplot(gateL, aes(stage, n, fill = study)) +
   theme_f + theme(axis.text.x = element_text(size = 6.4, lineheight = 1.05))
 
 # =============================================================================
-# B — direction-specific terms in the better-powered study
+# B, C — direction-specific terms, one panel per species
 # =============================================================================
-bd <- BYDIR[study == MAIN]
-if (nrow(bd)) {
+dir_panel <- function(st, show_legend) {
+  bd <- BYDIR[study == st]
+  if (!nrow(bd)) return(list(p = ggplot() + theme_void(), top = NULL))
+  bd <- copy(bd)
   bd[, dir_lab := factor(DIR_LAB[direction], levels = unname(DIR_LAB))]
   top <- bd[order(pvalue), head(.SD, NTERMS), by = dir_lab]
   top[, mlp := -log10(pmax(pvalue, 1e-300))]
-  # Opposed on one axis: "up" to the right, "down" to the left, so the two sets
-  # are read against each other instead of in two stacked panels.
+  # Opposed on one axis: "rises" to the right, "falls" to the left, so the two
+  # sets are read against each other rather than in two stacked blocks.
   top[, signed := ifelse(dir_lab == DIR_LAB[["positive"]], mlp, -mlp)]
   setorder(top, signed)
   top[, Term_w := factor(wrap_term(Term), levels = wrap_term(Term))]
-  say(sprintf("panel B: top %d terms per direction in %s", NTERMS, MAIN))
+  say(sprintf("panel for %s: top %d terms per direction", st, NTERMS))
   print(top[, .(dir_lab, Term = substr(Term, 1, 44), pvalue, p.adj)], row.names = FALSE)
 
-  pB <- ggplot(top, aes(signed, Term_w, fill = dir_lab)) +
+  p <- ggplot(top, aes(signed, Term_w, fill = dir_lab)) +
     geom_col(width = 0.72) +
     geom_vline(xintercept = 0, linewidth = 0.3, colour = "grey40") +
-    scale_fill_manual(values = PAL_DIR, name = NULL) +
+    scale_fill_manual(values = PAL_DIR, name = NULL,
+                      guide = if (show_legend) "legend" else "none") +
     scale_x_continuous(labels = function(x) abs(x)) +
-    labs(x = expression(-log[10](p)~", topGO weight01"), y = NULL) +
-    theme_f + theme(axis.text.y = element_text(size = 5.6, lineheight = 0.9))
-} else {
-  pB <- ggplot() + theme_void()
+    labs(x = expression(-log[10](p)~", topGO weight01"), y = NULL,
+         title = st) +
+    theme_f + theme(axis.text.y = element_text(size = 5.6, lineheight = 0.9),
+                    plot.title = element_text(face = "bold", size = 8,
+                                              hjust = 0.5, margin = margin(b = 2)))
+  list(p = p, top = top)
 }
+OTHER <- setdiff(STUDIES, MAIN)[1]
+bB <- dir_panel(MAIN, TRUE);   pB <- bB$p
+bC <- dir_panel(OTHER, FALSE); pC <- bC$p
 
 # =============================================================================
-# C — how separate the two directions are
+# term overlap between directions — legend only, no longer a panel
 # =============================================================================
 cmp <- rbindlist(lapply(STUDIES, function(st) {
   d <- BYDIR[study == st]
@@ -161,57 +168,16 @@ cmp <- rbindlist(lapply(STUDIES, function(st) {
                    sum(is.na(w$positive) & !is.na(w$negative))))
 }))
 cmp[, study := factor(study, levels = STUDIES)]
-cmp[, class := factor(class, levels = c(DIR_LAB[["positive"]], "both",
-                                        DIR_LAB[["negative"]], "one direction only"))]
-say("panel C: term overlap between directions"); print(cmp, row.names = FALSE)
-
-pC <- ggplot(cmp, aes(study, n, fill = class)) +
-  geom_col(width = 0.58, colour = "white", linewidth = 0.3) +
-  geom_text(aes(label = ifelse(n > 0, n, "")), position = position_stack(vjust = 0.5),
-            size = 2.2, colour = "grey15") +
-  scale_fill_manual(values = c(setNames(unname(PAL_DIR), unname(DIR_LAB)),
-                               both = "grey78", `one direction only` = "grey55"),
-                    name = NULL) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
-  labs(x = NULL, y = sprintf("%s terms at raw p <= 0.05", ONT)) +
-  theme_f
-
-# =============================================================================
-# D — per-module GO: the terms that recur across individually tested modules
-# =============================================================================
-pm <- PERMOD[study == MAIN]
-if (nrow(pm)) {
-  rec <- pm[, .(modules = uniqueN(module), best_p = min(pvalue),
-                up = uniqueN(module[direction == "positive"]),
-                down = uniqueN(module[direction == "negative"])),
-            by = .(GO.ID, Term)][order(-modules, best_p)]
-  recT <- head(rec, NRECUR)
-  recL <- melt(recT[, .(Term, up, down)], id.vars = "Term",
-               variable.name = "direction", value.name = "n")
-  recL[, direction := factor(DIR_LAB[fifelse(direction == "up", "positive", "negative")],
-                             levels = unname(DIR_LAB))]
-  recL[, Term_w := factor(wrap_term(Term), levels = rev(wrap_term(recT$Term)))]
-  say(sprintf("panel D: %s terms recurring across individually tested modules", MAIN))
-  print(recT[, .(Term = substr(Term, 1, 44), modules, up, down)], row.names = FALSE)
-
-  pD <- ggplot(recL[n > 0], aes(n, Term_w, fill = direction)) +
-    geom_col(width = 0.72) +
-    scale_fill_manual(values = PAL_DIR, name = NULL) +
-    scale_x_continuous(breaks = pretty_breaks(4),
-                       expand = expansion(mult = c(0, 0.06))) +
-    labs(x = "modules sharing the term", y = NULL) +
-    theme_f + theme(axis.text.y = element_text(size = 5.8, lineheight = 0.95))
-} else {
-  pD <- ggplot() + theme_void()
-}
+say("term overlap between directions (legend only)"); print(cmp, row.names = FALSE)
 
 # =============================================================================
 # compose
 # =============================================================================
-# The two GO panels carry wrapped term names on their y axes and need both the
-# extra width and the taller row; A and C are three bars each.
-fig <- (pA | pB) / (pC | pD) +
-  plot_layout(widths = c(1, 1.3), heights = c(1.15, 1)) +
+# A is three bars and sits alone on a short top row; B and C are the same plot
+# for the two species and go side by side, which is the only arrangement that
+# lets them be compared.
+fig <- pA / (pB | pC) +
+  plot_layout(heights = c(0.62, 1)) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 12))
 
@@ -276,7 +242,19 @@ fmt_n(bdn(S1, "positive", "n_modules")), " and ", fmt_n(bdn(S1, "negative", "n_m
 "biosynthesis, cellular response to cold, skotomorphogenesis. That is the textbook shape of a ",
 "nitrogen response read at module resolution, and neither of the other two grains recovers it.\n",
 "\n",
-"(C) How separate the two directions are, as term counts. In ", S1, ", ", fmt_n(c_(S1, "rises with N")),
+"(C) The same plot for ", S2, ". Its x scale is free of B\'s: ", S1,
+" reaches -log10(p) ~ ", sprintf("%.0f", max(bB$top$mlp)), " and ", S2, " ~ ",
+sprintf("%.0f", max(bC$top$mlp)), ", and a shared axis would flatten ", S2,
+" into nothing. What rises with nitrogen there is cell-wall construction ",
+"(plant-type primary cell wall biogenesis, cellulose biosynthesis); what falls includes ",
+"phenylpropanoid biosynthesis, phosphate and anion transport, and shoot morphogenesis ",
+"regulation. Read it as a report of what ", fmt_n(bdn(S2, "positive", "n_modules")), " and ",
+fmt_n(bdn(S2, "negative", "n_modules")), " modules carrying only ",
+fmt_n(bdn(S2, "positive", "n_annotated")), " and ", fmt_n(bdn(S2, "negative", "n_annotated")),
+" annotated genes contain, not as a characterisation of ", S2, "\'s nitrogen response.\n",
+"\n",
+"NOT DRAWN, because it is six numbers: how separate the two directions are as term counts. In ",
+S1, ", ", fmt_n(c_(S1, "rises with N")),
 " terms are enriched only among the modules that rise and ", fmt_n(c_(S1, "falls with N")),
 " only among those that fall, against ", fmt_n(c_(S1, "both")), " found in both; in ", S2,
 " the same three numbers are ", fmt_n(c_(S2, "rises with N")), ", ",
@@ -284,12 +262,6 @@ fmt_n(c_(S2, "falls with N")), " and ", fmt_n(c_(S2, "both")), ". So the split i
 "partition of one functional programme into halves -- the overlap is a few terms out of a ",
 "hundred -- and pooling the two directions, as the previous analysis did, averages two distinct ",
 "programmes into one list.\n",
-"\n",
-"(D) The per-module grain that survives: terms recurring across individually tested ", S1,
-" modules, with each bar split by the direction of the modules contributing it. Recurrence is ",
-"low -- the most shared term appears in ", fmt_n(max(recT$modules)),
-" modules -- which is expected when only ", fmt_n(g_(S1, "individually\ntestable")),
-" modules are testable, and is the reason this panel supports rather than carries the figure.\n",
 "\n",
 "CAVEATS. Purple's per-module column is ", fmt_n(g_(S2, "individually\ntestable")),
 " modules and should be read as a report of that many gene sets, not as a characterisation of ",

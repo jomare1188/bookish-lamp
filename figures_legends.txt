@@ -381,17 +381,19 @@ FLAVONOID biosynthesis, RAFFINOSE-family oligosaccharide biosynthesis, triglycer
 biosynthesis, cellular response to cold, skotomorphogenesis. That is the textbook shape of a
 nitrogen response read at module resolution, and neither of the other two grains recovers it.
 
-(C) How separate the two directions are, as term counts. In sugarcane, 74 terms are enriched
-only among the modules that rise and 23 only among those that fall, against 6 found in both; in
-purple the same three numbers are 7, 23 and 3. So the split is not a partition of one
-functional programme into halves -- the overlap is a few terms out of a hundred -- and pooling
-the two directions, as the previous analysis did, averages two distinct programmes into one
-list.
+(C) The same plot for purple. Its x scale is free of B's: sugarcane reaches -log10(p) ~ 14 and
+purple ~ 8, and a shared axis would flatten purple into nothing. What rises with nitrogen there
+is cell-wall construction (plant-type primary cell wall biogenesis, cellulose biosynthesis);
+what falls includes phenylpropanoid biosynthesis, phosphate and anion transport, and shoot
+morphogenesis regulation. Read it as a report of what 32 and 47 modules carrying only 23 and 47
+annotated genes contain, not as a characterisation of purple's nitrogen response.
 
-(D) The per-module grain that survives: terms recurring across individually tested sugarcane
-modules, with each bar split by the direction of the modules contributing it. Recurrence is low
--- the most shared term appears in 4 modules -- which is expected when only 49 modules are
-testable, and is the reason this panel supports rather than carries the figure.
+NOT DRAWN, because it is six numbers: how separate the two directions are as term counts. In
+sugarcane, 74 terms are enriched only among the modules that rise and 23 only among those that
+fall, against 6 found in both; in purple the same three numbers are 7, 23 and 3. So the split
+is not a partition of one functional programme into halves -- the overlap is a few terms out of
+a hundred -- and pooling the two directions, as the previous analysis did, averages two
+distinct programmes into one list.
 
 CAVEATS. Purple's per-module column is 10 modules and should be read as a report of that many
 gene sets, not as a characterisation of its nitrogen response; panels B and D are drawn from
