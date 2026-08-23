@@ -704,11 +704,22 @@ carries the overall folds (2.57× and 2.49×) and panel C carries the per-layer
 comparison. The empirical p is 1/21 for every layer, which is the floor set by 20
 permutations, not a precise p — the legend says so and quotes z instead.
 
-**C — each non-linear layer relative to Pearson-only, under both
-normalisations.** This is the opportunity-bias argument in one panel: MI-only
-edges look better conserved by raw rate in one direction (1.13×) and lose it
-after the null (1.005×), while `both`-estimator edges survive both (1.08× and
-1.20×).
+**C — edge composition by layer**, stacked as a share per network with the
+counts on the bars and the two minority classes under the axis. Panel C used to
+plot each non-linear layer relative to Pearson-only under two normalisations;
+the composition is the more direct statement of the same case, and the
+fold-over-null numbers that carried the argument now live in the legend:
+MI-only conserves at 2.58× and 2.27× against Pearson-only's 2.57× and 2.46× —
+parity in one direction, **below** Pearson in the other — while `both`-estimator
+edges reach 2.76× and 2.95×.
+
+> This duplicates Figure 3's panel C. Deliberate: in Figure 3 it describes the
+> networks, here it sits against the conservation result, which is where the
+> case on the MI layer actually gets made.
+
+> Small-slice labels do not fit inside a 1–7% band and collide however they are
+> justified, so the minority classes are labelled under the axis as percentages;
+> counts stay in the legend and `_stats.tsv`.
 
 **D — the funnel**, log scale: nodes → on a conserved edge → nitrogen-responsive
 → responsive on both sides. It closes at purple's 32 responsive genes, not at

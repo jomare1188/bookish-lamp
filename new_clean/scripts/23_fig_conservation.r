@@ -25,12 +25,12 @@
 #      panel shows terms both species agree on rather than terms one species
 #      drives.
 #
-#   C  THE SAME LAYERS AS RAW RATE AND AS FOLD, both relative to the Pearson-only
-#      layer. MI-only edges look better conserved than Pearson-only ones in the
-#      raw rate and stop looking that way once the null absorbs the opportunity
-#      difference -- MI-only edges connect genes with more orthologs, so they had
-#      more chances to match by accident. Putting the two normalisations side by
-#      side is the whole argument in one panel.
+#   C  EDGE COMPOSITION BY LAYER, per network -- how much of each network the
+#      non-linear layer actually contributes. Stacked as a proportion so the two
+#      are comparable across a 9.3x difference in edge count, with the absolute
+#      counts on the bars. Together with the per-layer conservation folds quoted
+#      in the legend, this is the case on the MI layer: it is a small minority of
+#      both networks AND the edges it alone finds are not better conserved.
 #
 #   D  THE FUNNEL, per species: network nodes -> genes on at least one conserved
 #      edge -> nitrogen-responsive among those -> responsive on BOTH sides of an
@@ -147,7 +147,11 @@ obsA <- rbindlist(list(
 obsA[, what := factor(what, levels = names(PAL_OBS))]
 # The denominator rides on the axis label, so the panel carries the percentage,
 # the count and what the count is out of.
-ax_lab <- function(d, n) sprintf("%s\n%s edges", d, trimws(fmt_n(n)))
+# Broken across three short lines rather than two long ones: at this panel width
+# "sugarcane → purple" on one line is wider than the space a single group gets,
+# and the two group labels collide.
+ax_lab <- function(d, n)
+  sprintf("%s\n%s edges", sub(" (→|->) ", "\n\\1 ", d), trimws(fmt_n(n)))
 obsA[, dir_ax := factor(ax_lab(dir_lab, total_edges),
                         levels = unique(ax_lab(dir_lab, total_edges)[order(dir_lab)]))]
 say("panel A: observed vs null, with absolute counts")
@@ -163,7 +167,7 @@ pA <- ggplot(obsA, aes(dir_ax, rate, fill = what)) +
   scale_y_continuous(labels = percent_format(accuracy = 1),
                      expand = expansion(mult = c(0, 0.20))) +
   labs(x = NULL, y = "edges with a conserved partner") +
-  theme_f + theme(axis.text.x = element_text(size = 6.8, lineheight = 1.05))
+  theme_f + theme(axis.text.x = element_text(size = 6.3, lineheight = 1.1))
 
 # =============================================================================
 # B — fold over null, by layer and direction
@@ -202,32 +206,52 @@ pB <- ggplot(goB, aes(mlp, Term)) +
                   panel.grid.major.y = element_line(linewidth = 0.2))
 
 # =============================================================================
-# C — raw rate vs fold, both relative to the Pearson-only layer
+# C — edge composition by layer
 # =============================================================================
-relC <- NULLS[source != "ALL", .(dir_lab, layer,
-                                 raw = obs_rate, fold = fold_over_null), by = direction]
-relC[, `:=`(raw_rel  = raw  / raw[layer == "Pearson only"],
-            fold_rel = fold / fold[layer == "Pearson only"]), by = direction]
-relC <- melt(relC[, .(direction, dir_lab, layer, raw_rel, fold_rel)],
-             id.vars = c("direction", "dir_lab", "layer"),
-             variable.name = "norm", value.name = "rel")
-relC[, norm := factor(fifelse(norm == "raw_rel", "raw conserved rate",
-                              "fold over null"),
-                      levels = c("raw conserved rate", "fold over null"))]
-say("panel C: layers relative to Pearson-only")
-print(dcast(relC, dir_lab + layer ~ norm, value.var = "rel"), row.names = FALSE)
+# What this panel replaced, and why the numbers it carried are now in the legend:
+# it used to plot each non-linear layer relative to the Pearson-only layer under
+# two normalisations, which is the sharpest form of the "MI adds nothing" result.
+# The composition is the more direct statement of the same case -- MI-only edges
+# are a small minority of both networks to begin with -- so the plot shows that
+# and the legend keeps the fold-over-null numbers, which are the actual evidence.
+LAY <- rbindlist(lapply(c("sugarcane", "purple"), function(st) {
+  d <- if (st == "sugarcane") "sugarcane_to_purple" else "purple_to_sugarcane"
+  x <- SUMS[direction == d & layer != "ALL"]
+  data.table(study = st, layer = factor(LAYERS[x$layer], levels = unname(LAYERS)),
+             n = x$total_edges)
+}))
+LAY[, study := factor(study, levels = c("sugarcane", "purple"))]
+LAY[, frac := n / sum(n), by = study]
+say("panel C: edge composition by layer")
+print(LAY[, .(study, layer, n = fmt_n(n), pct = round(100 * frac, 2))], row.names = FALSE)
 
-pC <- ggplot(relC[layer != "Pearson only"],
-             aes(norm, rel, fill = layer)) +
-  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
-  geom_hline(yintercept = 1, linetype = 2, linewidth = 0.3, colour = "grey35") +
-  geom_text(aes(label = sprintf("%.2f", rel)),
-            position = position_dodge(width = 0.7), vjust = -0.45, size = 2.2) +
-  facet_wrap(~ dir_lab, nrow = 1) +
+# The two minority classes are 1-7% of a bar, so their in-slice labels sit on top
+# of each other however they are justified. They go under the axis instead, where
+# they cannot collide and where the numbers the MI argument needs are the easiest
+# thing on the panel to read.
+minor <- LAY[layer != "Pearson only"]
+# Percentages only, and the class names shortened: the full "both estimators
+# 2,004,577 (2.6%)" is wider than a bar and the two studies' labels collide. The
+# counts are in the legend and the stats table.
+lab_c <- minor[, .(lab = paste(sprintf("%s %.1f%%",
+                                       fifelse(layer == "MI only", "MI only", "both"),
+                                       100 * frac),
+                               collapse = "\n")), by = study]
+lab_c <- lab_c[match(levels(LAY$study), study)]
+LAY[, study_ax := factor(sprintf("%s\n%s", study, lab_c$lab[match(study, lab_c$study)]),
+                         levels = sprintf("%s\n%s", lab_c$study, lab_c$lab))]
+
+pC <- ggplot(LAY, aes(study_ax, frac, fill = layer)) +
+  geom_col(width = 0.58, colour = "white", linewidth = 0.3) +
+  geom_text(data = LAY[layer == "Pearson only"],
+            aes(label = sprintf("%s\n%.1f%%", fmt_n(n), 100 * frac)),
+            position = position_stack(vjust = 0.5), size = 2.2,
+            lineheight = 0.95, colour = "white") +
   scale_fill_manual(values = PAL_LAYER, name = NULL) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(x = NULL, y = "relative to the Pearson-only layer") +
-  theme_f + theme(axis.text.x = element_text(angle = 12, hjust = 1))
+  scale_y_continuous(labels = percent_format(accuracy = 1),
+                     expand = expansion(mult = c(0, 0.02))) +
+  labs(x = NULL, y = "share of edges") +
+  theme_f + theme(axis.text.x = element_text(size = 6.1, lineheight = 1.15))
 
 # =============================================================================
 # D — the funnel
@@ -297,7 +321,7 @@ wrap_at <- function(x, width = 96)
 
 nl  <- function(d, sc, col) NULLS[direction == d & source == sc][[col]]
 sm  <- function(d, l, col)  SUMS[direction == d & layer == l][[col]]
-rel <- function(d, l, nm)   relC[direction == d & layer == LAYERS[[l]] & norm == nm, rel]
+ly  <- function(st, l, col) LAY[study == st & layer == l][[col]]
 D1 <- DIRS[1]; D2 <- DIRS[2]
 n_perm <- 20
 
@@ -361,22 +385,43 @@ sprintf("%d", nrow(top)), " shared terms with the strongest agreement, ranked by
 "no shared responsive GENES -- an ordinary evolutionary pattern, but note the power gap between ",
 "the two tests before reading it as agreement.\n",
 "\n",
-"(C) Each non-linear layer relative to the Pearson-only layer of the same direction, under both ",
-"normalisations. For MI-only edges the two normalisations disagree in ", DIR_LAB[[D1]],
-" and agree in ", DIR_LAB[[D2]], ", and neither leaves MI ahead. In ", DIR_LAB[[D1]],
-" MI-only edges look BETTER conserved than Pearson-only ones by raw rate (",
-sprintf("%.2f", rel(D1, "mi", "raw conserved rate")), "x) and that advantage vanishes once the ",
-"null absorbs the opportunity difference (", sprintf("%.3f", rel(D1, "mi", "fold over null")),
-"x, i.e. parity). In ", DIR_LAB[[D2]], " MI-only edges are already below parity on the raw rate (",
-sprintf("%.2f", rel(D2, "mi", "raw conserved rate")), "x) and stay below it after the null (",
-sprintf("%.3f", rel(D2, "mi", "fold over null")), "x). So there is no direction in which MI-only ",
-"edges are better conserved once chance is accounted for. The correction that matters is ",
-"opportunity bias: MI-only edges connect genes with more orthologs, so they had more chances to ",
-"match by accident, and the permutation null absorbs exactly that. Edges found by BOTH estimators are the ",
-"exception and survive both normalisations (", sprintf("%.2f", rel(D1, "both", "fold over null")),
-"x and ", sprintf("%.2f", rel(D2, "both", "fold over null")), "x over Pearson-only). The robust ",
-"statement is therefore not that mutual information finds better-conserved edges -- it does not ",
-"-- but that edges BOTH estimators agree on are better conserved than either alone.\n",
+"(C) Composition of each network by which estimator found the edge, stacked as a share so the ",
+"two are comparable across a ", sprintf("%.1f", sm(D2, "ALL", "total_edges") /
+sm(D1, "ALL", "total_edges")), "x difference in edge count; absolute counts are on the bars. In ",
+"sugarcane, ", fmt_n(ly("sugarcane", "Pearson only", "n")), " edges (",
+sprintf("%.1f%%", 100 * ly("sugarcane", "Pearson only", "frac")), ") are found by Pearson alone, ",
+fmt_n(ly("sugarcane", "both estimators", "n")), " (",
+sprintf("%.1f%%", 100 * ly("sugarcane", "both estimators", "frac")), ") by both estimators, and ",
+fmt_n(ly("sugarcane", "MI only", "n")), " (",
+sprintf("%.1f%%", 100 * ly("sugarcane", "MI only", "frac")), ") by mutual information alone; in ",
+"purple the same three are ", fmt_n(ly("purple", "Pearson only", "n")), " (",
+sprintf("%.1f%%", 100 * ly("purple", "Pearson only", "frac")), "), ",
+fmt_n(ly("purple", "both estimators", "n")), " (",
+sprintf("%.1f%%", 100 * ly("purple", "both estimators", "frac")), ") and ",
+fmt_n(ly("purple", "MI only", "n")), " (",
+sprintf("%.1f%%", 100 * ly("purple", "MI only", "frac")), "). Purple's larger non-linear share is ",
+"NOT more non-linear biology: the two layers are matched on p-value, and at n = 18 the p implied ",
+"by |r| = 0.8 is 6.7e-05 against 9.0e-12 at n = 48, so purple's MI floor is far softer in ",
+"absolute terms.\n",
+"\n",
+"Read against the conservation results, this panel is the case against the MI layer. The ",
+"MI-ONLY edges are a small minority of both networks -- ",
+sprintf("%.1f%%", 100 * ly("sugarcane", "MI only", "frac")), " and ",
+sprintf("%.1f%%", 100 * ly("purple", "MI only", "frac")), " -- and they are not better conserved ",
+"than Pearson-only edges once chance is accounted for: their fold over null is ",
+sprintf("%.2f", nl(D1, "mi", "fold_over_null")), "x and ",
+sprintf("%.2f", nl(D2, "mi", "fold_over_null")), "x against ",
+sprintf("%.2f", nl(D1, "pearson", "fold_over_null")), "x and ",
+sprintf("%.2f", nl(D2, "pearson", "fold_over_null")), "x for Pearson-only, i.e. parity in one ",
+"direction and BELOW Pearson in the other. Any apparent MI advantage in the raw conserved rate is ",
+"opportunity bias -- MI-only edges connect genes with more orthologs, so they had more chances to ",
+"match by accident, and the permutation null absorbs exactly that. The one layer that does earn ",
+"its place is `both`: edges the two estimators agree on conserve at ",
+sprintf("%.2f", nl(D1, "both", "fold_over_null")), "x and ",
+sprintf("%.2f", nl(D2, "both", "fold_over_null")), "x, above Pearson-only in both directions. So ",
+"the defensible statement is not that mutual information finds better-conserved edges -- it does ",
+"not -- but that agreement between two estimators marks better-conserved edges than either ",
+"alone.\n",
 "\n",
 "(D) Where the comparative question closes, per species, on a log axis. Of ",
 fmt_n(n_nodes[["sugarcane"]]), " sugarcane nodes, ",

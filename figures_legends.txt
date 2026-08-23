@@ -247,19 +247,26 @@ itself. Read this alongside panel D, which shows that this shared FUNCTION coexi
 no shared responsive GENES -- an ordinary evolutionary pattern, but note the power gap between
 the two tests before reading it as agreement.
 
-(C) Each non-linear layer relative to the Pearson-only layer of the same direction, under both
-normalisations. For MI-only edges the two normalisations disagree in sugarcane → purple and
-agree in purple → sugarcane, and neither leaves MI ahead. In sugarcane → purple MI-only edges
-look BETTER conserved than Pearson-only ones by raw rate (1.13x) and that advantage vanishes
-once the null absorbs the opportunity difference (1.005x, i.e. parity). In purple → sugarcane
-MI-only edges are already below parity on the raw rate (0.94x) and stay below it after the null
-(0.921x). So there is no direction in which MI-only edges are better conserved once chance is
-accounted for. The correction that matters is opportunity bias: MI-only edges connect genes
-with more orthologs, so they had more chances to match by accident, and the permutation null
-absorbs exactly that. Edges found by BOTH estimators are the exception and survive both
-normalisations (1.08x and 1.20x over Pearson-only). The robust statement is therefore not that
-mutual information finds better-conserved edges -- it does not -- but that edges BOTH
-estimators agree on are better conserved than either alone.
+(C) Composition of each network by which estimator found the edge, stacked as a share so the
+two are comparable across a 9.3x difference in edge count; absolute counts are on the bars. In
+sugarcane, 73,329,192 edges (96.2%) are found by Pearson alone, 2,004,577 (2.6%) by both
+estimators, and 866,575 (1.1%) by mutual information alone; in purple the same three are
+625,775,930 (88.7%), 50,179,988 (7.1%) and 29,615,805 (4.2%). Purple's larger non-linear share
+is NOT more non-linear biology: the two layers are matched on p-value, and at n = 18 the p
+implied by |r| = 0.8 is 6.7e-05 against 9.0e-12 at n = 48, so purple's MI floor is far softer
+in absolute terms.
+
+Read against the conservation results, this panel is the case against the MI layer. The MI-ONLY
+edges are a small minority of both networks -- 1.1% and 4.2% -- and they are not better
+conserved than Pearson-only edges once chance is accounted for: their fold over null is 2.58x
+and 2.27x against 2.57x and 2.46x for Pearson-only, i.e. parity in one direction and BELOW
+Pearson in the other. Any apparent MI advantage in the raw conserved rate is opportunity bias
+-- MI-only edges connect genes with more orthologs, so they had more chances to match by
+accident, and the permutation null absorbs exactly that. The one layer that does earn its place
+is `both`: edges the two estimators agree on conserve at 2.76x and 2.95x, above Pearson-only in
+both directions. So the defensible statement is not that mutual information finds
+better-conserved edges -- it does not -- but that agreement between two estimators marks
+better-conserved edges than either alone.
 
 (D) Where the comparative question closes, per species, on a log axis. Of 103,336 sugarcane
 nodes, 39,226 sit on at least one conserved edge, 3,265 of those are nitrogen-responsive, and 2
