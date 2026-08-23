@@ -72,6 +72,7 @@ cd /dados04/jorge/comparative_saccharum/new_clean
 ./run.sh figconservation           # cross-species edge conservation       15 s
 ./run.sh figmodules                # module-level nitrogen response        20 s
 ./run.sh figmodulego               # module GO, incl. by direction         15 s
+./run.sh figmodule20               # Munoz Module 20 in purple             15 s
 ./run.sh figrepro                  # both source studies reproduced        40 s
 ./run.sh legends                   # -> figures_legends.txt (repo root)
 ```
@@ -183,6 +184,7 @@ scripts/
   23_fig_conservation.r       conservation vs null, by layer, + the funnel
   24_fig_modules.r            module selection, Spearman gain, response, TFs
   25_fig_module_go.r          module GO: gate, by direction, recurrence
+  26_fig_module20.r           Module 20 in purple: copies, the U-shape MYB
   11_readouts/           get_tfs, myb61, module20 (H1); cached sequence work is
                          read from the original GET_TFS tree, output lands here
   validate.py            engine correctness suite

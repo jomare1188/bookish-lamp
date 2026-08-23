@@ -38,6 +38,7 @@
 #   ./run.sh figconservation                 cross-species edge conservation
 #   ./run.sh figmodules                      module-level nitrogen response
 #   ./run.sh figmodulego                     module-level GO, incl. by direction
+#   ./run.sh figmodule20                     Munoz Module 20 in purple
 #   ./run.sh figrepro                        both source studies reproduced
 #   ./run.sh legends                         assemble figures_legends.txt
 #   ./run.sh build     <study>               export + both layers + merge
@@ -466,6 +467,20 @@ main() {
     CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_MODULE_GO}_module_go" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/25_fig_module_go.r"
+    ;;
+
+  figmodule20)
+    CLEAN_FIG_NUM="$FIG_MODULE20" \
+    CLEAN_M20_DIR="${RESULTS}/readouts/module20" \
+    CLEAN_TPM_SUGARCANE="$TPM_sugarcane" \
+    CLEAN_TPM_PURPLE="$TPM_purple" \
+    CLEAN_META_SUGARCANE="$META_sugarcane" \
+    CLEAN_META_PURPLE="$META_purple" \
+    CLEAN_M20_FOCUS="$M20_FOCUS_GENE" \
+    CLEAN_M20_ANCHOR="$M20_FOCUS_ANCHOR" \
+    CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_MODULE20}_module20" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_PLOT" "${SCRIPTS}/26_fig_module20.r"
     ;;
 
   figrepro)

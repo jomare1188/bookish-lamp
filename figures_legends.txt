@@ -403,3 +403,50 @@ labels mean 'tracks nitrogen supply', not 'responds to nitrogen stress' -- in pu
 levels are stress-control-stress rather than a dose series, so a monotone test cannot see a
 module moved the same way by both extremes.
 
+
+Figure 7. Muñoz-Perez et al.'s Module 20 in purple, against sugarcane. Figure 2 showed that the
+module's nitrogen response reproduces in the study's own data. This figure asks what survives
+in the other species, and the answer is not less of the same thing -- it is a different
+response shape, in one copy, that every monotone test in this work is blind to.
+
+(A) What the 12 published members actually are. They are TransDecoder transcripts from a de
+novo assembly; mapped into each reference proteome by reciprocal DIAMOND blastp through
+Arabidopsis they resolve to only THREE anchors, and the mapped genes are haplotype COPIES of
+those few loci rather than 12 independent genes -- 33 sugarcane genes from 10 members and 27
+purple genes from 6. Fill is our own Pfam/PlnTFDB domain call, which agrees with the source
+study on their proteins but not on the orthologs we map to: only the AtMYB59 anchor carries a
+MYB call, at 9 of 9 copies in sugarcane and 2 of 3 in purple, while the AT3G55960 and OPT7
+anchors -- which supply most of the mapped genes in both species -- are not transcription
+factors at all. The AtMYB48 anchor maps to nothing that is in either network. So the module's
+MYB identity is thin where it survives and absent where it does not.
+
+(B) Every purple copy across every purple library, as absolute log2(TPM + 1) rather than a
+z-score: a z-score would rescale a silent copy to look exactly as structured as an expressed
+one, which is the specific error this panel exists to prevent. Rows are grouped by anchor and
+ordered by mean expression, columns by nitrogen status. Most copies are low or flat, and the
+AtMYB59 block is nearly empty -- of its 3 copies, two run at 0.01 and 0.00 TPM on average, i.e.
+they are not expressed in leaf at all.
+
+(C) The one that is. Soffic.09G0001580-9H is the only AtMYB59-anchor copy expressed in purple
+(60.8 TPM) and is called MYB both by the source study and by our own domain rules. Points are
+libraries, lines join the means. Its response is a U CENTRED ON THE CONTROL: in 51NG3 it runs
+at 124.1 TPM under nitrogen starvation, 10.8 at the 2 N control and 47.4 under excess -- an
+eleven-fold drop from starvation to control and a four-fold rise again beyond it (U-shape
+contrast c(+1,-2,+1) p = 0.0078, one-way p = 0.0126; it does not clear BH over the 27 purple
+Module-20 genes tested, so it is a candidate rather than a finding). TAGZ shows the same shape
+more weakly (65.5, 40, 75.6 TPM).
+
+Because 2 N is the CONTROL and 0 N and 6 N are stresses in opposite directions, this is a gene
+induced by nitrogen stress in EITHER direction. That is exactly the shape a monotone rank
+correlation cannot see -- it is the reason the module-level analysis reports this gene's module
+as unresponsive, and the reason the U-shape contrast exists as a separate test.
+
+(D) The same anchor in sugarcane, on a log axis: 9 expressed copies, every one monotonically
+REPRESSED by nitrogen (log2 fold change -1.8 to -3.4, BH-adjusted p ~ 1e-08 in the responsive
+genotype RB975375). Sugarcane's design has no control level -- only Low and High -- so what it
+can observe is one arm of a curve. Read C and D together and the two studies are consistent
+rather than contradictory: sugarcane sees the low-nitrogen arm of the same response, and only
+purple's three-level design reveals that the high-nitrogen side turns back up. The caveat that
+limits how far this can be pushed is that it rests on ONE expressed copy in one species, at a
+p-value that does not survive correction.
+

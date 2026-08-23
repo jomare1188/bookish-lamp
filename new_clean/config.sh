@@ -305,6 +305,13 @@ FIG_TOPOLOGY=3
 FIG_CONSERVATION=4
 FIG_MODULES=5
 FIG_MODULE_GO=6
+FIG_MODULE20=7
+
+# Module-20 figure. The focus copy is the ONLY AtMYB59-anchor copy expressed in
+# purple (60.6 TPM against 0.01 and 0.00 for the other two) and the only
+# Module-20 gene there with a significant U-shape response to nitrogen.
+M20_FOCUS_GENE=Soffic.09G0001580-9H
+M20_FOCUS_ANCHOR=AT5G59780
 
 # Module-GO figure: how many terms per direction in panel B, how many recurrent
 # terms in panel D, and which study carries those two panels. sugarcane, because

@@ -820,6 +820,42 @@ weak signal drawn from the ~11% of modules that are individually testable.
 `MODULE_GO_FIG_MAIN` still names which species leads (sugarcane), and the other
 follows in C.
 
+### `figmodule20` — Muñoz's Module 20 in purple
+
+```
+./run.sh figmodule20      # -> results/figures/figure<N>_module20.{png,pdf,svg}
+```
+
+| | |
+|---|---|
+| cost | ~15 s |
+| env | `r_env` |
+| inputs | the module20 readout tables, both TPM matrices, both sample sheets |
+
+The comparative question about Module 20, and the answer is not "less of the
+same". **A** the 12 published members resolve to three Arabidopsis anchors and
+the mapped genes are haplotype *copies* of those loci (33 sugarcane genes from
+10 members, 27 purple from 6); only the AtMYB59 anchor carries a MYB call.
+**B** all 27 purple copies, as **absolute** log2(TPM+1) — a z-score would rescale
+a silent copy to look as structured as an expressed one, which is the specific
+error this panel exists to prevent. **C** `Soffic.09G0001580-9H`, the only
+expressed AtMYB59 copy in purple (60.8 TPM against 0.01 and 0.00). **D** the same
+anchor in sugarcane.
+
+> **The finding.** That one copy responds in a **U centred on the control** —
+> 124.1 TPM under starvation, 10.8 at the 2 N control, 47.4 under excess in
+> 51NG3. Since 2 N is the control and both extremes are stresses, it is induced
+> by nitrogen stress *in either direction*, which is exactly what a monotone rank
+> correlation cannot see. Sugarcane's nine copies at the same anchor are all
+> monotonically repressed by nitrogen — but sugarcane has no control level, so it
+> can only observe one arm. The two studies are consistent, not contradictory.
+>
+> It rests on one expressed copy at U-contrast p = 0.0078 that does **not** clear
+> BH over the 27 purple Module-20 genes. The legend calls it a candidate.
+
+The focus gene and anchor are `M20_FOCUS_GENE` / `M20_FOCUS_ANCHOR` in
+`config.sh`, not hardcoded in the script.
+
 ### `figrepro` — reproducing each source study's own finding
 
 ```
