@@ -21,7 +21,8 @@
 #      each nf-core/rnaseq run. Plotted against each other rather than as two
 #      bar charts: the failure mode worth seeing is a library that is both
 #      shallow and poorly mapped, and that is a position on this plane, not a
-#      value on either axis.
+#      value on either axis. Coloured by nitrogen STATUS (low / control / high),
+#      the one encoding both studies share -- see NSTATUS below.
 #
 #   C  THE GENE FUNNEL. Annotated genes -> quantified -> surviving the CV filter
 #      -> nodes in the network. A reader who only sees "103,336 nodes" cannot
@@ -88,6 +89,27 @@ SEGMENT_LEVELS <- c("base0", "base", "mid", "tip")
 PURPLE_N <- c("0N" = "0 N\n(low stress)",
               "2N" = "2 N\n(control)",
               "6N" = "6 N\n(high stress)")
+
+# Panels B and D colour by NITROGEN STATUS, not by the applied level, so one key
+# serves both studies: sugarcane's Low N and purple's 0 N are the same colour,
+# and so are sugarcane's High N and purple's 6 N. Only purple contributes a
+# control, and its absence from sugarcane is a fact about that design worth
+# seeing rather than hiding. Panel A keeps the applied levels on its axis --
+# that panel exists to show what was actually done.
+NSTATUS_LEVELS <- c("low N", "control", "high N")
+# keyed on the raw `treatment` value of each sheet, which differ in wording
+NSTATUS <- c("Low Nitrogen" = "low N", "High Nitrogen" = "high N",
+             "0N" = "low N", "2N" = "control", "6N" = "high N")
+
+# scico `managua`, reversed and trimmed. DIVERGING, not sequential, and that is
+# the point: low and high are both DEPARTURES from the control, in opposite
+# directions, so the scale should read outwards from the middle rather than as a
+# ramp. Reversed so blue is starvation and warm is excess, which is the way round
+# a reader expects. managua rather than vik or bam because those centre on a
+# near-white that disappears as a fill; managua's centre is a dark plum that
+# holds its own next to the two ends.
+PAL_NSTATUS <- setNames(rev(scico(3, palette = "managua", begin = 0.08, end = 0.92)),
+                        NSTATUS_LEVELS)
 PAL_N   <- scico(4, palette = "lajolla", begin = 0.25, end = 0.9)
 theme_f <- theme_bw(base_size = 8) +
   theme(panel.grid.minor = element_blank(),
@@ -123,7 +145,11 @@ read_meta <- function(st) {
                        levels = unname(PURPLE_N))]
     m[, seg := factor("leaf")]
   }
-  m[, .(sample, genotype, treatment, study, nlev, seg)]
+  m[, nstat := factor(NSTATUS[as.character(treatment)], levels = NSTATUS_LEVELS)]
+  if (anyNA(m$nstat))
+    stop("unmapped nitrogen level(s) in ", st, ": ",
+         paste(unique(m$treatment[is.na(m$nstat)]), collapse = ", "), call. = FALSE)
+  m[, .(sample, genotype, treatment, study, nlev, nstat, seg)]
 }
 META <- rbindlist(lapply(STUDIES, read_meta), fill = TRUE)
 META[, study := factor(study, levels = unname(STUDY_LAB))]
@@ -161,7 +187,7 @@ qc <- rbindlist(lapply(STUDIES, function(st) {
   q[, study := STUDY_LAB[[st]]]
   q
 }))
-qc <- merge(qc, META[, .(sample, nlev, genotype, study)], by = c("sample", "study"))
+qc <- merge(qc, META[, .(sample, nlev, nstat, genotype, study)], by = c("sample", "study"))
 qc[, study := factor(study, levels = unname(STUDY_LAB))]
 qc[, m_proc := num_processed / 1e6]
 
@@ -178,13 +204,10 @@ say("  lowest mapping rate per study: ",
     paste(sprintf("%s %s %.1f%% (%.1f M fragments)", worst$study, worst$sample,
                   worst$percent_mapped, worst$m_proc), collapse = " | "))
 
-pB <- ggplot(qc, aes(m_proc, percent_mapped, fill = nlev, shape = study)) +
+pB <- ggplot(qc, aes(m_proc, percent_mapped, fill = nstat, shape = study)) +
   geom_point(size = 1.9, colour = "grey25", stroke = 0.25, alpha = 0.95) +
   scale_shape_manual(values = c(21, 24), name = NULL) +
-  scale_fill_manual(values = setNames(PAL_N[c(1, 3, 2, 4)][seq_len(nlevels(META$nlev))],
-                                      levels(META$nlev)),
-                    labels = function(x) gsub("\n", " ", x),
-                    name = "nitrogen",
+  scale_fill_manual(values = PAL_NSTATUS, name = "nitrogen",
                     guide = guide_legend(override.aes = list(shape = 21))) +
   scale_x_continuous(name = "fragments processed (millions)") +
   scale_y_continuous(name = "mapped to the reference (%)",
@@ -257,7 +280,7 @@ pca <- rbindlist(lapply(STUDIES, function(st) {
   }
   d
 }), fill = TRUE)      # purple has one tissue, so it has no tissue R^2 columns
-pca <- merge(pca, META[, .(sample, nlev, genotype, seg, study)],
+pca <- merge(pca, META[, .(sample, nlev, nstat, genotype, seg, study)],
              by = c("sample", "study"))
 pca[, study := factor(study, levels = unname(STUDY_LAB))]
 pca[, facet := sprintf("%s\nPC1 %.0f%% | PC2 %.0f%%", study, ve1, ve2)]
@@ -266,14 +289,11 @@ say("panel D: PCA variance explained")
 print(unique(pca[, .(study, PC1 = round(ve1, 1), PC2 = round(ve2, 1))]),
       row.names = FALSE)
 
-pD <- ggplot(pca, aes(PC1, PC2, fill = nlev, shape = genotype)) +
+pD <- ggplot(pca, aes(PC1, PC2, fill = nstat, shape = genotype)) +
   geom_point(size = 2.1, colour = "grey25", stroke = 0.25) +
   facet_wrap(~ facet, scales = "free", nrow = 1) +
   scale_shape_manual(values = c(21, 24, 22, 23), name = "genotype") +
-  scale_fill_manual(values = setNames(PAL_N[c(1, 3, 2, 4)][seq_len(nlevels(META$nlev))],
-                                      levels(META$nlev)),
-                    labels = function(x) gsub("\n", " ", x),
-                    name = "nitrogen",
+  scale_fill_manual(values = PAL_NSTATUS, name = "nitrogen",
                     guide = guide_legend(override.aes = list(shape = 21))) +
   theme_f
 
@@ -345,7 +365,15 @@ sprintf("%d", META[study == STUDY_LAB[[S2]], .N]), " asymmetry is the single mos
 "
 ",
 "(B) Sequencing depth against mapping rate, one point per library, from the salmon logs of each ",
-"nf-core/rnaseq run; fill gives the nitrogen level and shape the study. Depth and mapping rate ",
+"nf-core/rnaseq run; shape gives the study and fill the NITROGEN STATUS. Panels B and D colour by ",
+"status rather than by the applied level so that one key serves both studies: sugarcane's Low N ",
+"and purple's 0 N are both `low N`, sugarcane's High N and purple's 6 N are both `high N`, and ",
+"`control` is purple's 2 N alone -- sugarcane has no control level, and its absence is a fact ",
+"about that design rather than an omission from the figure. The scale is DIVERGING (scico ",
+"`managua`, reversed), because low and high are departures from the control in opposite ",
+"directions rather than steps along a ramp; cool is starvation, warm is excess, and the dark ",
+"centre is the reference. Panel A keeps the applied levels on its axis, since that panel exists ",
+"to show what was actually done. Depth and mapping rate ",
 "are plotted against each other rather than as two separate distributions because the failure ",
 "worth seeing is a library that is both shallow and poorly mapped, which is a position on this ",
 "plane and not a value on either axis. ", STUDY_LAB[[S1]], ": median ",
@@ -382,8 +410,8 @@ STUDY_LAB[[S1]], " does not. This panel is the context for every node and edge c
 ",
 "(D) Principal components of the variance-stabilised expression matrix of each study, computed ",
 "independently per study on the ", fmt_n(N_PCA), " most variable genes, with the percentage of ",
-"total variance carried by each axis in the panel strip. Fill gives nitrogen level, shape gives ",
-"genotype. The purpose is to establish, before any network is built, that the experimental design ",
+"total variance carried by each axis in the panel strip. Fill gives nitrogen status on the shared ",
+"scale described in (B), shape gives genotype. The purpose is to establish, before any network is built, that the experimental design ",
 "is visible in the data at all, and to say plainly what the dominant structure is. It is genotype, ",
 "in both studies and almost exactly: regressing each component on each design factor, PC1 tracks ",
 "genotype at R2 = ", sprintf("%.3f", pv(S1, "r2_pc1_genotype")), " in ", STUDY_LAB[[S1]],
