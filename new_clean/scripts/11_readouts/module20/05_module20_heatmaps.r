@@ -206,8 +206,12 @@ draw_species <- function(sp) {
   h <- 4 + 0.30 * nrow(X)
   for (dev in c("png", "pdf")) {
     f <- file.path(outdir, sprintf("module20_heatmap_%s.%s", sp, dev))
-    if (dev == "png") png(f, width = w, height = 2 * h, units = "cm", res = 300)
-    else              pdf(f, width = w / 2.54, height = 2 * h / 2.54)
+    # cairo, not the base devices: these titles carry an em dash and "Muñoz",
+    # and base pdf() transliterates UTF-8 -- it was silently writing "Munoz" and
+    # a hyphen, with a warning per draw.
+    if (dev == "png") png(f, width = w, height = 2 * h, units = "cm", res = 300,
+                          type = "cairo")
+    else              cairo_pdf(f, width = w / 2.54, height = 2 * h / 2.54)
     pushViewport(viewport(layout = grid.layout(2, 1)))
     pushViewport(viewport(layout.pos.row = 1))
     draw(hA, heatmap_legend_side = "right", annotation_legend_side = "right",

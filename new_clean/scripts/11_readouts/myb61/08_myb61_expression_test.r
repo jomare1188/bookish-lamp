@@ -223,10 +223,12 @@ pB <- lab_strip(
          x = NULL, y = NULL))
 
 fig <- pA / pB + plot_layout(heights = c(1, 1))
+# cairo devices: the panel titles carry em dashes, and ggsave's default for a
+# .pdf path is the base pdf() device, which transliterates UTF-8 to ASCII.
 ggsave(file.path(outdir, "MYB61_expression_heatmap.png"), fig,
-       width = 30, height = 34, units = "cm", dpi = 300)
+       width = 30, height = 34, units = "cm", dpi = 300, type = "cairo")
 ggsave(file.path(outdir, "MYB61_expression_heatmap.pdf"), fig,
-       width = 30, height = 34, units = "cm")
+       width = 30, height = 34, units = "cm", device = cairo_pdf)
 
 cat(sprintf("\nOutputs:\n  %s\n  %s\n",
             file.path(outdir, "MYB61_expression_anova.tsv"),
