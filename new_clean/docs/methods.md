@@ -583,7 +583,15 @@ and that re-quantifying somebody else's libraries actually worked.
 **A — the design.** Libraries per study × genotype × nitrogen × leaf segment.
 Note `facet_wrap`, not `facet_grid`: a grid draws a cell for every study ×
 genotype pair including the six that do not exist. Fill carries the study, not
-the count — with every cell at 3 or 6 a continuous colour bar is decoration.
+the count — with every cell at 3 a continuous colour bar is decoration.
+
+> **The sugarcane sheet's `tissue` column is not the design.** The study sampled
+> **four** leaf segments — `base0`, `base`, `mid`, `tip`, 12 libraries each,
+> carried in the library names as `B0/B/M/P`. `tissue` collapses `base0` and
+> `base` into one "Leaf Base" of 24, calls `mid` "Leaf" and `tip` "Leaf Apex".
+> Use the **`segment`** column, which carries the four real levels. `tissue` is
+> left in place so the original sheet's provenance is intact; nothing should read
+> it as the segment factor.
 
 **B — depth against mapping rate**, one point per library from the salmon logs.
 Plotted against each other rather than as two distributions because the failure
@@ -597,9 +605,12 @@ nodes in the network, with the fraction retained. A reader who sees only
 **D — PCA per study** on the 2,000 most variable genes (`PCA_NTOP`).
 **What each axis tracks is measured, not assumed** — the script regresses each
 component on each design factor and the legend quotes the R². That check earned
-its place immediately: the first draft of the legend asserted that sugarcane's
-leading axis was leaf segment, and PC1 is genotype at R² = 0.998 in *both*
-studies. Nitrogen loads on neither first component.
+its place twice: the first draft of the legend asserted that sugarcane's leading
+axis was leaf segment (PC1 is genotype at R² = 0.998 in *both* studies, and
+nitrogen loads on neither first component), and the second measured segment on
+the collapsed `tissue` column. On the four real segments, leaf segment explains
+**0.802** of sugarcane's PC2 against 0.450 on the collapsed three — which is also
+the quantitative case for `HEATMAP_GROUP_BY="segment"`.
 
 ### `figrepro` — reproducing each source study's own finding
 

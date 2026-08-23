@@ -13,7 +13,7 @@
 #      segment, in sugarcane). This is where the sample-size asymmetry that runs
 #      through every downstream result becomes visible: 48 against 18. It is also
 #      where the two designs stop matching -- sugarcane contrasts two nitrogen
-#      levels across three leaf segments, purple runs a three-point dose in one
+#      levels across four leaf segments, purple runs a three-point dose in one
 #      tissue -- which is why the trait is coded ordinally and tested by rank.
 #
 #   B  SEQUENCING DEPTH AND MAPPING RATE, per library, from the salmon logs of
@@ -74,6 +74,9 @@ names(cfg) <- STUDIES
 banner(sprintf("Figure %s — dataset, QC and quantification", FIG))
 
 STUDY_LAB <- vapply(cfg, `[[`, "", "label")
+# base -> tip, the order they sit on the leaf; any other order makes the design
+# panel and the heatmap column blocks arbitrary.
+SEGMENT_LEVELS <- c("base0", "base", "mid", "tip")
 PAL_N   <- scico(4, palette = "lajolla", begin = 0.25, end = 0.9)
 theme_f <- theme_bw(base_size = 8) +
   theme(panel.grid.minor = element_blank(),
@@ -86,19 +89,27 @@ theme_f <- theme_bw(base_size = 8) +
 # --- metadata, harmonised across two differently-shaped sample sheets ---------
 read_meta <- function(st) {
   m <- fread(cfg[[st]]$meta); setnames(m, tolower(names(m)))
-  m <- m[, .(sample, genotype, treatment, tissue)]
   m[, study := STUDY_LAB[[st]]]
   # Sugarcane names its nitrogen levels, purple gives a dose. Ordering is what
   # matters downstream, so both become an ordered factor with the dose as label.
   if (st == "sugarcane") {
     m[, nlev := factor(fifelse(grepl("Low", treatment), "Low N", "High N"),
                        levels = c("Low N", "High N"))]
-    m[, seg := sub("^Leaf ", "", tissue)]
+    # THE `tissue` COLUMN OF THE SUGARCANE SHEET IS NOT THE DESIGN. The study
+    # sampled FOUR leaf segments -- base0, base, mid, tip, 12 libraries each,
+    # carried in the library names as B0/B/M/P -- but `tissue` collapses base0
+    # and base both into "Leaf Base" (24), calls mid "Leaf" and tip "Leaf Apex".
+    # Use the `segment` column, which is the four real levels.
+    if (!"segment" %in% names(m))
+      stop("the sugarcane sample sheet has no `segment` column; `tissue` collapses\n",
+           "  base0 and base and must not be used as the leaf-segment factor",
+           call. = FALSE)
+    m[, seg := factor(segment, levels = SEGMENT_LEVELS)]
   } else {
     m[, nlev := factor(treatment, levels = c("0N", "2N", "6N"))]
-    m[, seg := "leaf"]
+    m[, seg := factor("leaf")]
   }
-  m[]
+  m[, .(sample, genotype, treatment, study, nlev, seg)]
 }
 META <- rbindlist(lapply(STUDIES, read_meta), fill = TRUE)
 META[, study := factor(study, levels = unname(STUDY_LAB))]
@@ -218,7 +229,10 @@ pca <- rbindlist(lapply(STUDIES, function(st) {
   # so it is measured: R^2 of each component on each design factor.
   m <- fread(cfg[[st]]$meta); setnames(m, tolower(names(m)))
   m <- m[match(d$sample, sample)]
-  for (fac in c("genotype", "treatment", "tissue")) {
+  # `segment`, not `tissue` -- see read_meta(). On the collapsed 3-level `tissue`
+  # column this R^2 came out at 0.450; on the real four segments it is higher,
+  # and it is the number the legend quotes.
+  for (fac in c("genotype", "treatment", "segment")) {
     f <- factor(m[[fac]])
     if (nlevels(f) < 2) next
     r1 <- summary(lm(d$PC1 ~ f))$r.squared; r2 <- summary(lm(d$PC2 ~ f))$r.squared
@@ -296,9 +310,10 @@ legend <- paste0(
 "
 ",
 "(A) Library counts per study, genotype, nitrogen level and leaf segment; the number in each cell ",
-"is the number of sequenced libraries. The two designs are deliberately shown on the same axes ",
+"is the number of sequenced libraries, and the segments run base to tip in the order sampled. The two designs are deliberately shown on the same axes ",
 "because their mismatch sets what the rest of the work can ask. ", STUDY_LAB[[S1]], " contrasts ",
-"two nitrogen levels across three leaf segments in two genotypes of contrasting nitrogen-use ",
+"two nitrogen levels across four leaf segments -- base0, base, mid and tip, sampled along the ",
+"developmental gradient of the leaf -- in two genotypes of contrasting nitrogen-use ",
 "efficiency (", sprintf("%d", META[study == STUDY_LAB[[S1]], .N]), " libraries); ",
 STUDY_LAB[[S2]], " runs a three-point nitrogen DOSE (0, 2, 6 mM) in one tissue in two species ",
 "(", sprintf("%d", META[study == STUDY_LAB[[S2]], .N]), " libraries). The ",
@@ -361,7 +376,7 @@ sprintf("%.0f%%", pv(S2, "ve2") + pv(S2, "ve1") - pv(S2, "ve2")), " of total var
 STUDY_LAB[[S2]], ": there PC2 (", sprintf("%.0f%%", pv(S2, "ve2")), ") tracks the nitrogen dose at ",
 "R2 = ", sprintf("%.3f", pv(S2, "r2_pc2_treatment")), ", whereas in ", STUDY_LAB[[S1]],
 " PC2 (", sprintf("%.0f%%", pv(S1, "ve2")), ") is mostly leaf segment (R2 = ",
-sprintf("%.3f", pv(S1, "r2_pc2_tissue")), ") with nitrogen a distant second (R2 = ",
+sprintf("%.3f", pv(S1, "r2_pc2_segment")), ") with nitrogen a distant second (R2 = ",
 sprintf("%.3f", pv(S1, "r2_pc2_treatment")), "). Two things follow, and they shape everything ",
 "after this figure. First, the nitrogen response is real but it is nowhere near the dominant ",
 "structure in either dataset, so it has to be found AGAINST genotype and tissue rather than read ",

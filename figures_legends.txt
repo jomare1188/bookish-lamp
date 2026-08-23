@@ -18,14 +18,16 @@ per gene of the two reference proteomes, which assigns 360,794 of 435,856 genes 
 it is what makes 'the same gene' a defined object across two polyploid references.
 
 (A) Library counts per study, genotype, nitrogen level and leaf segment; the number in each
-cell is the number of sequenced libraries. The two designs are deliberately shown on the same
-axes because their mismatch sets what the rest of the work can ask. sugarcane contrasts two
-nitrogen levels across three leaf segments in two genotypes of contrasting nitrogen-use
-efficiency (48 libraries); purple runs a three-point nitrogen DOSE (0, 2, 6 mM) in one tissue
-in two species (18 libraries). The 48 against 18 asymmetry is the single most important fact
-about this project and nearly every underpowered result traces back to it. That the second
-design is an ordered dose rather than a two-level contrast is why the trait is coded ordinally
-and tested by rank correlation rather than by Pearson.
+cell is the number of sequenced libraries, and the segments run base to tip in the order
+sampled. The two designs are deliberately shown on the same axes because their mismatch sets
+what the rest of the work can ask. sugarcane contrasts two nitrogen levels across four leaf
+segments -- base0, base, mid and tip, sampled along the developmental gradient of the leaf --
+in two genotypes of contrasting nitrogen-use efficiency (48 libraries); purple runs a
+three-point nitrogen DOSE (0, 2, 6 mM) in one tissue in two species (18 libraries). The 48
+against 18 asymmetry is the single most important fact about this project and nearly every
+underpowered result traces back to it. That the second design is an ordered dose rather than a
+two-level contrast is why the trait is coded ordinally and tested by rank correlation rather
+than by Pearson.
 
 (B) Sequencing depth against mapping rate, one point per library, from the salmon logs of each
 nf-core/rnaseq run; fill gives the nitrogen level and shape the study. Depth and mapping rate
@@ -56,7 +58,7 @@ studies and almost exactly: regressing each component on each design factor, PC1
 genotype at R2 = 0.998 in sugarcane (60% of total variance) and R2 = 0.999 in purple (72% of
 total variance). Nitrogen loads on neither first component (R2 = 0.000 and 0.000). It appears
 on PC2, and only clearly in purple: there PC2 (6%) tracks the nitrogen dose at R2 = 0.369,
-whereas in sugarcane PC2 (13%) is mostly leaf segment (R2 = 0.450) with nitrogen a distant
+whereas in sugarcane PC2 (13%) is mostly leaf segment (R2 = 0.802) with nitrogen a distant
 second (R2 = 0.090). Two things follow, and they shape everything after this figure. First, the
 nitrogen response is real but it is nowhere near the dominant structure in either dataset, so
 it has to be found AGAINST genotype and tissue rather than read off a leading component --

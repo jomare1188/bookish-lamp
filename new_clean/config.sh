@@ -231,10 +231,19 @@ HEATMAP_MAX_GENES=100
 SUMMARY_MAX_MODULES=250
 
 # Extra sample-metadata columns to group heatmap columns by, after the two
-# traits. Sugarcane's three leaf positions otherwise interleave -- its sample
-# names run B0_1, B_1, M_1, P_1, B0_2, ... so replicates of one tissue sit four
-# columns apart and the tissue effect reads as striping across the figure.
-HEATMAP_GROUP_BY="tissue"
+# traits. Sugarcane's four leaf segments otherwise interleave -- its sample names
+# run B0_1, B_1, M_1, P_1, B0_2, ... so replicates of one segment sit four columns
+# apart and the segment effect reads as striping across the figure.
+#
+# `segment`, NOT `tissue`. The sheet's own `tissue` column is not the design: it
+# collapses base0 and base into one "Leaf Base" of 24 libraries, calls mid "Leaf"
+# and tip "Leaf Apex". Grouping on it therefore left base0 and base interleaved
+# inside a block of 6 -- the striping this setting exists to remove. `segment`
+# carries the four real levels (base0, base, mid, tip; 12 libraries each), and
+# the PCA in the dataset figure measures the difference: leaf segment explains
+# 0.802 of sugarcane's PC2 on the four true levels against 0.450 on the
+# collapsed three. Purple has no segment column and skips this.
+HEATMAP_GROUP_BY="segment"
 
 # Per-module GO enrichment (18_module_go.r). One topGO run per responsive module,
 # with the response classes pooled -- the question is what responsive modules do,

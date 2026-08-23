@@ -115,7 +115,7 @@ XA <- as.matrix(tpm[gene %chin% genes_A, ..samp])
 rownames(XA) <- tpm[gene %chin% genes_A, gene]
 XA <- log2(XA + 1)
 
-# Column order: nitrogen block, then genotype, then tissue, then sample -- the
+# Column order: nitrogen block, then genotype, then leaf segment, then sample -- the
 # same replicate-adjacent rule the module figures use (see 16/17). Sugarcane's
 # names run B0_1, B_1, M_1, P_1, B0_2, ... so sorting by name alone scatters the
 # replicates of one leaf segment four columns apart and the segment effect reads
@@ -125,7 +125,9 @@ mA[, nlev := factor(fifelse(grepl("Low", treatment), "Low N", "High N"),
 mA[, gt := factor(fifelse(genotype == "RB975375", "RB975375 (responsive)",
                                                   "RB937570 (non-responsive)"),
                   levels = c("RB975375 (responsive)", "RB937570 (non-responsive)"))]
-ordA <- order(mA$nlev, mA$gt, mA$tissue, mA$sample)
+# `segment`, not `tissue`: the sheet's tissue column collapses base0 and base
+# into one label, which leaves those two interleaved inside a block of 6.
+ordA <- order(mA$nlev, mA$gt, mA$segment, mA$sample)
 mA <- mA[ordA]; XA <- XA[, mA$sample, drop = FALSE]
 
 ZA <- t(scale(t(XA))); ZA[!is.finite(ZA)] <- 0

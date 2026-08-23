@@ -663,11 +663,15 @@ everywhere in the network.
   table above.
 
   **Columns group replicates.** Sorting by sample name alone interleaves
-  sugarcane's three leaf positions — the names run `B0_1, B_1, M_1, P_1, B0_2,
-  ...`, so replicates of one tissue sit four columns apart and the tissue effect
-  reads as vertical striping right across the figure. Ordering by treatment,
-  genotype, tissue, then sample (`HEATMAP_GROUP_BY`) puts replicates adjacent and
-  the treatment blocks resolve. Sample labels are dropped (the design is carried
+  sugarcane's four leaf segments — the names run `B0_1, B_1, M_1, P_1, B0_2,
+  ...`, so replicates of one segment sit four columns apart and the segment
+  effect reads as vertical striping right across the figure. Ordering by
+  treatment, genotype, **`segment`**, then sample (`HEATMAP_GROUP_BY`) puts
+  replicates adjacent and the treatment blocks resolve. This grouped on the
+  sheet's `tissue` column until 2026-08-22, which collapses `base0` and `base`
+  into one label and so left those two interleaved inside a block of six — the
+  striping the setting exists to remove. Leaf segment explains 0.802 of
+  sugarcane's PC2 on the four real levels against 0.450 on the collapsed three. Sample labels are dropped (the design is carried
   by the annotation bars), which lets the cells shrink to 2 mm.
 - `heatmaps/module_<id>_<study>.{png,pdf}` — per-module gene-level z-scores, top
   20 per direction. Height scales at 30.5 px per gene (r = 0.9998), so a 3-gene

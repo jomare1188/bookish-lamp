@@ -96,10 +96,11 @@ for (tr in names(TRAITS))
 t1 <- names(TRAITS)[1]; t2 <- names(TRAITS)[2]
 # Column order groups REPLICATES of the same condition next to each other.
 # Sorting by sample name alone interleaves the leaf positions -- sugarcane's
-# names run B0_1, B_1, M_1, P_1, B0_2, ... so the three replicates of one tissue
-# land four columns apart, and the tissue effect reads as vertical striping that
+# names run B0_1, B_1, M_1, P_1, B0_2, ... so the three replicates of one segment
+# land four columns apart, and the segment effect reads as vertical striping that
 # obscures the treatment pattern the figure is for. Ordering by the split trait,
-# then the other trait, then any CLEAN_HEATMAP_GROUP_BY columns (tissue), then
+# then the other trait, then any CLEAN_HEATMAP_GROUP_BY columns (`segment` -- NOT
+# the sheet's `tissue` column, which collapses base0 and base; see config.sh), then
 # the sample puts replicates adjacent.
 grp_cols <- env_list("CLEAN_HEATMAP_GROUP_BY", character(0))
 grp_cols <- intersect(grp_cols, names(m))
