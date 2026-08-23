@@ -37,6 +37,7 @@
 #   ./run.sh figtopology                     network topology of both networks
 #   ./run.sh figconservation                 cross-species edge conservation
 #   ./run.sh figmodules                      module-level nitrogen response
+#   ./run.sh figmodulego                     module-level GO, incl. by direction
 #   ./run.sh figrepro                        both source studies reproduced
 #   ./run.sh legends                         assemble figures_legends.txt
 #   ./run.sh build     <study>               export + both layers + merge
@@ -451,6 +452,20 @@ main() {
     CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_MODULES}_modules" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/24_fig_modules.r"
+    ;;
+
+  figmodulego)
+    CLEAN_STUDIES="$STUDIES" \
+    CLEAN_FIG_NUM="$FIG_MODULE_GO" \
+    CLEAN_GO_ONTOLOGY="$MODULE_GO_ONTOLOGY" \
+    CLEAN_GO_NTERMS="$MODULE_GO_FIG_NTERMS" \
+    CLEAN_GO_NRECUR="$MODULE_GO_FIG_NRECUR" \
+    CLEAN_GO_MAIN_STUDY="$MODULE_GO_FIG_MAIN" \
+    CLEAN_GODIR_SUGARCANE="$(study_dir sugarcane)/module_go" \
+    CLEAN_GODIR_PURPLE="$(study_dir purple)/module_go" \
+    CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_MODULE_GO}_module_go" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_PLOT" "${SCRIPTS}/25_fig_module_go.r"
     ;;
 
   figrepro)

@@ -179,6 +179,77 @@ say("  terms in the shared universe: ", fmt_n(length(all_go)))
 # --- per-module test ---------------------------------------------------------
 go_terms <- suppressMessages(AnnotationDbi::Term(GO.db::GOTERM[all_go]))
 
+# --- direction-level test ----------------------------------------------------
+# Three grains, not two. The per-module test says what ONE module is for; the
+# global figure says which terms recur across modules. Neither answers "what do
+# the modules that go UP with nitrogen do, as a set, and is it different from the
+# ones that go DOWN" -- and that is the question a reader asks first, because the
+# two directions are different biology rather than two ways of detecting the
+# same thing.
+#
+# Pooling also breaks the constraint that dominates the per-module analysis. Most
+# responsive modules are too small to carry MIN_ANN annotated genes and are gated
+# out individually; pooled by direction they all contribute, so this test sees
+# the whole responsive set rather than the large-module tail of it.
+#
+# Same GOdata object, same background, same weight01 statistic and same raw-p
+# threshold as every other GO test in this project, so the three grains are
+# directly comparable.
+say("")
+banner(paste0("direction-level ", ONTOLOGY, " — ", STUDY))
+dir_sets <- split(sel$module, sel$direction)
+dir_rows <- rbindlist(lapply(names(dir_sets), function(d) {
+  genes <- unique(unlist(by_module[dir_sets[[d]]], use.names = FALSE))
+  n_ann <- sum(genes %in% geneUniverse)
+  say(sprintf("  %-8s %s modules, %s genes, %s GO-annotated",
+              d, fmt_n(length(dir_sets[[d]])), fmt_n(length(genes)), fmt_n(n_ann)))
+  if (n_ann < MIN_ANN) { say("    below the annotation gate — skipped"); return(NULL) }
+  gd <- suppressMessages(updateGenes(GOdata, mk_list(genes)))
+  rt <- suppressMessages(runTest(gd, algorithm = "weight01", statistic = "fisher"))
+  p  <- score(rt)
+  padj <- p.adjust(p, method = "BH")
+  keep <- names(p)[p <= GO_P]
+  say(sprintf("    %s terms at raw p <= %.2g  (%s clearing BH within direction)",
+              fmt_n(length(keep)), GO_P, fmt_n(sum(padj <= 0.05))))
+  if (!length(keep)) return(NULL)
+  st <- suppressMessages(termStat(gd, keep))
+  data.table(direction = d, n_modules = length(dir_sets[[d]]),
+             n_genes = length(genes), n_annotated = n_ann,
+             GO.ID = keep, Term = unname(go_terms[keep]),
+             Annotated = st$Annotated, Significant = st$Significant,
+             Expected = round(st$Expected, 3),
+             pvalue = unname(p[keep]),
+             p.adj = signif(unname(padj[keep]), 4))
+}))
+
+dir_tag <- file.path(OUT_DIR, sprintf("module_GO_%s_%s_bydirection", ONTOLOGY, STUDY))
+if (nrow(dir_rows)) {
+  setorder(dir_rows, direction, pvalue)
+  write_tsv(dir_rows, paste0(dir_tag, ".tsv"))
+  # Which terms are direction-SPECIFIC and which are shared is the whole point of
+  # splitting, so it is written as its own small table rather than left for a
+  # reader to derive.
+  wide <- dcast(dir_rows, GO.ID + Term ~ direction, value.var = "pvalue")
+  dirs_present <- setdiff(names(wide), c("GO.ID", "Term"))
+  wide[, class := if (length(dirs_present) < 2) "single direction tested" else
+        fifelse(!is.na(get(dirs_present[1])) & !is.na(get(dirs_present[2])), "shared",
+        fifelse(!is.na(get(dirs_present[1])), paste0(dirs_present[1], " only"),
+                paste0(dirs_present[2], " only")))]
+  setorder(wide, class, Term)
+  write_tsv(wide, paste0(dir_tag, "_comparison.tsv"))
+  say("")
+  print(wide[, .N, by = class], row.names = FALSE)
+} else {
+  say("no direction-level term cleared p <= ", GO_P)
+  write_tsv(data.table(direction = character(), n_modules = integer(),
+                       n_genes = integer(), n_annotated = integer(),
+                       GO.ID = character(), Term = character(),
+                       Annotated = integer(), Significant = integer(),
+                       Expected = numeric(), pvalue = numeric(), p.adj = numeric()),
+            paste0(dir_tag, ".tsv"))
+}
+say("")
+
 test_one <- function(i) {
   mod   <- testable$module[i]
   genes <- by_module[[mod]]

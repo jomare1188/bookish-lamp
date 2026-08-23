@@ -777,6 +777,41 @@ of 1,000 shuffles: 244 responsive modules against 79 observed. And the TF
 enrichment result (OR 2.65, p = 0.0016, concentrated in the modules that fall
 with nitrogen at OR 3.34) is quoted in full there after its panel was replaced.
 
+### `figmodulego` — module-level GO, at three grains
+
+```
+./run.sh modulego <study> [BP|MF|CC]   # produces the tables, incl. by direction
+./run.sh figmodulego                   # -> figure<N>_module_go.{png,pdf,svg}
+```
+
+**The direction-level test is new** (added 2026-08-23 to `18_module_go.r`). There
+were two grains — per module, and all responsive modules pooled — and the
+question a reader asks first fell between them: *what do the modules that go UP
+with nitrogen do, as a set, and is it different from the ones that go DOWN?*
+
+It also breaks the constraint that dominates the per-module grain. A module needs
+`MODULE_GO_MIN_ANNOTATED` annotated members for the test to be defined, and only
+**49 of 465** sugarcane modules clear that (10 of 79 in purple), biased toward
+the large ones. Pooled by direction every module contributes: the two sets carry
+383 and 161 annotated genes drawn from 242 and 223 modules.
+
+Same `topGOdata` object, background, statistic and raw-p threshold as the
+per-module run, so the grains are directly comparable. Writes
+`module_GO_<ONT>_<study>_bydirection.tsv` and a `_comparison.tsv` classifying
+each term as up-only / down-only / shared.
+
+**The result is worth the panel.** In sugarcane, 74 terms are enriched only among
+the modules that rise, 23 only among those that fall, and **6 in both** — so the
+split is not one programme cut in half. What rises is nitrogen assimilation and
+what consumes it (nitrate assimilation, nitric oxide, proline/asparagine/
+spermidine biosynthesis) plus a defence block; what falls is the low-nitrogen
+carbon programme (flavonoid, raffinose-family oligosaccharide, triglyceride
+biosynthesis, cold response). Neither of the other two grains recovers it.
+
+Panels B and D are drawn from sugarcane (`MODULE_GO_FIG_MAIN`) because purple has
+10 individually testable modules against sugarcane's 49, and the comparison would
+be between a result and an absence.
+
 ### `figrepro` — reproducing each source study's own finding
 
 ```

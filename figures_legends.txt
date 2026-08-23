@@ -288,30 +288,33 @@ giving 6,576 and 6,318 tests per study instead of the 39,226 and 44,118 the gene
 Association with nitrogen is SPEARMAN'S RHO ALONE, at padj <= 0.05 (Benjamini-Hochberg over
 every module in the study) and |rho| >= 0.6, the same two thresholds the gene level uses.
 Neither Pearson nor mutual information is used here: the trait is ordinal, and MI at this
-resolution proved to be an omnibus test firing on quirks in one or two libraries.\n\n(A) Every
-module as |rho| against its adjusted p, with both thresholds dashed; coloured points clear
-both. The panel is here to show WHICH THRESHOLD BINDS, and it is a different one in each study.
-In sugarcane (n = 48) an |rho| of 0.6 already implies p ~ 6e-06, so BH never binds: 1,792
-modules clear padj and 465 clear the effect-size floor, and the floor alone defines the 465
-responsive modules -- the corrected and uncorrected readings are the same set. In purple (n =
-18) it is the reverse: 274 modules reach |rho| >= 0.6 and only 79 survive BH, so purple's
-uncorrected count would be 274 and should be labelled as such wherever it is used.\n\n(B) The
-same eigengenes scored by Pearson and by Spearman at identical thresholds. sugarcane: 408
-modules against 465. purple: 38 against 79 -- MORE THAN DOUBLE, and purple is exactly where the
-ordinal argument predicts the gain, because it is the study with three nitrogen levels and
+resolution proved to be an omnibus test firing on quirks in one or two libraries.
+
+(A) Every module as |rho| against its adjusted p, with both thresholds dashed; coloured points
+clear both. The panel is here to show WHICH THRESHOLD BINDS, and it is a different one in each
+study. In sugarcane (n = 48) an |rho| of 0.6 already implies p ~ 6e-06, so BH never binds:
+1,792 modules clear padj and 465 clear the effect-size floor, and the floor alone defines the
+465 responsive modules -- the corrected and uncorrected readings are the same set. In purple (n
+= 18) it is the reverse: 274 modules reach |rho| >= 0.6 and only 79 survive BH, so purple's
+uncorrected count would be 274 and should be labelled as such wherever it is used.
+
+(B) The same eigengenes scored by Pearson and by Spearman at identical thresholds. sugarcane:
+408 modules against 465. purple: 38 against 79 -- MORE THAN DOUBLE, and purple is exactly where
+the ordinal argument predicts the gain, because it is the study with three nitrogen levels and
 Pearson reads 0/2/6 mM as arithmetic the design never claimed. sugarcane's trait is two-level,
 where Spearman is the rank-biserial correlation, so the gain there is smaller and is mostly
-robustness to the outliers a PC1 can carry.\n\n(C, D) Every responsive module's eigengene, one
-panel per species: rows are modules, columns are libraries, colour is the z-scored eigengene on
-a single scale shared by both panels and clipped at the 98th percentile of |z| (the colourbar
-is drawn once, on C). Rows are split by the sign of rho and ordered by |rho| within each block;
-columns are split by nitrogen status and ordered by genotype, then leaf segment, then library,
-so replicates of one condition sit together. Both splits label themselves, so no annotation
-strip is needed. A mean profile would show the same two shapes in four points; what these
-panels add is whether the SET is coherent -- whether every module in a block really moves the
-same way or whether the block is carried by a minority. It is coherent: the nitrogen split
-accounts for a median 0.44 and 0.45 of each eigengene's variance in sugarcane's two blocks, and
-0.56 and 0.62 in purple's.
+robustness to the outliers a PC1 can carry.
+
+(C, D) Every responsive module's eigengene, one panel per species: rows are modules, columns
+are libraries, colour is the z-scored eigengene on a single scale shared by both panels and
+clipped at the 98th percentile of |z| (the colourbar is drawn once, on C). Rows are split by
+the sign of rho and ordered by |rho| within each block; columns are split by nitrogen status
+and ordered by genotype, then leaf segment, then library, so replicates of one condition sit
+together. Both splits label themselves, so no annotation strip is needed. A mean profile would
+show the same two shapes in four points; what these panels add is whether the SET is coherent
+-- whether every module in a block really moves the same way or whether the block is carried by
+a minority. It is coherent: the nitrogen split accounts for a median 0.44 and 0.45 of each
+eigengene's variance in sugarcane's two blocks, and 0.56 and 0.62 in purple's.
 
 The two panels are not on the same footing and should not be read as if they were. sugarcane's
 465 modules come from 48 libraries in a two-level contrast, so the blocks are simply
@@ -345,4 +348,56 @@ its worst shuffle produced 244 responsive modules, far above the observed count 
 network is a single dense component whose eigengenes are strongly correlated, so one lucky
 label assignment lights up many at once and BH, being adaptive, then loosens for all of them.
 purple's 79 modules are a real signal and are NOT 79 independent findings.
+
+
+Figure 6. Gene Ontology of the nitrogen-responsive modules (BP), at three grains. Every test
+uses topGO's weight01 algorithm with a Fisher statistic against the SAME background -- the
+GO-annotated nodes of that species' own network, which is also the background of the gene-level
+GO and of the per-module transcription-factor test -- and selects on the raw weight01 p at
+0.05, following topGO's own convention that weight01 conditions each term on its DAG neighbours
+and so does not produce an exchangeable family for BH. Adjusted values are written to the
+output tables for reference and do not select.
+
+(A) Why a middle grain was needed. Testing modules ONE AT A TIME requires each to carry at
+least three GO-annotated members for the test to be defined, and almost none do: of 465
+responsive sugarcane modules only 49 are individually testable and 44 return a term; purple
+gives 10 of 79. The per-module grain therefore describes ~11% of the responsive set, biased
+toward the large modules, and it cannot be read as characterising the set as a whole.
+
+(B) THE DIRECTION-LEVEL TEST, which is new here and is what the annotation gate above makes
+necessary. The union of every module that RISES with nitrogen is tested as one gene set against
+the union of every module that FALLS. Pooling dissolves the gate -- modules too small to test
+alone all contribute -- so this grain sees the whole responsive set rather than its
+large-module tail: in sugarcane the two sets carry 383 and 161 GO-annotated genes drawn from
+242 and 223 modules. Bars are the top 8 terms of each direction, opposed on one axis so the two
+can be read against each other; length is -log10 of the raw weight01 p.
+
+The two directions are doing different and interpretable things. What RISES with nitrogen is
+nitrogen assimilation and the metabolism that consumes it -- NITRATE ASSIMILATION, nitric oxide
+biosynthesis, PROLINE and asparagine and spermidine biosynthesis, reactive oxygen species
+biosynthesis -- alongside a large defence block (response to fungus, to bacterium, to chitin,
+monoterpene biosynthesis). What FALLS is the low-nitrogen and carbon-storage programme:
+FLAVONOID biosynthesis, RAFFINOSE-family oligosaccharide biosynthesis, triglyceride
+biosynthesis, cellular response to cold, skotomorphogenesis. That is the textbook shape of a
+nitrogen response read at module resolution, and neither of the other two grains recovers it.
+
+(C) How separate the two directions are, as term counts. In sugarcane, 74 terms are enriched
+only among the modules that rise and 23 only among those that fall, against 6 found in both; in
+purple the same three numbers are 7, 23 and 3. So the split is not a partition of one
+functional programme into halves -- the overlap is a few terms out of a hundred -- and pooling
+the two directions, as the previous analysis did, averages two distinct programmes into one
+list.
+
+(D) The per-module grain that survives: terms recurring across individually tested sugarcane
+modules, with each bar split by the direction of the modules contributing it. Recurrence is low
+-- the most shared term appears in 4 modules -- which is expected when only 49 modules are
+testable, and is the reason this panel supports rather than carries the figure.
+
+CAVEATS. Purple's per-module column is 10 modules and should be read as a report of that many
+gene sets, not as a characterisation of its nitrogen response; panels B and D are drawn from
+sugarcane for that reason. Annotation coverage, not statistics, is the binding constraint
+throughout: only ~8% of sugarcane's network nodes carry any eggNOG GO term. And the direction
+labels mean 'tracks nitrogen supply', not 'responds to nitrogen stress' -- in purple the three
+levels are stress-control-stress rather than a dose series, so a monotone test cannot see a
+module moved the same way by both extremes.
 

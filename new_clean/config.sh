@@ -304,6 +304,15 @@ FIG_REPRODUCTION=2
 FIG_TOPOLOGY=3
 FIG_CONSERVATION=4
 FIG_MODULES=5
+FIG_MODULE_GO=6
+
+# Module-GO figure: how many terms per direction in panel B, how many recurrent
+# terms in panel D, and which study carries those two panels. sugarcane, because
+# purple has 10 individually testable modules against sugarcane's 49 and the
+# comparison would be between a result and an absence.
+MODULE_GO_FIG_NTERMS=8
+MODULE_GO_FIG_NRECUR=10
+MODULE_GO_FIG_MAIN=sugarcane
 
 # Conservation figure, panel B: which ontology the conserved-set GO panel draws,
 # and how many shared terms it shows. Terms are ranked by the WORSE of the two
