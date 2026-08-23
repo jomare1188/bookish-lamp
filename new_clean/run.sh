@@ -35,6 +35,7 @@
 #   ./run.sh module20  [from-step]           Module-20 readout (default 03)
 #   ./run.sh figdataset                      dataset, QC and quantification figure
 #   ./run.sh figtopology                     network topology of both networks
+#   ./run.sh figconservation                 cross-species edge conservation
 #   ./run.sh figrepro                        both source studies reproduced
 #   ./run.sh legends                         assemble figures_legends.txt
 #   ./run.sh build     <study>               export + both layers + merge
@@ -401,6 +402,17 @@ main() {
     CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_TOPOLOGY}_topology" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/22_fig_topology.r"
+    ;;
+
+  figconservation)
+    CLEAN_FIG_NUM="$FIG_CONSERVATION" \
+    CLEAN_CONS_DIR="${RESULTS}/conservation" \
+    CLEAN_SELECTION="$TRAIT_SELECTION" \
+    CLEAN_NODES_SUGARCANE="$(study_dir sugarcane)/network_sugarcane_node_metrics.tsv" \
+    CLEAN_NODES_PURPLE="$(study_dir purple)/network_purple_node_metrics.tsv" \
+    CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_CONSERVATION}_conservation" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_PLOT" "${SCRIPTS}/23_fig_conservation.r"
     ;;
 
   figrepro)

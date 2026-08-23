@@ -302,6 +302,7 @@ FIGURE_LEGENDS="${BASE}/figures_legends.txt"
 FIG_DATASET=1
 FIG_REPRODUCTION=2
 FIG_TOPOLOGY=3
+FIG_CONSERVATION=4
 
 # Genes used for the per-study PCA in the dataset figure: the most variable
 # 2,000, the usual DESeq2 plotPCA convention.

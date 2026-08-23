@@ -654,6 +654,52 @@ nodes each.
 > of the top decile. The script now computes the whole decile profile and the
 > legend quotes its flat span.
 
+### `figconservation` — what transfers between the two networks
+
+```
+./run.sh figconservation  # -> results/figures/figure<N>_conservation.{png,pdf,svg}
+```
+
+| | |
+|---|---|
+| cost | ~15 s |
+| env | `r_env` (ggplot2, patchwork, scico, svglite, scales) |
+| inputs | `conservation_summary_*_FULL.tsv`, `conservation_null_*.tsv`, `conserved_correlated_summary_<selection>.tsv`, both node-metric tables |
+
+**No edge table is read.** `conserved_edges_*_FULL.tsv` are 5 GB and 39 GB; every
+number comes from the summary and null tables beside them.
+
+The figure has to carry two findings that pull in opposite directions and are
+both true: edge conservation is real and ~2.5× above chance in both directions,
+and the nitrogen response nevertheless fails to transfer at all.
+
+**A — observed against the permutation null, per direction.** The raw rates
+differ ~7× between directions and that difference is *meaningless* on its own —
+purple has 9.3× more edges, so a sugarcane edge has far more opportunity. Error
+bars are the full null range over `NULL_REPS` permutations.
+
+**B — fold over null, by direction and layer.** The comparable quantity, and the
+two directions agree on it (2.57× and 2.49× overall). The empirical p is 1/21 for
+every bar, which is the floor set by 20 permutations, not a precise p — the
+legend says so and quotes z instead.
+
+**C — each non-linear layer relative to Pearson-only, under both
+normalisations.** This is the opportunity-bias argument in one panel: MI-only
+edges look better conserved by raw rate in one direction (1.13×) and lose it
+after the null (1.005×), while `both`-estimator edges survive both (1.08× and
+1.20×).
+
+**D — the funnel**, log scale: nodes → on a conserved edge → nitrogen-responsive
+→ responsive on both sides. It closes at purple's 32 responsive genes, not at
+orthology or conservation.
+
+> Note the panel-C wording. The first draft said MI-only edges "look better
+> conserved in the raw rate" in both directions; in purple → sugarcane they are
+> already below parity raw (0.94×). The legend now states each direction
+> separately, which makes the conclusion stronger, not weaker: there is no
+> direction in which MI-only edges are better conserved once chance is accounted
+> for.
+
 ### `figrepro` — reproducing each source study's own finding
 
 ```
