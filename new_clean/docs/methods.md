@@ -753,18 +753,29 @@ reverse (274 clear |rho|, 79 survive BH).
 **B — Spearman against Pearson** on the same eigengenes at identical thresholds:
 408 → 465 and **38 → 79**.
 
-**C — the response itself**, mean eigengene per nitrogen status split by the sign
-of rho. The two directions are opposite by construction, so what this adds is the
-*shape* — and purple's control sitting at zero between two opposite stresses is
-the design made visible.
+**C and D — every responsive module's eigengene**, one panel per species. Rows
+are modules split by the sign of rho and ordered by |rho| within each block;
+columns are libraries split by nitrogen status and ordered by genotype, then leaf
+segment, then library. Both splits label themselves, so no annotation strip is
+needed. **One colour scale across both panels** (clipped at the 98th percentile
+of |z| over both sets together), with the colourbar drawn once — a cell in C then
+means what a cell in D means.
 
-**D — TF enrichment**, hypergeometric per module then Fisher against the
-non-responsive modules. No label is drawn where a group has zero enriched
-modules: "OR 0.0" reads as a measured effect when it is an empty cell.
+Drawn with `geom_raster`, not ComplexHeatmap: these compose with two ggplots in
+one patchwork, and a heatmap object would have to be grabbed into a grob to get
+there. Rows are ordered by rho rather than clustered — deterministic, and the
+ordering is itself interpretable.
 
-The permutation null is two numbers, not a panel — it lives in the legend, along
-with purple's heavy right tail (worst of 1,000 shuffles: 244 responsive modules
-against 79 observed).
+A mean profile would show the same two shapes in four points. What the heatmaps
+add is whether the *set* is coherent, and it is: the nitrogen split accounts for
+a median R² of 0.44/0.45 of each eigengene's variance in sugarcane's two blocks
+and 0.56/0.62 in purple's.
+
+**Two things live in the legend rather than costing a panel.** The permutation
+null is two numbers (0/1000 and 2/1000), plus purple's heavy right tail — worst
+of 1,000 shuffles: 244 responsive modules against 79 observed. And the TF
+enrichment result (OR 2.65, p = 0.0016, concentrated in the modules that fall
+with nitrogen at OR 3.34) is quoted in full there after its panel was replaced.
 
 ### `figrepro` — reproducing each source study's own finding
 

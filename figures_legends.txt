@@ -301,33 +301,48 @@ modules against 465. purple: 38 against 79 -- MORE THAN DOUBLE, and purple is ex
 ordinal argument predicts the gain, because it is the study with three nitrogen levels and
 Pearson reads 0/2/6 mM as arithmetic the design never claimed. sugarcane's trait is two-level,
 where Spearman is the rank-biserial correlation, so the gain there is smaller and is mostly
-robustness to the outliers a PC1 can carry.\n\n(C) Mean eigengene per nitrogen status for the
-responsive modules, split by the sign of rho; error bars are the standard error over modules.
-The two directions are by construction opposite, so what the panel adds is the SHAPE. In
-sugarcane it is monotone between the two levels. In purple the levels are not a dose series --
-2 N is the CONTROL and 0 N and 6 N are stresses in opposite directions -- so a monotone rank
-test asks whether a module tracks nitrogen SUPPLY, not whether it responds to nitrogen STRESS.
-A module moved the same way by both stresses is invisible to it. The cost of that was measured
-rather than assumed: a U-shape contrast c(+1,-2,+1) over the three levels finds ONE significant
-purple module, which Spearman misses, against Spearman's 79. At n = 18 the U-shape test has
-almost no power, which is the same wall every other purple result hits, but the 79 should be
-described as tracking nitrogen supply rather than as stress responders.\n\n(D)
-Transcription-factor enrichment per module -- hypergeometric against that network's own node
-universe, BH across modules -- then Fisher against the non-responsive modules; stars mark p <
-0.05 and p < 0.01. In sugarcane responsive modules are TF-enriched at 3.23% against 1.24% (OR
-2.65, p = 0.0016), and the signal sits in the modules that FALL with nitrogen (OR 3.34, p =
-0.0028) rather than those that rise (OR 2.02, p = 0.132). Do not over-read the direction split
--- it is 9 enriched modules against 6 -- but the pooled result is solid, and it is a result the
-previous three-statistic call had buried: split across pearson_only / mi_only / both it read as
-OR 1.96, p = 0.06 with the strongest class at 3 of 41 modules. In purple nothing is enriched (0
-of 79 responsive modules), and its TF-enrichment rate is an order of magnitude below
-sugarcane's everywhere in the network.\n\nNOT SHOWN, because it is two numbers rather than a
-panel: the responsive sets are not noise. Permuting the trait labels against the same
-eigengenes 1,000 times gives a median of 0 responsive modules in both studies; 0 of 1,000
-permutations reach sugarcane's 465, and 2 of 1,000 reach purple's 79 (empirical p = 0.003).
-purple's null has a long right tail, however -- its worst shuffle produced 244 responsive
-modules, far above the observed count -- because its network is a single dense component whose
-eigengenes are strongly correlated, so one lucky label assignment lights up many at once and
-BH, being adaptive, then loosens for all of them. purple's 79 modules are a real signal and are
-NOT 79 independent findings.
+robustness to the outliers a PC1 can carry.\n\n(C, D) Every responsive module's eigengene, one
+panel per species: rows are modules, columns are libraries, colour is the z-scored eigengene on
+a single scale shared by both panels and clipped at the 98th percentile of |z| (the colourbar
+is drawn once, on C). Rows are split by the sign of rho and ordered by |rho| within each block;
+columns are split by nitrogen status and ordered by genotype, then leaf segment, then library,
+so replicates of one condition sit together. Both splits label themselves, so no annotation
+strip is needed. A mean profile would show the same two shapes in four points; what these
+panels add is whether the SET is coherent -- whether every module in a block really moves the
+same way or whether the block is carried by a minority. It is coherent: the nitrogen split
+accounts for a median 0.44 and 0.45 of each eigengene's variance in sugarcane's two blocks, and
+0.56 and 0.62 in purple's.
+
+The two panels are not on the same footing and should not be read as if they were. sugarcane's
+465 modules come from 48 libraries in a two-level contrast, so the blocks are simply
+warm-on-one-side and cool-on-the-other. purple's 79 come from 18 libraries across three levels
+that are NOT a dose series -- 2 N is the CONTROL and 0 N and 6 N are stresses in opposite
+directions -- so its control column sits near zero between two opposite extremes, which is the
+design showing through rather than a weak response. A monotone rank test on that design asks
+whether a module tracks nitrogen SUPPLY, not whether it responds to nitrogen STRESS: a module
+moved the same way by both stresses is invisible to it. The cost was measured rather than
+assumed -- a U-shape contrast c(+1,-2,+1) over the three levels finds ONE significant purple
+module, which Spearman misses, against Spearman's 79. At n = 18 the U-shape test has almost no
+power, the same wall every other purple result hits, but the 79 should be described as tracking
+nitrogen supply rather than as stress responders.
+
+NOT SHOWN AS A PANEL, but the biological payoff of the module level: transcription-factor
+enrichment. A hypergeometric test per module against that network's own node universe (BH
+across modules), then Fisher against the non-responsive modules, puts sugarcane's responsive
+modules at 3.23% TF-enriched against 1.24% (odds ratio 2.65, p = 0.0016), and the signal sits
+in the modules that FALL with nitrogen (OR 3.34, p = 0.0028) rather than those that rise (OR
+2.02, p = 0.132). Do not over-read the direction split -- it is 9 enriched modules against 6 --
+but the pooled result is solid, and it is one the previous three-statistic call had buried:
+split across pearson_only / mi_only / both it read as OR 1.96, p = 0.06, with the strongest
+class at 3 of 41 modules. In purple nothing is enriched (0 of 79 responsive modules), and its
+TF-enrichment rate is an order of magnitude below sugarcane's everywhere in the network.
+
+NOT SHOWN, because it is two numbers rather than a panel: the responsive sets are not noise.
+Permuting the trait labels against the same eigengenes 1,000 times gives a median of 0
+responsive modules in both studies; 0 of 1,000 permutations reach sugarcane's 465, and 2 of
+1,000 reach purple's 79 (empirical p = 0.003). purple's null has a long right tail, however --
+its worst shuffle produced 244 responsive modules, far above the observed count -- because its
+network is a single dense component whose eigengenes are strongly correlated, so one lucky
+label assignment lights up many at once and BH, being adaptive, then loosens for all of them.
+purple's 79 modules are a real signal and are NOT 79 independent findings.
 

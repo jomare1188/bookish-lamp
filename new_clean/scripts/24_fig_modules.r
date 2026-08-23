@@ -20,15 +20,18 @@
 #      three nitrogen levels, and Pearson reads 0/2/6 mM as arithmetic the design
 #      never claimed.
 #
-#   C  WHAT THE RESPONSE LOOKS LIKE. Mean eigengene per nitrogen level, split by
-#      the sign of rho. Without this the reader has the counts but has never seen
-#      a response; with it the two directions are visibly opposite and purple's
-#      stress-control-stress design is visible as a shape rather than a caveat.
+#   C, D  EVERY RESPONSIVE MODULE'S EIGENGENE, one panel per species. Rows are
+#      modules, columns are libraries, colour is the z-scored eigengene. Rows are
+#      split by the sign of rho and columns by nitrogen status, so both splits
+#      label themselves and no separate annotation strip is needed. A mean
+#      profile would show the same two shapes in four points; this shows whether
+#      the set is coherent -- whether every module in a block really moves the
+#      same way, or whether the block average is carried by a minority.
 #
-#   D  TF ENRICHMENT. Hypergeometric per module against the network node
-#      universe, then Fisher against the non-responsive modules. This is the
-#      result the three-statistic call had buried across classes too small to
-#      separate.
+#      Drawn with geom_raster rather than ComplexHeatmap: these have to compose
+#      with two ggplots in one patchwork, and a heatmap object would have to be
+#      grabbed into a grob to get there. Rows are ordered by rho within each
+#      block, which is deterministic and interpretable, rather than clustered.
 #
 # NOTHING IS WRITTEN ON THE FIGURE THAT BELONGS IN THE LEGEND -- panel letters and
 # the labels the data needs, nothing else. The permutation null is a pair of
@@ -167,41 +170,85 @@ pB <- ggplot(cmpB, aes(study, n, fill = statistic)) +
   theme_f
 
 # =============================================================================
-# C — the response itself: mean eigengene per nitrogen level, by direction
+# C, D — every responsive module's eigengene, per species
 # =============================================================================
-profC <- rbindlist(lapply(STUDIES, function(st) {
+PAL_Z <- rev(scico(256, palette = "roma"))
+
+heat_data <- function(st) {
+  E <- ET[[st]]$E; sta <- ET[[st]]$status
+  m <- fread(cfg[[st]]$meta); setnames(m, tolower(names(m)))
+  m <- m[match(colnames(E), sample)]
+  sel <- PROF[study == st & responsive == TRUE]
+  # rho descending inside "rises", ascending inside "falls", so the strongest
+  # module of each block sits at the top of it.
+  sel[, direction := factor(direction, levels = DIRS)]
+  sel <- sel[order(direction, -abs(rho))]
+  M <- E[sel$module, , drop = FALSE]
+
+  # Columns: nitrogen status blocks, then genotype, then leaf segment (sugarcane
+  # only), then library, so replicates of one condition sit together.
+  segcol <- if ("segment" %in% names(m)) m$segment else rep("", nrow(m))
+  ord <- order(sta, m$genotype, segcol, m$sample)
+  M <- M[, ord, drop = FALSE]
+
+  d <- data.table(module = factor(rep(rownames(M), times = ncol(M)),
+                                  levels = rev(sel$module)),
+                  sample = factor(rep(colnames(M), each = nrow(M)),
+                                  levels = colnames(M)),
+                  z = as.vector(M))
+  d[, direction := factor(c(positive = "rises with N", negative = "falls with N")[
+      as.character(sel$direction[match(as.character(module), sel$module)])],
+      levels = c("rises with N", "falls with N"))]
+  d[, status := sta[ord][match(as.character(sample), colnames(M))]]
+  d[, study := st]
+  d[]
+}
+HD <- lapply(STUDIES, heat_data); names(HD) <- STUDIES
+
+# ONE colour scale across both species, so a cell in C means what a cell in D
+# means. Clipped at the 98th percentile of |z| over both responsive sets
+# together; the colourbar is drawn once, on C.
+ZL <- as.numeric(quantile(abs(rbindlist(HD)$z), 0.98, na.rm = TRUE))
+if (ZL == 0) ZL <- 1
+
+heat_panel <- function(st, show_legend) {
+  d <- HD[[st]]
+  n_mod <- uniqueN(d$module)
+  ggplot(d, aes(sample, module, fill = z)) +
+    geom_raster() +
+    facet_grid(direction ~ status, scales = "free", space = "free", switch = "y") +
+    scale_fill_gradientn(colours = PAL_Z, limits = c(-ZL, ZL), oob = squish,
+                         name = "eigengene z",
+                         guide = if (show_legend)
+                           guide_colourbar(barheight = unit(2.2, "cm"),
+                                           barwidth = unit(2.6, "mm")) else "none") +
+    labs(x = sprintf("%s libraries", ncol(ET[[st]]$E)),
+         y = sprintf("%s  —  %s responsive modules", st, fmt_n(n_mod))) +
+    theme_f +
+    theme(axis.text = element_blank(), axis.ticks = element_blank(),
+          panel.grid = element_blank(), panel.spacing = unit(0.8, "mm"),
+          strip.placement = "outside",
+          strip.text.y.left = element_text(angle = 90, size = 6.5),
+          strip.text.x = element_text(size = 6.5),
+          axis.title = element_text(size = 7))
+}
+pC <- heat_panel(STUDIES[1], TRUE)
+pD <- heat_panel(STUDIES[2], FALSE)
+
+# The coherence the panels are for, as a number: how much of each module's
+# eigengene variance the nitrogen split accounts for, per direction.
+coh <- rbindlist(lapply(STUDIES, function(st) {
   E <- ET[[st]]$E; sta <- ET[[st]]$status
   sel <- PROF[study == st & responsive == TRUE]
-  if (!nrow(sel)) return(NULL)
-  M <- E[sel$module, , drop = FALSE]
-  rbindlist(lapply(DIRS, function(d) {
-    idx <- sel$direction == d
-    if (!any(idx)) return(NULL)
-    v <- colMeans(M[idx, , drop = FALSE])
-    data.table(study = st, direction = d, status = sta, z = v)[
-      , .(mean_z = mean(z), se = sd(z) / sqrt(.N)), by = .(study, direction, status)]
-  }))
+  r2 <- apply(E[sel$module, , drop = FALSE], 1,
+              function(v) summary(lm(v ~ sta))$r.squared)
+  data.table(study = st, direction = sel$direction, r2 = r2)[
+    , .(modules = .N, median_r2 = median(r2)), by = .(study, direction)]
 }))
-profC[, study := factor(study, levels = STUDIES)]
-profC[, direction := factor(direction, levels = DIRS)]
-say("panel C: mean eigengene by nitrogen status")
-print(profC, row.names = FALSE)
+say("panels C/D: variance of each eigengene explained by nitrogen status")
+print(coh, row.names = FALSE)
 
-pC <- ggplot(profC, aes(status, mean_z, colour = direction, group = direction)) +
-  geom_hline(yintercept = 0, linewidth = 0.25, colour = "grey70") +
-  geom_line(linewidth = 0.6) +
-  geom_errorbar(aes(ymin = mean_z - se, ymax = mean_z + se), width = 0.1,
-                linewidth = 0.3) +
-  geom_point(size = 1.7) +
-  facet_wrap(~ study, nrow = 1, scales = "free_x") +
-  scale_colour_manual(values = PAL_DIR, name = NULL,
-                      labels = c(positive = "rises with N", negative = "falls with N")) +
-  labs(x = NULL, y = "mean module eigengene (z)") +
-  theme_f + theme(axis.text.x = element_text(size = 6.6))
-
-# =============================================================================
-# D — TF enrichment
-# =============================================================================
+# TF enrichment keeps its numbers for the legend even though it lost its panel.
 tfD <- rbindlist(lapply(STUDIES, function(st) {
   d <- PROF[study == st]
   grp <- list(`not responsive` = d[responsive == FALSE],
@@ -221,24 +268,8 @@ tfD <- rbindlist(lapply(STUDIES, function(st) {
                p  = if (is.null(ft)) NA_real_ else ft$p.value)
   }))
 }))
-tfD[, study := factor(study, levels = STUDIES)]
-tfD[, group := factor(group, levels = c("not responsive", "responsive",
-                                        "rises with N", "falls with N"))]
-say("panel D: TF enrichment"); print(tfD, row.names = FALSE)
-
-pD <- ggplot(tfD, aes(group, pct, fill = study)) +
-  geom_col(position = position_dodge(width = 0.72), width = 0.62) +
-  # No label where the group has no enriched module at all: "OR 0.0" reads as a
-  # measured effect when it is an empty cell. Those are stated in the legend.
-  geom_text(aes(label = ifelse(is.na(p) | pct == 0, "",
-                               ifelse(p < 0.01, sprintf("OR %.1f**", OR),
-                                      ifelse(p < 0.05, sprintf("OR %.1f*", OR),
-                                             sprintf("OR %.1f", OR))))),
-            position = position_dodge(width = 0.72), vjust = -0.4, size = 1.95) +
-  scale_fill_manual(values = PAL_STUDY, name = NULL) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.20))) +
-  labs(x = NULL, y = "TF-enriched modules (%)") +
-  theme_f + theme(axis.text.x = element_text(size = 6.6, angle = 15, hjust = 1))
+say("TF enrichment (legend only, no longer a panel)")
+print(tfD, row.names = FALSE)
 
 # =============================================================================
 # compose
@@ -247,7 +278,7 @@ fig <- (pA | pB) / (pC | pD) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 12))
 
-W <- 22; H <- 14
+W <- 22; H <- 16
 invisible(ensure_dir(dirname(OUT_PREFIX)))
 ggsave(paste0(OUT_PREFIX, ".png"), fig, width = W, height = H, units = "cm",
        dpi = 400, type = "cairo")
@@ -305,36 +336,52 @@ S2, " is exactly where the ordinal argument predicts the gain, because it is the
 "'s trait is two-level, where Spearman is the rank-biserial correlation, so the gain there is ",
 "smaller and is mostly robustness to the outliers a PC1 can carry.\\n",
 "\\n",
-"(C) Mean eigengene per nitrogen status for the responsive modules, split by the sign of rho; ",
-"error bars are the standard error over modules. The two directions are by construction opposite, ",
-"so what the panel adds is the SHAPE. In ", S1, " it is monotone between the two levels. In ", S2,
-" the levels are not a dose series -- 2 N is the CONTROL and 0 N and 6 N are stresses in opposite ",
-"directions -- so a monotone rank test asks whether a module tracks nitrogen SUPPLY, not whether ",
-"it responds to nitrogen STRESS. A module moved the same way by both stresses is invisible to it. ",
-"The cost of that was measured rather than assumed: a U-shape contrast c(+1,-2,+1) over the three ",
-"levels finds ONE significant ", S2, " module, which Spearman misses, against Spearman's ",
-fmt_n(rs(S2, "responsive")), ". At n = 18 the U-shape test has almost no power, which is the same ",
-"wall every other ", S2, " result hits, but the ", fmt_n(rs(S2, "responsive")),
-" should be described as tracking nitrogen supply rather than as stress responders.\\n",
-"\\n",
-"(D) Transcription-factor enrichment per module -- hypergeometric against that network's own node ",
-"universe, BH across modules -- then Fisher against the non-responsive modules; stars mark ",
-"p < 0.05 and p < 0.01. In ", S1, " responsive modules are TF-enriched at ",
-sprintf("%.2f%%", tf(S1, "responsive", "pct")), " against ",
-sprintf("%.2f%%", tf(S1, "not responsive", "pct")), " (OR ",
-sprintf("%.2f", tf(S1, "responsive", "OR")), ", p = ",
-sprintf("%.4f", tf(S1, "responsive", "p")), "), and the signal sits in the modules that FALL with ",
-"nitrogen (OR ", sprintf("%.2f", tf(S1, "falls with N", "OR")), ", p = ",
+"(C, D) Every responsive module\'s eigengene, one panel per species: rows are modules, columns ",
+"are libraries, colour is the z-scored eigengene on a single scale shared by both panels and ",
+"clipped at the 98th percentile of |z| (the colourbar is drawn once, on C). Rows are split by the ",
+"sign of rho and ordered by |rho| within each block; columns are split by nitrogen status and ",
+"ordered by genotype, then leaf segment, then library, so replicates of one condition sit ",
+"together. Both splits label themselves, so no annotation strip is needed. A mean profile would ",
+"show the same two shapes in four points; what these panels add is whether the SET is coherent -- ",
+"whether every module in a block really moves the same way or whether the block is carried by a ",
+"minority. It is coherent: the nitrogen split accounts for a median ",
+sprintf("%.2f", coh[study == S1 & direction == "positive", median_r2]), " and ",
+sprintf("%.2f", coh[study == S1 & direction == "negative", median_r2]),
+" of each eigengene\'s variance in ", S1, "\'s two blocks, and ",
+sprintf("%.2f", coh[study == S2 & direction == "positive", median_r2]), " and ",
+sprintf("%.2f", coh[study == S2 & direction == "negative", median_r2]), " in ", S2, "\'s.\n",
+"\n",
+"The two panels are not on the same footing and should not be read as if they were. ", S1,
+"\'s ", fmt_n(rs(S1, "responsive")), " modules come from 48 libraries in a two-level contrast, so ",
+"the blocks are simply warm-on-one-side and cool-on-the-other. ", S2, "\'s ",
+fmt_n(rs(S2, "responsive")), " come from 18 libraries across three levels that are NOT a dose ",
+"series -- 2 N is the CONTROL and 0 N and 6 N are stresses in opposite directions -- so its ",
+"control column sits near zero between two opposite extremes, which is the design showing through ",
+"rather than a weak response. A monotone rank test on that design asks whether a module tracks ",
+"nitrogen SUPPLY, not whether it responds to nitrogen STRESS: a module moved the same way by both ",
+"stresses is invisible to it. The cost was measured rather than assumed -- a U-shape contrast ",
+"c(+1,-2,+1) over the three levels finds ONE significant ", S2, " module, which Spearman misses, ",
+"against Spearman\'s ", fmt_n(rs(S2, "responsive")), ". At n = 18 the U-shape test has almost no ",
+"power, the same wall every other ", S2, " result hits, but the ", fmt_n(rs(S2, "responsive")),
+" should be described as tracking nitrogen supply rather than as stress responders.\n",
+"\n",
+"NOT SHOWN AS A PANEL, but the biological payoff of the module level: transcription-factor ",
+"enrichment. A hypergeometric test per module against that network\'s own node universe (BH across ",
+"modules), then Fisher against the non-responsive modules, puts ", S1, "\'s responsive modules at ",
+sprintf("%.2f%%", tf(S1, "responsive", "pct")), " TF-enriched against ",
+sprintf("%.2f%%", tf(S1, "not responsive", "pct")), " (odds ratio ",
+sprintf("%.2f", tf(S1, "responsive", "OR")), ", p = ", sprintf("%.4f", tf(S1, "responsive", "p")),
+"), and the signal sits in the modules that FALL with nitrogen (OR ",
+sprintf("%.2f", tf(S1, "falls with N", "OR")), ", p = ",
 sprintf("%.4f", tf(S1, "falls with N", "p")), ") rather than those that rise (OR ",
 sprintf("%.2f", tf(S1, "rises with N", "OR")), ", p = ",
-sprintf("%.3f", tf(S1, "rises with N", "p")), "). Do not over-read the direction split -- it is ",
-"9 enriched modules against 6 -- but the pooled result is solid, and it is a result the previous ",
+sprintf("%.3f", tf(S1, "rises with N", "p")), "). Do not over-read the direction split -- it is 9 ",
+"enriched modules against 6 -- but the pooled result is solid, and it is one the previous ",
 "three-statistic call had buried: split across pearson_only / mi_only / both it read as OR 1.96, ",
-"p = 0.06 with the strongest class at 3 of 41 modules. In ", S2, " nothing is enriched (",
-sprintf("%.0f", tf(S2, "responsive", "pct")), " of ", fmt_n(tf(S2, "responsive", "modules")),
-" responsive modules), and its TF-enrichment rate is an order of magnitude below ", S1,
-"'s everywhere in the network.\\n",
-"\\n",
+"p = 0.06, with the strongest class at 3 of 41 modules. In ", S2, " nothing is enriched (0 of ",
+fmt_n(tf(S2, "responsive", "modules")), " responsive modules), and its TF-enrichment rate is an ",
+"order of magnitude below ", S1, "\'s everywhere in the network.\n",
+"\n",
 "NOT SHOWN, because it is two numbers rather than a panel: the responsive sets are not noise. ",
 "Permuting the trait labels against the same eigengenes ", fmt_n(n_perm), " times gives a median ",
 "of 0 responsive modules in both studies; ", fmt_n(obs_ge(S1)), " of ", fmt_n(n_perm),
@@ -359,7 +406,10 @@ stats <- rbindlist(list(
                            fmt_n(n_rho), fmt_n(responsive)))],
   cmpB[, .(panel = "B", study = as.character(study),
            quantity = sprintf("responsive by %s", statistic), value = fmt_n(n))],
-  tfD[!is.na(OR), .(panel = "D", study = as.character(study),
+  coh[, .(panel = "C/D", study = as.character(study),
+          quantity = sprintf("median R2 on nitrogen, %s modules", direction),
+          value = sprintf("%.3f (n = %d)", median_r2, modules))],
+  tfD[!is.na(OR), .(panel = "legend", study = as.character(study),
                     quantity = sprintf("TF enrichment: %s", group),
                     value = sprintf("%.2f%% OR %.2f p %.4g", pct, OR, p))]))
 write_tsv(stats, paste0(OUT_PREFIX, "_stats.tsv"))
