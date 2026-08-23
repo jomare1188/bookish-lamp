@@ -68,7 +68,13 @@ cd /dados04/jorge/comparative_saccharum/new_clean
 
 # paper figures
 ./run.sh figure1                   # Fig 1: both source studies reproduced  40 s
+./run.sh legends                   # -> figures_legends.txt (repo root)
 ```
+
+Figures carry a panel letter and the labels the data needs, and nothing else.
+Every description lives in the legend, which each figure script GENERATES from
+the variables that drew it — so a number cannot disagree between a figure and its
+legend. Never hand-edit `figures_legends.txt`; re-run the figure, then `legends`.
 
 `build` is `export` + `network <study> pearson` + `network <study> ksg` +
 `merge`; run those individually if you want to watch them.

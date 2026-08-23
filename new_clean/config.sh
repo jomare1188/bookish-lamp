@@ -257,6 +257,17 @@ MODULE_GO_MIN_ANNOTATED=3
 # (copy-on-write: the graph is not duplicated per worker).
 MODULE_GO_CORES=16
 
+# --- paper figures -----------------------------------------------------------
+# Figures carry a panel letter and the labels the data needs to be read, and
+# nothing else -- no titles, no subtitles, no statistics printed on the panel.
+# Everything else goes in the legend. Each figure script generates its own
+# legend from the variables that drew it, and `./run.sh legends` concatenates
+# them here, so a number cannot disagree between a figure and its legend.
+#
+# This file is OUTSIDE results/ deliberately: results/ is gitignored as
+# regenerable output, and the legends are manuscript text.
+FIGURE_LEGENDS="${BASE}/figures_legends.txt"
+
 # --- GO ----------------------------------------------------------------------
 ONTOLOGIES="BP MF CC"
 # Threshold on the RAW weight01 p-value, topGO's own convention: weight01

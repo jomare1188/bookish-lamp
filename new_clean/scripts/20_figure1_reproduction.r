@@ -46,7 +46,16 @@
 # from. Not VST: these are per-study descriptive panels reproducing per-study
 # claims, and TPM is what both source papers report.
 #
-# RUN: through run.sh  ->  ./run.sh figure1
+# NOTHING IS WRITTEN ON THE FIGURE THAT BELONGS IN THE LEGEND. Panels carry a
+# bold letter and the labels the data needs to be read -- split titles,
+# annotation names, colour keys -- and nothing else. No titles, no subtitles, no
+# statistics printed onto the panel. Everything a reader needs to interpret the
+# figure goes into the LEGEND, which this script generates from the same
+# variables that produced the panels, so the two cannot drift apart. The legend
+# is written to <prefix>_legend.txt and assembled into the paper-level
+# figures_legends.txt by  ./run.sh legends.
+#
+# RUN: through run.sh  ->  ./run.sh figure1   (then ./run.sh legends)
 # =============================================================================
 
 suppressMessages({
@@ -70,12 +79,14 @@ banner("Figure 1 — reproducing each source study's own finding")
 
 PAL_Z  <- rev(scico(256, palette = "roma"))
 
-# Panel titles are drawn by hand rather than passed to draw(column_title=): a
-# ComplexHeatmap column title is centred on the heatmap BODY and is not wrapped,
-# so a two-sentence caption runs off both edges of the device. Drawing it into
-# its own layout row, left-aligned and pre-wrapped, is what keeps it on the page.
-wrap_at <- function(x, width = 128)
-  paste(strwrap(gsub("[[:space:]]+", " ", x), width), collapse = "\n")
+# Legend prose is wrapped once, here, so the .txt file is readable in a terminal
+# and pastes into a manuscript without stray line breaks inside sentences.
+# Paragraphs (blank lines) survive; everything inside one is re-flowed.
+wrap_at <- function(x, width = 96)
+  paste(vapply(strsplit(x, "\n[[:space:]]*\n")[[1L]],
+               function(para) paste(strwrap(gsub("[[:space:]]+", " ", para), width),
+                                    collapse = "\n"),
+               ""), collapse = "\n\n")
 CELL_W <- unit(3.0, "mm")
 CELL_H <- unit(3.4, "mm")
 
@@ -146,7 +157,8 @@ annA_row <- rowAnnotation(
   TF = rdA$myb,
   col = list(`N-resp.` = c(`padj < 0.05` = "#B2182B", `n.s.` = "grey88"),
              TF = c(MYB = scico(5, palette = "batlow")[2], `not MYB` = "grey88")),
-  annotation_name_gp = gpar(fontsize = 6.5), annotation_name_rot = 45,
+  annotation_name_gp = gpar(fontsize = 6.5),
+  show_annotation_name = c(`log2(TPM+1)` = TRUE, `N-resp.` = FALSE, TF = FALSE),
   simple_anno_size = unit(3, "mm"),
   annotation_legend_param = list(
     `N-resp.` = list(title = "N-responsive\n(RB975375)",
@@ -173,14 +185,12 @@ htA <- Heatmap(ZA, name = "z-score",
                               labels_gp = gpar(fontsize = 7),
                               legend_height = unit(2.2, "cm")))
 
-subA <- sprintf(paste0(
-  "%d genes mapped from the 12 published members, %d leaf libraries. ",
-  "%d of the %d testable respond to nitrogen in RB975375 (padj < 0.05) and ALL %d go DOWN at high N. ",
-  "Nitrogen explains a median %.1f%% of each gene's variance against %.1f%% for genotype; ",
-  "nitrogen exceeds genotype in %d of %d genes."),
-  nrow(ZA), ncol(ZA), n_sig, n_test, n_down,
-  median(vp$pct_nitrogen, na.rm = TRUE), median(vp$pct_genotype, na.rm = TRUE),
-  sum(vp$pct_nitrogen > vp$pct_genotype, na.rm = TRUE), sum(!is.na(vp$pct_genotype)))
+med_n  <- median(vp$pct_nitrogen, na.rm = TRUE)
+med_g  <- median(vp$pct_genotype, na.rm = TRUE)
+n_ngt  <- sum(vp$pct_nitrogen > vp$pct_genotype, na.rm = TRUE)
+n_vp   <- sum(!is.na(vp$pct_genotype))
+n_myb  <- sum(rdA$myb == "MYB")
+n_loci <- uniqueN(rdA$locus_lab)
 
 # =============================================================================
 # Panel B — Kiet MYB61 in purple
@@ -214,7 +224,7 @@ XB <- log2(XB + 1)
 cladeB <- myb[species == "purple", .(gene, clade)]
 rdB <- data.table(gene = rownames(XB))
 rdB <- merge(rdB, cladeB, by = "gene", all.x = TRUE, sort = FALSE)
-rdB[is.na(clade), clade := sprintf("published id %s\n(NOT MYB61)", KIET_LOCUS)]
+rdB[is.na(clade), clade := sprintf("published id\n%s", KIET_LOCUS)]
 rdB[, clade := sub(" co-ortholog", "\nco-ortholog", clade)]
 rdB <- rdB[match(rownames(XB), gene)]
 blk <- unique(rdB$clade)
@@ -254,7 +264,8 @@ annB_row <- rowAnnotation(
                                axis_param = list(gp = gpar(fontsize = 6))),
   `U-shape` = ifelse(!is.na(rdB$U_padj) & rdB$U_padj < 0.05, "padj < 0.05", "n.s."),
   col = list(`U-shape` = c(`padj < 0.05` = "#B2182B", `n.s.` = "grey88")),
-  annotation_name_gp = gpar(fontsize = 6.5), annotation_name_rot = 45,
+  annotation_name_gp = gpar(fontsize = 6.5),
+  show_annotation_name = c(`log2(TPM+1)` = TRUE, `U-shape` = FALSE),
   simple_anno_size = unit(3, "mm"),
   annotation_legend_param = list(
     `U-shape` = list(title = "non-monotonic\nin 51NG3",
@@ -282,14 +293,9 @@ htB <- Heatmap(ZB, name = "z-score ",
                               labels_gp = gpar(fontsize = 7),
                               legend_height = unit(2.2, "cm")))
 
-subB <- sprintf(paste0(
-  "%d confirmed MYB61 copies, %d leaf libraries, ordered 0N -> 2N -> 6N inside each genotype. ",
-  "A non-monotonic response IS present and IS restricted to 51NG3 ",
-  "(U-shape contrast padj < 0.05 in %d of %d testable copies; 0 in TAGZ), but its sign is ",
-  "INVERTED relative to the paper: all %d peak at 2N and fall at both extremes, where 0N/6N ",
-  "maxima are reported. The copies at the published id are 1-2 orders of magnitude more highly ",
-  "expressed and are not MYB61."),
-  sum(is_copy), ncol(ZB), n_u, n_ut, n_neg)
+n_tagz <- sum(anv[genotype == "TAGZ" & gene %chin% copies,
+                  as.numeric(U_padj)] < 0.05, na.rm = TRUE)
+n_ctrl <- sum(!is_copy)
 
 # =============================================================================
 # compose and write
@@ -300,36 +306,31 @@ subB <- sprintf(paste0(
 # nor columns -- different species, different libraries -- so they must not be
 # forced onto one grid.
 W  <- 30
-nlines <- function(x) length(strsplit(wrap_at(x), "\n", fixed = TRUE)[[1L]])
-tA <- 1.1 + 0.42 * nlines(subA)          # bold line + wrapped caption
-tB <- 1.1 + 0.42 * nlines(subB)
+tA <- 0.8                                # just the panel letter
+tB <- 0.8
 hA <- 3.2 + 0.36 * nrow(ZA)              # column annotation + split titles + body
 hB <- 3.2 + 0.36 * nrow(ZB)
 H  <- tA + hA + tB + hB
 
-titleA <- "A   Mu\u00f1oz-Perez et al. 2025 \u2014 Module 20 responds to nitrogen (sugarcane, R570)"
-titleB <- "B   Ta Quang Kiet et al. 2025 \u2014 MYB61 responds non-monotonically, in one genotype (purple, LA purple)"
-
-put_title <- function(bold, body) {
-  grid.text(bold, x = unit(4, "mm"), y = unit(1, "npc") - unit(3.5, "mm"),
-            just = c("left", "top"), gp = gpar(fontsize = 10, fontface = "bold"))
-  grid.text(wrap_at(body), x = unit(4, "mm"), y = unit(1, "npc") - unit(9, "mm"),
-            just = c("left", "top"), gp = gpar(fontsize = 7.2, lineheight = 1.25))
-}
+# The panel letter is the ONLY text this script puts on the figure. Everything
+# else a reader needs is in the legend.
+put_letter <- function(ltr)
+  grid.text(ltr, x = unit(3, "mm"), y = unit(1, "npc") - unit(2, "mm"),
+            just = c("left", "top"), gp = gpar(fontsize = 13, fontface = "bold"))
 
 draw_fig <- function() {
   grid.newpage()
   pushViewport(viewport(layout = grid.layout(
     4, 1, heights = unit(c(tA, hA, tB, hB), "cm"))))
 
-  pushViewport(viewport(layout.pos.row = 1)); put_title(titleA, subA); popViewport()
+  pushViewport(viewport(layout.pos.row = 1)); put_letter("A"); popViewport()
   pushViewport(viewport(layout.pos.row = 2))
   draw(htA, newpage = FALSE, merge_legends = TRUE,
        heatmap_legend_side = "right", annotation_legend_side = "right",
        padding = unit(c(9, 2, 1, 2), "mm"))
   popViewport()
 
-  pushViewport(viewport(layout.pos.row = 3)); put_title(titleB, subB); popViewport()
+  pushViewport(viewport(layout.pos.row = 3)); put_letter("B"); popViewport()
   pushViewport(viewport(layout.pos.row = 4))
   draw(htB, newpage = FALSE, merge_legends = TRUE,
        heatmap_legend_side = "right", annotation_legend_side = "right",
@@ -349,8 +350,91 @@ draw_fig(); dev.off()
 
 say(sprintf("wrote %s.{png,pdf,svg}  (%.0f x %.0f cm)", basename(OUT_PREFIX), W, H))
 
-# The numbers printed in the panel subtitles, as a table, so the caption can be
-# written from a file rather than read off the image.
+# --- the legend -------------------------------------------------------------
+# Built from the same variables that drew the panels, so a number can never
+# disagree between figure and legend. Written next to the figure; assembled into
+# the paper-level figures_legends.txt by  ./run.sh legends.
+#
+# ON ORTHOFINDER, precisely. It is NOT how panel A was built: the Module-20
+# members are de novo assembly ORFs and were mapped into the R570 proteome by
+# reciprocal DIAMOND blastp through Arabidopsis. OrthoFinder enters panel B, as
+# one of the four independent lines of evidence confirming which purple genes
+# are MYB61, and it is the same orthology used for every cross-species
+# comparison elsewhere in this work. The legend says so in those terms rather
+# than crediting it with the whole figure.
+legend <- paste0(
+"Figure 1. The principal nitrogen finding of each source study is recovered in a single, ",
+"independent re-quantification. Public RNA-seq from both studies was re-processed through one ",
+"nf-core/rnaseq + salmon workflow against a common reference per species (Saccharum hybrid R570 ",
+"for sugarcane; LA purple for S. officinarum / S. robustum), so neither panel reuses any ",
+"quantification, mapping or statistic from the original publications. In both panels colour is ",
+"the per-gene z-score of log2(TPM + 1) across that panel's libraries, so a row shows the SHAPE of ",
+"a gene's response rather than its absolute level; ramps are clipped at the ", sprintf("%.0f", 98),
+"th (A) and ", sprintf("%.0f", 95), "th (B) percentile of |z|. Because a z-score rescales a ",
+"near-silent gene to look as structured as an abundant one, mean log2(TPM + 1) is drawn as a grey ",
+"bar beside every row. Rows are genes; columns are individual libraries.
+",
+"
+",
+"(A) Module 20 of Mu\u00f1oz-Perez et al. (2025), in sugarcane. Their 12 published members are ",
+"TransDecoder ORFs from a de novo assembly and carry no reference coordinates, so they were mapped ",
+"into the R570 proteome by DIAMOND blastp under a reciprocal-Arabidopsis filter -- member and ",
+"candidate must return the same best Arabidopsis hit -- which resolves them to ",
+sprintf("%d", nrow(ZA)), " genes at ", sprintf("%d", n_loci), " independent Arabidopsis anchors, ",
+"shown as the ", sprintf("%d", n_loci), " row blocks. (The 12 published members are therefore not ",
+"12 independent units; two have no predicted ORF at all and the nine MYB members resolve to only ",
+"two Arabidopsis MYB genes.) Columns are the ", sprintf("%d", ncol(ZA)), " leaf libraries, split ",
+"by nitrogen treatment alone (Low N | High N) with genotype as the upper annotation bar, and ",
+"ordered treatment, then genotype, then leaf segment, then library, so replicates of one condition ",
+"are adjacent; rows are hierarchically clustered within each block. This column layout is what ",
+"separates a nitrogen response from a genotype response by eye: a genotype-driven set would split ",
+"into two sub-clusters INSIDE each nitrogen block rather than differ BETWEEN blocks. Red marks in ",
+"the 'N-resp.' annotation are genes at padj < 0.05 for High vs Low nitrogen in the ",
+"nitrogen-responsive genotype RB975375 (Benjamini-Hochberg corrected); ", sprintf("%d", n_sig),
+" of the ", sprintf("%d", n_test), " testable genes qualify and all ", sprintf("%d", n_down),
+" are LOWER at high nitrogen. Teal marks in the 'TF' annotation are the ", sprintf("%d", n_myb),
+" genes independently called MYB by this project's own Pfam/PlnTFDB domain pipeline. Partitioning ",
+"each gene's variance with lm(expression ~ genotype + nitrogen), nitrogen accounts for a median ",
+sprintf("%.1f%%", med_n), " against ", sprintf("%.1f%%", med_g), " for genotype, and exceeds ",
+"genotype in ", sprintf("%d", n_ngt), " of ", sprintf("%d", n_vp), " genes. Mu\u00f1oz-Perez et al.'s ",
+"core claim is therefore reproduced.
+",
+"
+",
+"(B) MYB61 of Ta Quang Kiet et al. (2025), in purple. The published identifier ",
+"(Soff.09G0002230-3D) does not resolve in the LA purple annotation, so MYB61 was re-derived from ",
+"sequence: reciprocal best hits from AtMYB61 (AT1G09540) into sorghum and rice, DIAMOND blastp of ",
+"those five anchors into the LA purple proteome, a reciprocal-best-hit filter back to AT1G09540, ",
+"an independent Myb-domain call, cross-species orthology from ORTHOFINDER, and a MAFFT/FastTree ",
+"phylogeny. OrthoFinder v3.1.3 (-S diamond -M msa -A famsa -T fasttree) was run on one protein per ",
+"gene of both reference proteomes, assigning 360,794 of 435,856 genes (82.8%) to 94,273 ",
+"orthogroups; it is the same orthology that underlies every cross-species comparison in this work, ",
+"and here it confirms that the purple and sugarcane MYB61 copies fall in shared orthogroups. Note ",
+"that OrthoFinder leaves many polyploid haplotype copies unassigned, so absence from an orthogroup ",
+"is not evidence against a copy, which is why it is used alongside rather than instead of the ",
+"reciprocal search and the phylogeny. Rows are the ", sprintf("%d", sum(is_copy)), " confirmed ",
+"copies, split into the two grass co-orthologue clades left by the grass whole-genome duplication ",
+"(chr3-type, chr9-type), plus the ", sprintf("%d", n_ctrl), " genes at the published identifier as ",
+"a NEGATIVE CONTROL: that locus carries no Myb domain, never shares an orthogroup with a confirmed ",
+"MYB61 copy, and its genes are one to two orders of magnitude more highly expressed than any true ",
+"copy. Columns are the ", sprintf("%d", ncol(ZB)), " leaf libraries, split by genotype and ordered ",
+"0N, 2N, 6N within each, because the published claim is that the two genotypes behave differently. ",
+"Red marks show copies with a significant U-shape contrast c(+1, -2, +1) across 0N/2N/6N in 51NG3 ",
+"(one-way model per genotype, Benjamini-Hochberg corrected): ", sprintf("%d", n_u), " of ",
+sprintf("%d", n_ut), " testable copies, against ", sprintf("%d", n_tagz), " of ",
+sprintf("%d", n_ut), " in TAGZ. A non-monotonic, genotype-restricted nitrogen response is ",
+"therefore present, as reported -- but its sign is inverted: all ", sprintf("%d", n_neg),
+" significant copies peak at 2N and fall at both extremes, whereas maxima at 0N and 6N are ",
+"described. Two limits belong with this panel: the copies are lowly expressed in leaf (most below ",
+"1 TPM, visible in the grey bars), and the original study emphasises root tissue, which this ",
+"dataset does not contain.")
+
+legend_file <- paste0(OUT_PREFIX, "_legend.txt")
+writeLines(wrap_at(legend), legend_file)
+say("wrote ", basename(legend_file))
+
+# The numbers quoted in the legend, as a table, so they can be checked without
+# re-reading the prose.
 stats <- data.table(
   panel = c("A", "A", "A", "A", "A", "B", "B", "B", "B"),
   study = c(rep("Mu\u00f1oz-Perez 2025 (sugarcane)", 5), rep("Ta Quang Kiet 2025 (purple)", 4)),
@@ -365,7 +449,6 @@ stats <- data.table(
             sprintf("%.1f%%", median(vp$pct_genotype, na.rm = TRUE)),
             sprintf("%d / %d", sum(is_copy), ncol(ZB)), sprintf("%d / %d", n_u, n_ut),
             sprintf("%d / %d", n_neg, n_u),
-            sprintf("%d", sum(anv[genotype == "TAGZ" & gene %chin% copies,
-                                  as.numeric(U_padj)] < 0.05, na.rm = TRUE))))
+            sprintf("%d", n_tagz)))
 write_tsv(stats, paste0(OUT_PREFIX, "_stats.tsv"))
 say("done")

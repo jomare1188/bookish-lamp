@@ -534,10 +534,34 @@ sum(sub("\\.v[0-9.]+$", "", tf$gene) %in% nodes$gene)   # must be > 0
 
 ---
 
-## 20 · Figure 1 — reproducing each source study's own finding
+## 20 · Paper figures
+
+### The rule every paper figure follows
+
+**Nothing goes on the figure that belongs in the legend.** A panel carries a bold
+letter and the labels the data needs to be read — split titles, annotation names
+that are not already named by a colour key, axis labels, the keys themselves —
+and nothing else. No titles, no subtitles, no statistics printed onto the panel.
+
+**Every figure script generates its own legend**, from the same variables that
+drew the panels, to `<prefix>_legend.txt`. `./run.sh legends` concatenates those
+in figure order into `$FIGURE_LEGENDS` (`figures_legends.txt` at the repo root).
+The point of generating rather than writing them is that a number cannot disagree
+between a figure and its legend: change a threshold, re-run the figure, re-run
+`legends`, and the prose follows. Do not hand-edit `figures_legends.txt`.
+
+It lives outside `results/` deliberately — `results/` is gitignored as
+regenerable output, and legends are manuscript text.
+
+**All three devices are cairo** (`png(type="cairo")`, `cairo_pdf`, `svglite`).
+The base `pdf()` device transliterates UTF-8, which turned *Muñoz* into *Munoz*
+and em dashes into hyphens.
+
+### Figure 1 — reproducing each source study's own finding
 
 ```
 ./run.sh figure1        # -> results/figures/figure1_reproduction.{png,pdf,svg}
+./run.sh legends        # -> figures_legends.txt
 ```
 
 | | |
@@ -566,13 +590,22 @@ ride along as a labelled **negative control** block — that id does not resolve
 a MYB (see `11_readouts/myb61/README.md`) and those genes run one to two orders
 of magnitude hotter than any true MYB61 copy.
 
-**The panels are not symmetric and the figure does not pretend they are.**
+**The panels are not symmetric and the legend does not pretend they are.**
 Muñoz's result reproduces outright. Kiet's reproduces in *shape* — a significant
 non-monotonic, genotype-restricted response — but with the sign **inverted**, and
-at expression levels where most copies sit under 1 TPM in leaf. Both subtitles
-say so, and the numbers behind them are written to
-`figure1_reproduction_stats.tsv` so a caption can be written from a file rather
-than read off the image.
+at expression levels where most copies sit under 1 TPM in leaf. The generated
+legend says so, and the numbers are also written to
+`figure1_reproduction_stats.tsv` for checking without re-reading the prose.
+
+**Where OrthoFinder does and does not enter.** It is *not* how panel A was built:
+Module-20 members are de novo assembly ORFs, mapped into the R570 proteome by
+reciprocal DIAMOND blastp through Arabidopsis. It enters panel B as one of four
+independent lines of evidence identifying the purple MYB61 copies (alongside the
+reciprocal best-hit search, an independent Myb-domain call and a MAFFT/FastTree
+phylogeny), and it is the same orthology — OrthoFinder v3.1.3, `-S diamond -M msa
+-A famsa -T fasttree`, 94,273 orthogroups over both proteomes — that underlies
+every cross-species comparison in this work. The legend states it in those terms
+rather than crediting it with the whole figure.
 
 **Rows are per-gene z-scores** in both panels, because the question is the shape
 of the response and these genes span three orders of magnitude in absolute
@@ -594,6 +627,3 @@ heatmaps also share neither rows nor columns — different species, different
 libraries — so they go into separate viewports of one grid layout rather than
 being combined with `%v%`, which would force them onto one axis.
 
-**All three devices are cairo** (`png(type="cairo")`, `cairo_pdf`, `svglite`).
-The base `pdf()` device transliterates UTF-8, which turned *Muñoz* into *Munoz*
-and the em dashes into hyphens.

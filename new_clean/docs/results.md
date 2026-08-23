@@ -791,8 +791,9 @@ described above.
 
 Before any cross-species claim, the re-quantification has to recover what each
 study found on its own data. `./run.sh figure1` draws that check
-(`results/figures/figure1_reproduction.{png,pdf,svg}`; the numbers are also
-written to `figure1_reproduction_stats.tsv`).
+(`results/figures/figure1_reproduction.{png,pdf,svg}`); `./run.sh legends`
+assembles its generated legend into `figures_legends.txt` at the repo root, and
+the numbers are also written to `figure1_reproduction_stats.tsv`.
 
 | | Muñoz-Perez 2025 — Module 20 | Ta Quang Kiet 2025 — MYB61 |
 |---|---|---|
