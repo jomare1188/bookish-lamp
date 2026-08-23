@@ -65,6 +65,9 @@ cd /dados04/jorge/comparative_saccharum/new_clean
 ./run.sh modulego <study>          # topGO BP per responsive module      45 s
 ./run.sh moduleheatmap <study>     # per-module gene heatmaps            1 min
 ./run.sh modulesummary <study>     # one figure: all responsive modules
+
+# paper figures
+./run.sh figure1                   # Fig 1: both source studies reproduced  40 s
 ```
 
 `build` is `export` + `network <study> pearson` + `network <study> ksg` +
@@ -160,11 +163,12 @@ scripts/
   17_module_summary.r    every responsive module's eigengene in one figure
   18_module_go.r         topGO per responsive module (topGO_env)
   19_module_trait_spearman.r  module eigengene vs trait, Spearman only
+  20_figure1_reproduction.r   paper Fig 1: Module 20 + MYB61, png/pdf/svg
   11_readouts/           get_tfs, myb61, module20 (H1); cached sequence work is
                          read from the original GET_TFS tree, output lands here
   validate.py            engine correctness suite
   lib/common.R           config, logging, id handling, VST + orthogroup readers
-results/{sugarcane,purple,conservation}/    gitignored
+results/{sugarcane,purple,conservation,figures}/  gitignored
 logs/                                       gitignored
 docs/
   decisions.md     why the pipeline is the way it is, with evidence

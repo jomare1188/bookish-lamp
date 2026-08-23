@@ -787,6 +787,42 @@ described above.
 
 ---
 
+## Figure 1 — both source studies reproduce (with one asymmetry)
+
+Before any cross-species claim, the re-quantification has to recover what each
+study found on its own data. `./run.sh figure1` draws that check
+(`results/figures/figure1_reproduction.{png,pdf,svg}`; the numbers are also
+written to `figure1_reproduction_stats.tsv`).
+
+| | Muñoz-Perez 2025 — Module 20 | Ta Quang Kiet 2025 — MYB61 |
+|---|---|---|
+| what they claim | Module 20 is nitrogen-responsive | MYB61 responds non-monotonically, oppositely between genotypes |
+| what we test | 33 mapped genes x 48 sugarcane libraries | 16 confirmed copies x 18 purple libraries |
+| result | **24 of 32 testable respond in RB975375**, and **all 24 go down at high N** | **U-shape contrast padj < 0.05 in 10 of 13 copies in 51NG3; 0 in TAGZ** |
+| variance | nitrogen 20.0% vs genotype 12.1% (median); N > genotype in 18 of 33 | — |
+| **verdict** | **reproduces outright** | **reproduces in shape, inverted in sign** |
+
+**Muñoz's claim reproduces cleanly.** Every significant gene moves the same way —
+down at high nitrogen — across all four independent Module-20 loci, and nitrogen
+beats genotype as a variance component in most of the set. This is the strongest
+single validation the project has that the re-quantification is sound.
+
+**Kiet's claim reproduces in shape but not in sign.** A significant non-monotonic
+response exists and is restricted to one genotype, which is the structure they
+describe. But all 10 significant copies **peak at 2N and fall at both 0N and 6N**,
+where the paper reports maxima at the extremes. Two caveats belong with it: these
+copies are barely expressed in leaf (most under 1 TPM), and the paper emphasises
+roots, which this dataset does not contain.
+
+The figure also carries the copies at the published id `Soff.09G0002230` as a
+negative control. That id does not resolve to a MYB at all, and the genes at that
+locus run one to two orders of magnitude hotter than any true MYB61 copy — the
+likely source of the signal the paper attributes to MYB61. The full argument,
+including the cloning-primer evidence that settles which gene they actually
+worked on, is in `scripts/11_readouts/myb61/README.md`.
+
+---
+
 ## Open items
 
 - The 47,192 spurious sugarcane edges were present in every downstream result of

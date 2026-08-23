@@ -33,6 +33,7 @@
 #   ./run.sh tfchar                          TF characterisation
 #   ./run.sh myb61     [from-step]           MYB61 readout (default 07)
 #   ./run.sh module20  [from-step]           Module-20 readout (default 03)
+#   ./run.sh figure1                         paper Fig 1: both studies reproduced
 #   ./run.sh build     <study>               export + both layers + merge
 #
 # Order: export -> validate -> network(x2) -> merge -> stats -> mcl ->
@@ -355,6 +356,18 @@ main() {
     CLEAN_CORES="$NUM_CORES" \
       conda run --no-capture-output -n "$CONDA_TOPGO" \
         Rscript "${SCRIPTS}/18_module_go.r"
+    ;;
+
+  # --- 20 paper figures --------------------------------------------------------
+  figure1)
+    CLEAN_BASE="$BASE" \
+    CLEAN_READOUTS="${RESULTS}/readouts" \
+    CLEAN_TPM_SUGARCANE="$TPM_sugarcane" \
+    CLEAN_TPM_PURPLE="$TPM_purple" \
+    CLEAN_META_SUGARCANE="$META_sugarcane" \
+    CLEAN_OUT_PREFIX="${RESULTS}/figures/figure1_reproduction" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_PLOT" "${SCRIPTS}/20_figure1_reproduction.r"
     ;;
 
   # --- 09-10 GO ---------------------------------------------------------------

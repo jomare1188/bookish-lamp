@@ -531,3 +531,69 @@ nodes <- data.table::fread("results/sugarcane/network_sugarcane_node_metrics.tsv
 tf    <- data.table::fread("GET_TFS/new/results/sugarcane/TF_in_network.tsv")
 sum(sub("\\.v[0-9.]+$", "", tf$gene) %in% nodes$gene)   # must be > 0
 ```
+
+---
+
+## 20 · Figure 1 — reproducing each source study's own finding
+
+```
+./run.sh figure1        # -> results/figures/figure1_reproduction.{png,pdf,svg}
+```
+
+| | |
+|---|---|
+| cost | ~40 s |
+| env | `r_env` (ComplexHeatmap, circlize, scico, svglite) |
+| inputs | the module20 and myb61 readouts under `results/readouts/`, plus both salmon TPM matrices |
+
+**Why this figure exists.** Everything else in this project is a comparison
+between two studies that were never designed to be compared. That comparison is
+only worth reading if the re-quantification first reproduces what each study
+found *on its own data* — so before any cross-species result, the paper shows
+Muñoz's Module 20 and Kiet's MYB61 recovered through this pipeline, from these
+references.
+
+**Panel A** — Module 20, sugarcane, 33 mapped genes x 48 libraries. Columns split
+by **nitrogen only**, genotype as an annotation bar. That is the layout that
+separates "tracks nitrogen" from "tracks genotype" by eye: a genotype-driven set
+splits into two sub-clusters *inside* each nitrogen block rather than differing
+*between* blocks.
+
+**Panel B** — MYB61, purple, 16 confirmed copies x 18 libraries. Columns split by
+**genotype**, ordered 0N -> 2N -> 6N inside each, because Kiet's claim is that the
+two genotypes behave differently. The copies at the published id `09G0002230`
+ride along as a labelled **negative control** block — that id does not resolve to
+a MYB (see `11_readouts/myb61/README.md`) and those genes run one to two orders
+of magnitude hotter than any true MYB61 copy.
+
+**The panels are not symmetric and the figure does not pretend they are.**
+Muñoz's result reproduces outright. Kiet's reproduces in *shape* — a significant
+non-monotonic, genotype-restricted response — but with the sign **inverted**, and
+at expression levels where most copies sit under 1 TPM in leaf. Both subtitles
+say so, and the numbers behind them are written to
+`figure1_reproduction_stats.tsv` so a caption can be written from a file rather
+than read off the image.
+
+**Rows are per-gene z-scores** in both panels, because the question is the shape
+of the response and these genes span three orders of magnitude in absolute
+expression. Mean `log2(TPM+1)` is a row-annotation barplot instead, so a row that
+is structured but silent cannot be mistaken for a result — the failure mode a
+z-score heatmap has on its own. Panel B clips its ramp at the **95th** percentile
+of |z| rather than the 98th the other figures use: most MYB61 copies are near
+zero in leaf, so their z-scores are spiky by construction and a 98% clip lets
+three cells set the whole scale.
+
+**Expression is TPM**, not VST, from the same salmon quantification the networks
+were built from — these are per-study descriptive panels reproducing per-study
+claims, and TPM is what both source papers report.
+
+**Titles are drawn by hand** into their own layout rows rather than passed to
+`draw(column_title=)`. A ComplexHeatmap column title is centred on the heatmap
+*body* and is not wrapped, so a two-sentence caption runs off both edges. The two
+heatmaps also share neither rows nor columns — different species, different
+libraries — so they go into separate viewports of one grid layout rather than
+being combined with `%v%`, which would force them onto one axis.
+
+**All three devices are cairo** (`png(type="cairo")`, `cairo_pdf`, `svglite`).
+The base `pdf()` device transliterates UTF-8, which turned *Muñoz* into *Munoz*
+and the em dashes into hyphens.
