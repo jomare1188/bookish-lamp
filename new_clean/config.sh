@@ -36,6 +36,7 @@ CONDA_CLUSTERPROFILER="r_clusterprofiler"
 DDS_sugarcane="${BASE}/run1/salmon/deseq2_qc/deseq2.dds.RData"
 COLS_sugarcane=""
 TPM_sugarcane="${BASE}/run1/salmon/salmon.merged.gene_tpm.tsv"
+SALMONQC_sugarcane="${BASE}/run1/multiqc/multiqc_report_data/multiqc_salmon.txt"
 META_sugarcane="${BASE}/samplesheet.csv"
 STRIP_VERSION_sugarcane=1          # R570 ids carry a .v2.1 suffix
 
@@ -54,6 +55,7 @@ STRIP_VERSION_sugarcane=1          # R570 ids carry a .v2.1 suffix
 DDS_purple="${BASE}/china/run2_onlyL/salmon/deseq2_qc/deseq2.dds.RData"
 COLS_purple=""
 TPM_purple="${BASE}/china/run2_onlyL/salmon/salmon.merged.gene_tpm.tsv"
+SALMONQC_purple="${BASE}/china/run2_onlyL/multiqc/multiqc_report_data/multiqc_salmon.txt"
 META_purple="${BASE}/china/samplesheet_china.csv"
 STRIP_VERSION_purple=0             # LA purple ids are already bare
 
@@ -267,6 +269,18 @@ MODULE_GO_CORES=16
 # This file is OUTSIDE results/ deliberately: results/ is gitignored as
 # regenerable output, and the legends are manuscript text.
 FIGURE_LEGENDS="${BASE}/figures_legends.txt"
+
+# Figure NUMBERS live here and nowhere else. Scripts are named for what they draw
+# (20_fig_reproduction.r, 21_fig_dataset_qc.r) because figure order is editorial
+# and has already changed once -- the reproduction figure opened the paper until
+# the dataset/QC figure took the front. These numbers name the output files and
+# open each generated legend, so renumbering the paper is this one edit.
+FIG_DATASET=1
+FIG_REPRODUCTION=2
+
+# Genes used for the per-study PCA in the dataset figure: the most variable
+# 2,000, the usual DESeq2 plotPCA convention.
+PCA_NTOP=2000
 
 # --- GO ----------------------------------------------------------------------
 ONTOLOGIES="BP MF CC"

@@ -67,11 +67,15 @@ cd /dados04/jorge/comparative_saccharum/new_clean
 ./run.sh modulesummary <study>     # one figure: all responsive modules
 
 # paper figures
-./run.sh figure1                   # Fig 1: both source studies reproduced  40 s
+./run.sh figdataset                # dataset, QC and quantification        30 s
+./run.sh figrepro                  # both source studies reproduced        40 s
 ./run.sh legends                   # -> figures_legends.txt (repo root)
 ```
 
-Figures carry a panel letter and the labels the data needs, and nothing else.
+Scripts are named for what they draw; the figure NUMBER lives in `config.sh`
+(`FIG_DATASET`, `FIG_REPRODUCTION`) and names the output files, so renumbering
+the paper is one edit. Figures carry a panel letter and the labels the data
+needs, and nothing else.
 Every description lives in the legend, which each figure script GENERATES from
 the variables that drew it — so a number cannot disagree between a figure and its
 legend. Never hand-edit `figures_legends.txt`; re-run the figure, then `legends`.
@@ -169,7 +173,8 @@ scripts/
   17_module_summary.r    every responsive module's eigengene in one figure
   18_module_go.r         topGO per responsive module (topGO_env)
   19_module_trait_spearman.r  module eigengene vs trait, Spearman only
-  20_figure1_reproduction.r   paper Fig 1: Module 20 + MYB61, png/pdf/svg
+  20_fig_reproduction.r       Module 20 + MYB61 reproduced, png/pdf/svg
+  21_fig_dataset_qc.r         design, QC, gene funnel, PCA
   11_readouts/           get_tfs, myb61, module20 (H1); cached sequence work is
                          read from the original GET_TFS tree, output lands here
   validate.py            engine correctness suite

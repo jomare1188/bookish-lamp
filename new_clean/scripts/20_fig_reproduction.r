@@ -1,6 +1,13 @@
 # =============================================================================
-# 20_figure1_reproduction.r — Figure 1: both source studies' primary findings,
-# recovered in this project's single re-quantification.
+# 20_fig_reproduction.r — the reproduction figure: both source studies' primary
+# findings, recovered in this project's single re-quantification.
+#
+# WHY THE FILE IS NOT NAMED FOR ITS FIGURE NUMBER. It was `20_figure1_*` until
+# the dataset/QC figure took the front of the paper and pushed it to Figure 2.
+# Figure order is an editorial decision that will move again; the script is named
+# for what it draws, and the NUMBER comes from config.sh (FIG_REPRODUCTION), which
+# also names the output files and opens the generated legend. Renumbering the
+# paper is then a one-line edit in one file.
 #
 # THE CLAIM THIS FIGURE MAKES, AND WHY IT COMES FIRST. Everything downstream is
 # a comparison between two studies that were never designed to be compared. That
@@ -55,7 +62,7 @@
 # is written to <prefix>_legend.txt and assembled into the paper-level
 # figures_legends.txt by  ./run.sh legends.
 #
-# RUN: through run.sh  ->  ./run.sh figure1   (then ./run.sh legends)
+# RUN: through run.sh  ->  ./run.sh figrepro   (then ./run.sh legends)
 # =============================================================================
 
 suppressMessages({
@@ -73,9 +80,10 @@ TPM_PUR     <- env_req("CLEAN_TPM_PURPLE")
 META_SUG    <- env_req("CLEAN_META_SUGARCANE")
 OUT_PREFIX  <- env_req("CLEAN_OUT_PREFIX")
 KIET_LOCUS  <- env_opt("CLEAN_KIET_LOCUS", "09G0002230")
+FIG         <- env_opt("CLEAN_FIG_NUM", "2")
 setDTthreads(as.integer(env_num("CLEAN_CORES", 8)))
 
-banner("Figure 1 — reproducing each source study's own finding")
+banner(sprintf("Figure %s — reproducing each source study's own finding", FIG))
 
 PAL_Z  <- rev(scico(256, palette = "roma"))
 
@@ -363,18 +371,16 @@ say(sprintf("wrote %s.{png,pdf,svg}  (%.0f x %.0f cm)", basename(OUT_PREFIX), W,
 # comparison elsewhere in this work. The legend says so in those terms rather
 # than crediting it with the whole figure.
 legend <- paste0(
-"Figure 1. The principal nitrogen finding of each source study is recovered in a single, ",
+"Figure ", FIG, ". The principal nitrogen finding of each source study is recovered in a single, ",
 "independent re-quantification. Public RNA-seq from both studies was re-processed through one ",
 "nf-core/rnaseq + salmon workflow against a common reference per species (Saccharum hybrid R570 ",
 "for sugarcane; LA purple for S. officinarum / S. robustum), so neither panel reuses any ",
-"quantification, mapping or statistic from the original publications. Cross-species orthology ",
-"throughout this work is the OrthoFinder backbone: OrthoFinder v3.1.3 (-S diamond -M msa -A famsa ",
-"-T fasttree) run on one protein per gene of the two reference proteomes, assigning 360,794 of ",
-"435,856 genes (82.8%) to 94,273 orthogroups. Every comparison between the two species rests on ",
-"it, and it is what makes 'the same gene' a defined object across two polyploid references. It ",
-"enters this figure in panel B, as one of the lines of evidence identifying MYB61; panel A is a ",
-"within-species mapping problem and is solved differently, as described below. In both panels ",
-"colour is ",
+"quantification, mapping or statistic from the original publications; the designs, library ",
+"quality and gene yield are in Figure ", as.character(as.integer(FIG) - 1L), ", as is the ",
+"OrthoFinder orthology backbone (v3.1.3; 94,273 orthogroups over both reference proteomes) that ",
+"every cross-species comparison in this work rests on. That backbone enters this figure in panel ",
+"B, as one of the lines of evidence identifying MYB61; panel A is a within-species mapping ",
+"problem and is solved differently, as described below. In both panels colour is ",
 "the per-gene z-score of log2(TPM + 1) across that panel's libraries, so a row shows the SHAPE of ",
 "a gene's response rather than its absolute level; ramps are clipped at the ", sprintf("%.0f", 98),
 "th (A) and ", sprintf("%.0f", 95), "th (B) percentile of |z|. Because a z-score rescales a ",

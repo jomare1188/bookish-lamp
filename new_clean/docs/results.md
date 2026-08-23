@@ -787,13 +787,18 @@ described above.
 
 ---
 
-## Figure 1 — both source studies reproduce (with one asymmetry)
+## The reproduction figure — both source studies reproduce (with one asymmetry)
 
 Before any cross-species claim, the re-quantification has to recover what each
-study found on its own data. `./run.sh figure1` draws that check
-(`results/figures/figure1_reproduction.{png,pdf,svg}`); `./run.sh legends`
+study found on its own data. `./run.sh figrepro` draws that check
+(`results/figures/figure2_reproduction.{png,pdf,svg}`); `./run.sh legends`
 assembles its generated legend into `figures_legends.txt` at the repo root, and
-the numbers are also written to `figure1_reproduction_stats.tsv`.
+the numbers are also written to `figure2_reproduction_stats.tsv`. The paper's Figure 1 is the
+dataset, QC and quantification figure (`./run.sh figdataset`), whose panel D
+carries a result worth reading before anything else: **PC1 is genotype in both
+studies, at R² = 0.998 and 0.999**, and nitrogen loads on neither first
+component. The nitrogen response has to be found against genotype and tissue,
+not read off a leading component.
 
 | | Muñoz-Perez 2025 — Module 20 | Ta Quang Kiet 2025 — MYB61 |
 |---|---|---|

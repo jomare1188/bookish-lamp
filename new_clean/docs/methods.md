@@ -534,7 +534,7 @@ sum(sub("\\.v[0-9.]+$", "", tf$gene) %in% nodes$gene)   # must be > 0
 
 ---
 
-## 20 · Paper figures
+## 20-21 · Paper figures
 
 ### The rule every paper figure follows
 
@@ -542,6 +542,13 @@ sum(sub("\\.v[0-9.]+$", "", tf$gene) %in% nodes$gene)   # must be > 0
 letter and the labels the data needs to be read — split titles, annotation names
 that are not already named by a colour key, axis labels, the keys themselves —
 and nothing else. No titles, no subtitles, no statistics printed onto the panel.
+
+**Scripts are named for what they draw, not for their figure number.**
+`20_fig_reproduction.r`, `21_fig_dataset_qc.r`. Figure order is editorial and has
+already moved once — the reproduction figure opened the paper until the
+dataset/QC figure took the front. The numbers live in `config.sh`
+(`FIG_DATASET`, `FIG_REPRODUCTION`) and they name the output files and open each
+generated legend, so renumbering the paper is one edit in one file.
 
 **Every figure script generates its own legend**, from the same variables that
 drew the panels, to `<prefix>_legend.txt`. `./run.sh legends` concatenates those
@@ -557,10 +564,47 @@ regenerable output, and legends are manuscript text.
 The base `pdf()` device transliterates UTF-8, which turned *Muñoz* into *Munoz*
 and em dashes into hyphens.
 
-### Figure 1 — reproducing each source study's own finding
+### `figdataset` — the dataset, its QC and its quantification
 
 ```
-./run.sh figure1        # -> results/figures/figure1_reproduction.{png,pdf,svg}
+./run.sh figdataset     # -> results/figures/figure<N>_dataset_qc.{png,pdf,svg}
+```
+
+| | |
+|---|---|
+| cost | ~30 s |
+| env | `r_env` (ggplot2, patchwork, scico, svglite) |
+| inputs | both sample sheets, both `multiqc_salmon.txt`, both TPM matrices, both VST exports, both node-metric tables |
+
+The paper's opening figure. Every later result rests on two things a reader
+cannot check from the text: that the two reused designs can be compared at all,
+and that re-quantifying somebody else's libraries actually worked.
+
+**A — the design.** Libraries per study × genotype × nitrogen × leaf segment.
+Note `facet_wrap`, not `facet_grid`: a grid draws a cell for every study ×
+genotype pair including the six that do not exist. Fill carries the study, not
+the count — with every cell at 3 or 6 a continuous colour bar is decoration.
+
+**B — depth against mapping rate**, one point per library from the salmon logs.
+Plotted against each other rather than as two distributions because the failure
+worth seeing is a library that is both shallow and poorly mapped, which is a
+position on this plane and not a value on either axis.
+
+**C — the gene funnel**: annotated and quantified → surviving the CV filter →
+nodes in the network, with the fraction retained. A reader who sees only
+"103,336 nodes" cannot tell whether that is most of the annotation or a tenth.
+
+**D — PCA per study** on the 2,000 most variable genes (`PCA_NTOP`).
+**What each axis tracks is measured, not assumed** — the script regresses each
+component on each design factor and the legend quotes the R². That check earned
+its place immediately: the first draft of the legend asserted that sugarcane's
+leading axis was leaf segment, and PC1 is genotype at R² = 0.998 in *both*
+studies. Nitrogen loads on neither first component.
+
+### `figrepro` — reproducing each source study's own finding
+
+```
+./run.sh figrepro       # -> results/figures/figure<N>_reproduction.{png,pdf,svg}
 ./run.sh legends        # -> figures_legends.txt
 ```
 
@@ -595,7 +639,7 @@ Muñoz's result reproduces outright. Kiet's reproduces in *shape* — a signific
 non-monotonic, genotype-restricted response — but with the sign **inverted**, and
 at expression levels where most copies sit under 1 TPM in leaf. The generated
 legend says so, and the numbers are also written to
-`figure1_reproduction_stats.tsv` for checking without re-reading the prose.
+`figure2_reproduction_stats.tsv` for checking without re-reading the prose.
 
 **Where OrthoFinder does and does not enter.** It is *not* how panel A was built:
 Module-20 members are de novo assembly ORFs, mapped into the R570 proteome by

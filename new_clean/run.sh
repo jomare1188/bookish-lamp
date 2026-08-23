@@ -33,7 +33,8 @@
 #   ./run.sh tfchar                          TF characterisation
 #   ./run.sh myb61     [from-step]           MYB61 readout (default 07)
 #   ./run.sh module20  [from-step]           Module-20 readout (default 03)
-#   ./run.sh figure1                         paper Fig 1: both studies reproduced
+#   ./run.sh figdataset                      dataset, QC and quantification figure
+#   ./run.sh figrepro                        both source studies reproduced
 #   ./run.sh legends                         assemble figures_legends.txt
 #   ./run.sh build     <study>               export + both layers + merge
 #
@@ -359,16 +360,41 @@ main() {
         Rscript "${SCRIPTS}/18_module_go.r"
     ;;
 
-  # --- 20 paper figures --------------------------------------------------------
-  figure1)
+  # --- 20-21 paper figures ------------------------------------------------------
+  # Scripts are named for what they draw, not for their figure number: figure
+  # ORDER is editorial and has already moved once. FIG_* in config.sh carries the
+  # number, and it names the output files and opens the generated legend.
+  figdataset)
+    CLEAN_STUDIES="$STUDIES" \
+    CLEAN_FIG_NUM="$FIG_DATASET" \
+    CLEAN_LABEL_SUGARCANE="sugarcane" \
+    CLEAN_LABEL_PURPLE="purple" \
+    CLEAN_META_SUGARCANE="$META_sugarcane" \
+    CLEAN_META_PURPLE="$META_purple" \
+    CLEAN_SALMONQC_SUGARCANE="$SALMONQC_sugarcane" \
+    CLEAN_SALMONQC_PURPLE="$SALMONQC_purple" \
+    CLEAN_TPM_SUGARCANE="$TPM_sugarcane" \
+    CLEAN_TPM_PURPLE="$TPM_purple" \
+    CLEAN_VST_SUGARCANE="$(vst_prefix sugarcane)" \
+    CLEAN_VST_PURPLE="$(vst_prefix purple)" \
+    CLEAN_NODES_SUGARCANE="$(study_dir sugarcane)/network_sugarcane_node_metrics.tsv" \
+    CLEAN_NODES_PURPLE="$(study_dir purple)/network_purple_node_metrics.tsv" \
+    CLEAN_PCA_NTOP="$PCA_NTOP" \
+    CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_DATASET}_dataset_qc" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_PLOT" "${SCRIPTS}/21_fig_dataset_qc.r"
+    ;;
+
+  figrepro)
     CLEAN_BASE="$BASE" \
+    CLEAN_FIG_NUM="$FIG_REPRODUCTION" \
     CLEAN_READOUTS="${RESULTS}/readouts" \
     CLEAN_TPM_SUGARCANE="$TPM_sugarcane" \
     CLEAN_TPM_PURPLE="$TPM_purple" \
     CLEAN_META_SUGARCANE="$META_sugarcane" \
-    CLEAN_OUT_PREFIX="${RESULTS}/figures/figure1_reproduction" \
+    CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_REPRODUCTION}_reproduction" \
     CLEAN_CORES="$NUM_CORES" \
-      "$RSCRIPT_PLOT" "${SCRIPTS}/20_figure1_reproduction.r"
+      "$RSCRIPT_PLOT" "${SCRIPTS}/20_fig_reproduction.r"
     ;;
 
   # Assembles every figure's generated legend into the paper-level file. Each
@@ -378,7 +404,7 @@ main() {
   legends)
     LEG="${FIGURE_LEGENDS}"
     SRC=$(ls "${RESULTS}/figures/"figure*_legend.txt 2>/dev/null | sort -V) || true
-    [ -n "$SRC" ] || die "no figure legends found -- run ./run.sh figure1 first"
+    [ -n "$SRC" ] || die "no figure legends found -- run ./run.sh figdataset first"
     {
       echo "Figure legends"
       echo "=============="
