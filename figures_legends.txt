@@ -22,12 +22,15 @@ cell is the number of sequenced libraries, and the segments run base to tip in t
 sampled. The two designs are deliberately shown on the same axes because their mismatch sets
 what the rest of the work can ask. sugarcane contrasts two nitrogen levels across four leaf
 segments -- base0, base, mid and tip, sampled along the developmental gradient of the leaf --
-in two genotypes of contrasting nitrogen-use efficiency (48 libraries); purple runs a
-three-point nitrogen DOSE (0, 2, 6 mM) in one tissue in two species (18 libraries). The 48
-against 18 asymmetry is the single most important fact about this project and nearly every
-underpowered result traces back to it. That the second design is an ordered dose rather than a
-two-level contrast is why the trait is coded ordinally and tested by rank correlation rather
-than by Pearson.
+in two genotypes of contrasting nitrogen-use efficiency (48 libraries); purple uses three
+nitrogen levels in one tissue in two species (18 libraries), and those three levels are NOT a
+monotonic dose series: 2 N is the CONTROL, and 0 N and 6 N are stresses in opposite directions
+-- deficiency and excess. The design is stress-control-stress, so the response a
+nitrogen-sensitive gene is expected to show is a U or an inverted U centred on 2 N, not a trend
+from 0 to 6. The 48 against 18 asymmetry is the single most important fact about this project
+and nearly every underpowered result traces back to it; the SHAPE of the second design is the
+next most important, because any test that assumes monotonicity has little power against a
+symmetric stress response.
 
 (B) Sequencing depth against mapping rate, one point per library, from the salmon logs of each
 nf-core/rnaseq run; fill gives the nitrogen level and shape the study. Depth and mapping rate
@@ -126,8 +129,10 @@ behave differently. Red marks in the 'non-monotonic in 51NG3' track are copies w
 significant U-shape contrast c(+1, -2, +1) across 0N/2N/6N in 51NG3 (one-way model per
 genotype, Benjamini-Hochberg corrected): 10 of 13 testable copies, against 0 of 13 in TAGZ. A
 non-monotonic, genotype-restricted nitrogen response is therefore present, as reported -- but
-its sign is inverted: all 10 significant copies peak at 2N and fall at both extremes, whereas
-maxima at 0N and 6N are described. Two limits belong with this panel: the copies are lowly
-expressed in leaf (most below 1 TPM, visible in the grey bars), and the original study
-emphasises root tissue, which this dataset does not contain.
+its sign is inverted: all 10 significant copies peak at 2N and fall at both extremes. Since 2 N
+is the CONTROL and 0 N and 6 N are stresses in opposite directions, that reads as MYB61 being
+REPRESSED BY BOTH nitrogen deficiency and nitrogen excess, where the original report describes
+maxima at both stresses. Two limits belong with this panel: the copies are lowly expressed in
+leaf (most below 1 TPM, visible in the grey bars), and the original study emphasises root
+tissue, which this dataset does not contain.
 

@@ -13,8 +13,9 @@
 #      segment, in sugarcane). This is where the sample-size asymmetry that runs
 #      through every downstream result becomes visible: 48 against 18. It is also
 #      where the two designs stop matching -- sugarcane contrasts two nitrogen
-#      levels across four leaf segments, purple runs a three-point dose in one
-#      tissue -- which is why the trait is coded ordinally and tested by rank.
+#      levels across four leaf segments; purple has three levels in one tissue
+#      that are NOT a dose series but a stress-control-stress design, 2 N being
+#      the control and 0 N / 6 N deficiency and excess.
 #
 #   B  SEQUENCING DEPTH AND MAPPING RATE, per library, from the salmon logs of
 #      each nf-core/rnaseq run. Plotted against each other rather than as two
@@ -31,9 +32,10 @@
 #   D  PCA of the VST matrix per study, on the 2,000 most variable genes. The
 #      question is whether the design is visible in the data at all before any
 #      network is built: if nitrogen does not separate here, nothing downstream
-#      can be believed. It is also where sugarcane's leaf-segment effect shows
-#      itself as the largest axis of variation, which is the reason the module
-#      heatmaps order columns by segment.
+#      can be believed. What each axis tracks is MEASURED here, not asserted:
+#      PC1 is genotype in both studies (R^2 ~ 0.998) and nitrogen loads on
+#      neither. Sugarcane's leaf segment is PC2 at R^2 = 0.802, which is the
+#      quantitative reason the module heatmaps order columns by segment.
 #
 # NOTHING IS WRITTEN ON THE FIGURE THAT BELONGS IN THE LEGEND -- panel letters and
 # the labels the data needs, nothing else. The legend is generated from the same
@@ -77,6 +79,15 @@ STUDY_LAB <- vapply(cfg, `[[`, "", "label")
 # base -> tip, the order they sit on the leaf; any other order makes the design
 # panel and the heatmap column blocks arbitrary.
 SEGMENT_LEVELS <- c("base0", "base", "mid", "tip")
+
+# Purple's nitrogen levels are NOT a monotonic dose series. 2 N is the CONTROL
+# and 0 N and 6 N are stresses in opposite directions, so the design is
+# stress-control-stress and the biologically expected response shape is a U, not
+# a trend. The labels say so on the figure because reading the axis as 0 < 2 < 6
+# leads straight to the wrong model.
+PURPLE_N <- c("0N" = "0 N\n(low stress)",
+              "2N" = "2 N\n(control)",
+              "6N" = "6 N\n(high stress)")
 PAL_N   <- scico(4, palette = "lajolla", begin = 0.25, end = 0.9)
 theme_f <- theme_bw(base_size = 8) +
   theme(panel.grid.minor = element_blank(),
@@ -90,8 +101,10 @@ theme_f <- theme_bw(base_size = 8) +
 read_meta <- function(st) {
   m <- fread(cfg[[st]]$meta); setnames(m, tolower(names(m)))
   m[, study := STUDY_LAB[[st]]]
-  # Sugarcane names its nitrogen levels, purple gives a dose. Ordering is what
-  # matters downstream, so both become an ordered factor with the dose as label.
+  # Sugarcane names its two nitrogen levels; purple's three are a
+  # stress-control-stress set (see PURPLE_N). Both become an ordered factor, but
+  # note that purple's order is the SUPPLY order, not a severity order -- both
+  # ends are stressed and the middle is the control.
   if (st == "sugarcane") {
     m[, nlev := factor(fifelse(grepl("Low", treatment), "Low N", "High N"),
                        levels = c("Low N", "High N"))]
@@ -106,7 +119,8 @@ read_meta <- function(st) {
            call. = FALSE)
     m[, seg := factor(segment, levels = SEGMENT_LEVELS)]
   } else {
-    m[, nlev := factor(treatment, levels = c("0N", "2N", "6N"))]
+    m[, nlev := factor(PURPLE_N[as.character(treatment)],
+                       levels = unname(PURPLE_N))]
     m[, seg := factor("leaf")]
   }
   m[, .(sample, genotype, treatment, study, nlev, seg)]
@@ -169,6 +183,7 @@ pB <- ggplot(qc, aes(m_proc, percent_mapped, fill = nlev, shape = study)) +
   scale_shape_manual(values = c(21, 24), name = NULL) +
   scale_fill_manual(values = setNames(PAL_N[c(1, 3, 2, 4)][seq_len(nlevels(META$nlev))],
                                       levels(META$nlev)),
+                    labels = function(x) gsub("\n", " ", x),
                     name = "nitrogen",
                     guide = guide_legend(override.aes = list(shape = 21))) +
   scale_x_continuous(name = "fragments processed (millions)") +
@@ -257,6 +272,7 @@ pD <- ggplot(pca, aes(PC1, PC2, fill = nlev, shape = genotype)) +
   scale_shape_manual(values = c(21, 24, 22, 23), name = "genotype") +
   scale_fill_manual(values = setNames(PAL_N[c(1, 3, 2, 4)][seq_len(nlevels(META$nlev))],
                                       levels(META$nlev)),
+                    labels = function(x) gsub("\n", " ", x),
                     name = "nitrogen",
                     guide = guide_legend(override.aes = list(shape = 21))) +
   theme_f
@@ -315,13 +331,16 @@ legend <- paste0(
 "two nitrogen levels across four leaf segments -- base0, base, mid and tip, sampled along the ",
 "developmental gradient of the leaf -- in two genotypes of contrasting nitrogen-use ",
 "efficiency (", sprintf("%d", META[study == STUDY_LAB[[S1]], .N]), " libraries); ",
-STUDY_LAB[[S2]], " runs a three-point nitrogen DOSE (0, 2, 6 mM) in one tissue in two species ",
-"(", sprintf("%d", META[study == STUDY_LAB[[S2]], .N]), " libraries). The ",
-sprintf("%d", META[study == STUDY_LAB[[S1]], .N]), " against ",
+STUDY_LAB[[S2]], " uses three nitrogen levels in one tissue in two species (",
+sprintf("%d", META[study == STUDY_LAB[[S2]], .N]), " libraries), and those three levels are NOT ",
+"a monotonic dose series: 2 N is the CONTROL, and 0 N and 6 N are stresses in opposite ",
+"directions -- deficiency and excess. The design is stress-control-stress, so the response a ",
+"nitrogen-sensitive gene is expected to show is a U or an inverted U centred on 2 N, not a trend ",
+"from 0 to 6. The ", sprintf("%d", META[study == STUDY_LAB[[S1]], .N]), " against ",
 sprintf("%d", META[study == STUDY_LAB[[S2]], .N]), " asymmetry is the single most important fact ",
-"about this project and nearly every underpowered result traces back to it. That the second ",
-"design is an ordered dose rather than a two-level contrast is why the trait is coded ordinally ",
-"and tested by rank correlation rather than by Pearson.
+"about this project and nearly every underpowered result traces back to it; the SHAPE of the ",
+"second design is the next most important, because any test that assumes monotonicity has little ",
+"power against a symmetric stress response.
 ",
 "
 ",

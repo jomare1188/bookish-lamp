@@ -441,8 +441,9 @@ sprintf("%.1f%%", med_n), " against ", sprintf("%.1f%%", med_g), " for genotype,
 sprintf("%d", n_ut), " testable copies, against ", sprintf("%d", n_tagz), " of ",
 sprintf("%d", n_ut), " in TAGZ. A non-monotonic, genotype-restricted nitrogen response is ",
 "therefore present, as reported -- but its sign is inverted: all ", sprintf("%d", n_neg),
-" significant copies peak at 2N and fall at both extremes, whereas maxima at 0N and 6N are ",
-"described. Two limits belong with this panel: the copies are lowly expressed in leaf (most below ",
+" significant copies peak at 2N and fall at both extremes. Since 2 N is the CONTROL and 0 N and ",
+"6 N are stresses in opposite directions, that reads as MYB61 being REPRESSED BY BOTH nitrogen ",
+"deficiency and nitrogen excess, where the original report describes maxima at both stresses. Two limits belong with this panel: the copies are lowly expressed in leaf (most below ",
 "1 TPM, visible in the grey bars), and the original study emphasises root tissue, which this ",
 "dataset does not contain.")
 

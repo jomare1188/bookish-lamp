@@ -537,11 +537,11 @@ module into `pearson_only` / `mi_only` / `both`. That is gone. Three reasons, in
 order of how much they mattered:
 
 **1. The trait is ordinal, and Pearson reads it as interval.** Purple's nitrogen
-is a dose — 0, 2 and 6 mM — and Pearson asks whether a module moves exactly twice
+levels are 0, 2 and 6 mM, and Pearson asks whether a module moves exactly twice
 as far from 2 to 6 mM as it does from 0 to 2. Nothing in the design justifies
 that arithmetic. A module whose response saturates above 2 mM is a perfectly good
-monotone nitrogen response and Pearson penalises it. Measured on the identical
-eigengenes at the identical thresholds:
+monotone response and Pearson penalises it. Measured on the identical eigengenes
+at the identical thresholds:
 
 | | Pearson | **Spearman** | in both | Spearman only | Pearson only |
 |---|---|---|---|---|---|
@@ -550,9 +550,23 @@ eigengenes at the identical thresholds:
 
 **Purple's responsive set more than doubles.** That is the single largest effect
 of this change, and it is exactly where the ordinal argument predicts it: purple
-is the study with the three-level gradient. Sugarcane's trait is two-level, where
-Spearman is the rank-biserial correlation, so the gain there is smaller (and is
-mostly robustness to the outliers a PC1 can carry).
+is the study with three levels. Sugarcane's trait is two-level, where Spearman is
+the rank-biserial correlation, so the gain there is smaller (and is mostly
+robustness to the outliers a PC1 can carry).
+
+> **What a monotonic test can and cannot ask of purple.** Purple's three levels
+> are not a dose-response gradient: **2 N is the control, and 0 N and 6 N are
+> stresses in opposite directions** (deficiency and excess). So Spearman on this
+> coding asks *does the module track nitrogen supply?* — a real question, but not
+> *does it respond to nitrogen stress?* A module moved the same way by both
+> stresses is invisible to it, and that is the shape the design predicts.
+>
+> The cost is measured rather than assumed. A U-shape contrast `c(+1, -2, +1)`
+> over the three levels finds **one** significant purple module at padj ≤ 0.05,
+> and Spearman misses that one; Spearman finds 79. So the monotonic test is not
+> leaving a large non-monotonic set behind — at n = 18 the U-shape test has almost
+> no power, the same wall everything else in purple hits. **The 79 should be
+> described as tracking nitrogen supply, not as stress responders.**
 
 **2. MI at this level was an omnibus test finding artifacts.** MI fires on *any*
 dependence, including a dispersion change or a quirk in one or two libraries.

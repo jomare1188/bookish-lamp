@@ -141,9 +141,24 @@ NULL_SAMPLE=5000000
 # column of the study's samplesheet; a sample whose level is not listed is
 # dropped from that trait's correlation.
 #
-# `treatment` is the nitrogen axis and is what the gene selection uses. Purple
-# encodes it as a DOSE (0/2/6 mM) because that study is a gradient; sugarcane is
-# a two-level contrast.
+# `treatment` is the nitrogen axis and is what the gene selection uses. Sugarcane
+# is a two-level contrast. Purple is encoded 0/2/6 mM, but READ THE NEXT
+# PARAGRAPH BEFORE INTERPRETING ANYTHING THAT USES IT.
+#
+# Purple's three levels are NOT a dose-response gradient. 2 N is the CONTROL, and
+# 0 N and 6 N are stresses in opposite directions -- deficiency and excess. So a
+# monotonic test on this coding asks "does expression track nitrogen SUPPLY?",
+# which is a real question, but it is NOT "does this gene respond to nitrogen
+# stress?" -- a gene moved the same way by both stresses is invisible to it, and
+# that is the shape the design predicts.
+#
+# Measured, so the cost is known rather than feared: at the module level, a
+# U-shape contrast c(+1,-2,+1) over the three levels finds ONE significant purple
+# module at padj <= 0.05, and Spearman misses that one. Spearman finds 79. So the
+# monotonic test is not leaving a large non-monotonic set on the table -- at
+# n = 18 the U-shape test has almost no power, which is the same wall everything
+# else in purple hits. The 79 should still be described as tracking nitrogen
+# supply, not as stress responders.
 TRAITS_sugarcane="genotype:RB975375=1,RB937570=0;treatment:High Nitrogen=1,Low Nitrogen=0"
 TRAITS_purple="genotype:51NG3=1,TAGZ=0;treatment:0N=0,2N=2,6N=6"
 

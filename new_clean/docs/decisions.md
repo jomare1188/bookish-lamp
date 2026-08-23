@@ -184,10 +184,17 @@ one validated code path, no second implementation of the statistics — but it
 imported two statistics that do not suit this question, and a three-way
 classification that nothing downstream could use.
 
-**Pearson reads an ordinal trait as an interval one.** Purple's nitrogen is a
-dose: 0, 2 and 6 mM. Pearson on `{0, 2, 6}` asks whether a module moves exactly
+**Pearson reads an ordinal trait as an interval one.** Purple's nitrogen levels
+are 0, 2 and 6 mM. Pearson on `{0, 2, 6}` asks whether a module moves exactly
 twice as far from 2 to 6 mM as from 0 to 2 — an arithmetic claim about the
-response curve that the design never made and the experiment cannot test. A
+response curve that the design never made and the experiment cannot test.
+
+(Recorded 2026-08-22, after this decision: those three levels are **not** a dose
+series at all. 2 N is the control and 0 N / 6 N are opposite stresses, so a
+monotonic test of any kind asks about nitrogen *supply*, not nitrogen *stress*.
+The measured cost of that is one module — see
+[results.md](results.md#what-responds) — but the wording of every purple module
+claim should say "tracks nitrogen supply".) A
 module that responds and then saturates above 2 mM is a real monotone nitrogen
 response, and Pearson discounts it. Spearman asks only the question the gradient
 poses: does this module move monotonically with nitrogen? On sugarcane's
