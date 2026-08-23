@@ -612,6 +612,48 @@ the collapsed `tissue` column. On the four real segments, leaf segment explains
 **0.802** of sugarcane's PC2 against 0.450 on the collapsed three — which is also
 the quantitative case for `HEATMAP_GROUP_BY="segment"`.
 
+### `figtopology` — what the two networks are shaped like
+
+```
+./run.sh figtopology    # -> results/figures/figure<N>_topology.{png,pdf,svg}
+```
+
+| | |
+|---|---|
+| cost | ~20 s |
+| env | `r_env` (ggplot2, patchwork, scico, svglite, scales) |
+| inputs | node metrics, global metrics, MCL module summaries, the merge step's `edges.summary.json` |
+
+**No edge table is read.** The two edge files are 76 M and 706 M rows; every
+number here comes from the small per-study summaries.
+
+Its job is to stop a reader importing intuitions from sparse biological
+networks. These are dense thresholded correlation graphs — mean degree ~1,500
+and ~8,300, edge density 1.4% and 4.8%, and purple is a **single** connected
+component. Every later claim about hubs, modules or centrality has to be read
+against that.
+
+**A and D are complementary CDFs**, not frequency histograms. At this size the
+upper tail of a histogram holds one node per bin and reads as noise; a CCDF is
+monotone by construction so the tail is legible. Evaluated on a 300-point
+log-spaced grid (`TOPO_GRID`) rather than at every unique value, which keeps the
+SVG small and draws the same curve.
+
+**B plots mean weight PER EDGE, not node strength.** `strength()` is the *sum* of
+a node's edge weights, so it tracks degree trivially (Spearman ρ = 0.98 / 0.99)
+and plotting it answers nothing. Dividing by degree asks the real question — is a
+high-degree gene well connected, or connected to many weak partners? It uses a
+**coarser 60-point grid** than A and D: a CCDF stays smooth at 300 points but a
+per-bin *mean* does not, and the narrow mid-range bins spiked on a handful of
+nodes each.
+
+> The answer turned out to be neither of the two shapes I first wrote into the
+> legend. Per-edge weight is flat across the first nine degree deciles
+> (0.174–0.203 in sugarcane) and rises only in the tenth (0.321). A two-decile
+> summary reads as a gradient and the raw ρ reads as a trend; both are artifacts
+> of the top decile. The script now computes the whole decile profile and the
+> legend quotes its flat span.
+
 ### `figrepro` — reproducing each source study's own finding
 
 ```

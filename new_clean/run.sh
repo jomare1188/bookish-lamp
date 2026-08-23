@@ -34,6 +34,7 @@
 #   ./run.sh myb61     [from-step]           MYB61 readout (default 07)
 #   ./run.sh module20  [from-step]           Module-20 readout (default 03)
 #   ./run.sh figdataset                      dataset, QC and quantification figure
+#   ./run.sh figtopology                     network topology of both networks
 #   ./run.sh figrepro                        both source studies reproduced
 #   ./run.sh legends                         assemble figures_legends.txt
 #   ./run.sh build     <study>               export + both layers + merge
@@ -383,6 +384,23 @@ main() {
     CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_DATASET}_dataset_qc" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/21_fig_dataset_qc.r"
+    ;;
+
+  figtopology)
+    CLEAN_STUDIES="$STUDIES" \
+    CLEAN_FIG_NUM="$FIG_TOPOLOGY" \
+    CLEAN_NODES_SUGARCANE="$(study_dir sugarcane)/network_sugarcane_node_metrics.tsv" \
+    CLEAN_NODES_PURPLE="$(study_dir purple)/network_purple_node_metrics.tsv" \
+    CLEAN_GLOBAL_SUGARCANE="$(study_dir sugarcane)/network_sugarcane_global_metrics.tsv" \
+    CLEAN_GLOBAL_PURPLE="$(study_dir purple)/network_purple_global_metrics.tsv" \
+    CLEAN_MCL_SUGARCANE="$(study_dir sugarcane)/mcl_sugarcane_module_summary.tsv" \
+    CLEAN_MCL_PURPLE="$(study_dir purple)/mcl_purple_module_summary.tsv" \
+    CLEAN_LAYERS_SUGARCANE="$(study_dir sugarcane)/network_sugarcane_edges.summary.json" \
+    CLEAN_LAYERS_PURPLE="$(study_dir purple)/network_purple_edges.summary.json" \
+    CLEAN_TOPO_GRID="$TOPO_GRID" \
+    CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_TOPOLOGY}_topology" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_PLOT" "${SCRIPTS}/22_fig_topology.r"
     ;;
 
   figrepro)

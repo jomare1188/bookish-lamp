@@ -301,10 +301,16 @@ FIGURE_LEGENDS="${BASE}/figures_legends.txt"
 # open each generated legend, so renumbering the paper is this one edit.
 FIG_DATASET=1
 FIG_REPRODUCTION=2
+FIG_TOPOLOGY=3
 
 # Genes used for the per-study PCA in the dataset figure: the most variable
 # 2,000, the usual DESeq2 plotPCA convention.
 PCA_NTOP=2000
+
+# Points per curve in the topology figure's log-log CCDFs. Evaluating at every
+# unique degree would put ~41,000 points in the SVG for purple and draw the same
+# curve; 300 log-spaced values are indistinguishable and keep the vector small.
+TOPO_GRID=300
 
 # --- GO ----------------------------------------------------------------------
 ONTOLOGIES="BP MF CC"
