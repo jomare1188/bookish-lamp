@@ -70,6 +70,7 @@ cd /dados04/jorge/comparative_saccharum/new_clean
 ./run.sh figdataset                # dataset, QC and quantification        30 s
 ./run.sh figtopology               # topology of both networks             20 s
 ./run.sh figconservation           # cross-species edge conservation       15 s
+./run.sh figmodules                # module-level nitrogen response        20 s
 ./run.sh figrepro                  # both source studies reproduced        40 s
 ./run.sh legends                   # -> figures_legends.txt (repo root)
 ```
@@ -179,6 +180,7 @@ scripts/
   21_fig_dataset_qc.r         design, QC, gene funnel, PCA
   22_fig_topology.r           degree + module CCDFs, layer composition
   23_fig_conservation.r       conservation vs null, by layer, + the funnel
+  24_fig_modules.r            module selection, Spearman gain, response, TFs
   11_readouts/           get_tfs, myb61, module20 (H1); cached sequence work is
                          read from the original GET_TFS tree, output lands here
   validate.py            engine correctness suite

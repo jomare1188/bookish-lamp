@@ -36,6 +36,7 @@
 #   ./run.sh figdataset                      dataset, QC and quantification figure
 #   ./run.sh figtopology                     network topology of both networks
 #   ./run.sh figconservation                 cross-species edge conservation
+#   ./run.sh figmodules                      module-level nitrogen response
 #   ./run.sh figrepro                        both source studies reproduced
 #   ./run.sh legends                         assemble figures_legends.txt
 #   ./run.sh build     <study>               export + both layers + merge
@@ -429,6 +430,27 @@ main() {
     CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_CONSERVATION}_conservation" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/23_fig_conservation.r"
+    ;;
+
+  figmodules)
+    CLEAN_STUDIES="$STUDIES" \
+    CLEAN_FIG_NUM="$FIG_MODULES" \
+    CLEAN_MODULE_R_THR="$MODULE_R_THR" \
+    CLEAN_MODULE_PADJ_THR="$MODULE_PADJ_THR" \
+    CLEAN_SELECT_TRAIT="$SELECT_TRAIT" \
+    CLEAN_PROFILE_SUGARCANE="$(study_dir sugarcane)/module_profile_sugarcane.tsv" \
+    CLEAN_PROFILE_PURPLE="$(study_dir purple)/module_profile_purple.tsv" \
+    CLEAN_NULL_SUGARCANE="$(study_dir sugarcane)/module_trait_sugarcane.null.tsv" \
+    CLEAN_NULL_PURPLE="$(study_dir purple)/module_trait_purple.null.tsv" \
+    CLEAN_EIGEN_SUGARCANE="$(study_dir sugarcane)/modules/sugarcane_eigengenes" \
+    CLEAN_EIGEN_PURPLE="$(study_dir purple)/modules/purple_eigengenes" \
+    CLEAN_META_SUGARCANE="$META_sugarcane" \
+    CLEAN_META_PURPLE="$META_purple" \
+    CLEAN_TRAITS_SUGARCANE="$TRAITS_sugarcane" \
+    CLEAN_TRAITS_PURPLE="$TRAITS_purple" \
+    CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_MODULES}_modules" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_PLOT" "${SCRIPTS}/24_fig_modules.r"
     ;;
 
   figrepro)

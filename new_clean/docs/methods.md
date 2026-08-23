@@ -732,6 +732,40 @@ orthology or conservation.
 > direction in which MI-only edges are better conserved once chance is accounted
 > for.
 
+### `figmodules` — the nitrogen response at module level
+
+```
+./run.sh figmodules       # -> results/figures/figure<N>_modules.{png,pdf,svg}
+```
+
+| | |
+|---|---|
+| cost | ~20 s |
+| env | `r_env` (ggplot2, patchwork, scico, svglite, scales) |
+| inputs | both `module_profile_*`, both `module_trait_*.null.tsv`, both eigengene matrices, both sample sheets |
+
+**A — selection**, |rho| against −log10(padj) with both thresholds drawn. Its job
+is to show *which threshold binds*, and it is a different one in each study: at
+n = 48 an |rho| of 0.6 already implies p ≈ 6e-06 so BH never binds for sugarcane
+and the effect-size floor is the only active constraint; at n = 18 it is the
+reverse (274 clear |rho|, 79 survive BH).
+
+**B — Spearman against Pearson** on the same eigengenes at identical thresholds:
+408 → 465 and **38 → 79**.
+
+**C — the response itself**, mean eigengene per nitrogen status split by the sign
+of rho. The two directions are opposite by construction, so what this adds is the
+*shape* — and purple's control sitting at zero between two opposite stresses is
+the design made visible.
+
+**D — TF enrichment**, hypergeometric per module then Fisher against the
+non-responsive modules. No label is drawn where a group has zero enriched
+modules: "OR 0.0" reads as a measured effect when it is an empty cell.
+
+The permutation null is two numbers, not a panel — it lives in the legend, along
+with purple's heavy right tail (worst of 1,000 shuffles: 244 responsive modules
+against 79 observed).
+
 ### `figrepro` — reproducing each source study's own finding
 
 ```

@@ -303,6 +303,7 @@ FIG_DATASET=1
 FIG_REPRODUCTION=2
 FIG_TOPOLOGY=3
 FIG_CONSERVATION=4
+FIG_MODULES=5
 
 # Conservation figure, panel B: which ontology the conserved-set GO panel draws,
 # and how many shared terms it shows. Terms are ranked by the WORSE of the two
