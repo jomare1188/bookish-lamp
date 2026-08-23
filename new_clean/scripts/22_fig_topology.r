@@ -107,11 +107,23 @@ GLOB <- rbindlist(lapply(STUDIES, function(st) {
 }))
 gv <- function(st, m) GLOB[study == st & metric == m, value][1]
 
+# The summary table carries an `Unassigned` PSEUDO-MODULE alongside the real
+# Module_NNN rows -- the genes MCL left in groups below MCL_MIN_MODULE_SIZE,
+# pooled into one row. It is not a module: counting it inflates the module count
+# by one, and in purple it would enter the size distribution as a 14,594-gene
+# "module", second only to the real largest. Dropped from both, and reported
+# separately in the legend, where it is genuinely informative.
 MCL <- rbindlist(lapply(STUDIES, function(st) {
   d <- fread(cfg[[st]]$mcl, select = c("module", "n_genes", "modularity_Q"))
   d[, study := st][]
 }))
+UNASSIGNED <- MCL[!grepl("^Module_", module), .(study, unassigned_genes = n_genes)]
+MCL <- MCL[grepl("^Module_", module)]
 MCL[, study := factor(study, levels = STUDIES)]
+for (st in STUDIES)
+  say(sprintf("  %-9s %s named modules | %s genes unassigned (below the min module size)",
+              st, fmt_n(MCL[study == st, .N]),
+              fmt_n(UNASSIGNED[study == st, unassigned_genes])))
 
 LAY <- rbindlist(lapply(STUDIES, function(st) {
   txt <- paste(readLines(cfg[[st]]$layers, warn = FALSE), collapse = " ")
@@ -282,6 +294,7 @@ wrap_at <- function(x, width = 96)
 S1 <- STUDIES[1]; S2 <- STUDIES[2]
 d  <- function(st, col) deg_sum[study == st][[col]]
 mo <- function(st, col) mod_sum[study == st][[col]]
+un <- function(st) UNASSIGNED[study == st, unassigned_genes]
 ly <- function(st, l, col) LAY[study == st & layer == l][[col]]
 rho_str <- vapply(STUDIES, function(st)
   NODES[study == st, cor(degree, strength, method = "spearman")], 0)
@@ -359,7 +372,12 @@ S2, "'s larger non-linear share is NOT more non-linear biology: the two layers a
 " resolves into ", fmt_n(mo(S1, "modules")), " modules (median ", mo(S1, "med"), " genes, largest ",
 fmt_n(mo(S1, "max")), ", modularity Q = ", mo(S1, "Q"), ") and ", S2, " into ",
 fmt_n(mo(S2, "modules")), " (median ", mo(S2, "med"), ", largest ", fmt_n(mo(S2, "max")),
-", Q = ", mo(S2, "Q"), "). Both partitions have the same shape -- one very large module and a ",
+", Q = ", mo(S2, "Q"), "). These counts are of NAMED modules only: the clustering also leaves ",
+fmt_n(un(S1)), " and ", fmt_n(un(S2)), " genes in groups below the minimum module size, pooled ",
+"as `Unassigned` and excluded here -- a pooled leftover is not a module, and in ", S2,
+" including it would put a spurious ", fmt_n(un(S2)), "-gene point into the size distribution, ",
+"second only to the real largest module. Both partitions have the same shape -- one very large ",
+"module and a ",
 "long tail of small ones -- and both modularity values are low, which is what clustering a dense ",
 "graph produces. ", S2, "'s largest module holds ",
 sprintf("%.0f%%", 100 * mo(S2, "max") / as.integer(gv(S2, "Nodes"))), " of its nodes against ",

@@ -192,10 +192,14 @@ comparison to make between the two studies is of the `both` class, which is the 
 estimator cannot enter by accident.
 
 (D) MCL module size as a complementary cumulative distribution on log-log axes. sugarcane
-resolves into 10,310 modules (median 3 genes, largest 19,604, modularity Q = 0.1005) and purple
-into 9,882 (median 3, largest 47,887, Q = 0.1631). Both partitions have the same shape -- one
-very large module and a long tail of small ones -- and both modularity values are low, which is
-what clustering a dense graph produces. purple's largest module holds 28% of its nodes against
-19% for sugarcane, so purple's module structure in particular should be treated as a working
-partition rather than as biology, and any per-module claim from it read with that in mind.
+resolves into 10,309 modules (median 3 genes, largest 19,604, modularity Q = 0.1005) and purple
+into 9,881 (median 3, largest 47,887, Q = 0.1631). These counts are of NAMED modules only: the
+clustering also leaves 401 and 14,594 genes in groups below the minimum module size, pooled as
+`Unassigned` and excluded here -- a pooled leftover is not a module, and in purple including it
+would put a spurious 14,594-gene point into the size distribution, second only to the real
+largest module. Both partitions have the same shape -- one very large module and a long tail of
+small ones -- and both modularity values are low, which is what clustering a dense graph
+produces. purple's largest module holds 28% of its nodes against 19% for sugarcane, so purple's
+module structure in particular should be treated as a working partition rather than as biology,
+and any per-module claim from it read with that in mind.
 
