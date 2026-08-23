@@ -160,6 +160,28 @@ non-monotonic 51NG3 signal here; that came from genes the stricter protein-level
 mapping now rejects, so it does not stand.
 
 
+### A correction to the leaf-segment covariate (2026-08-22)
+
+Steps 04 and 05 read the leaf segment from the sample sheet's `tissue` column.
+**That column is not the design.** The study sampled **four** segments — `base0`,
+`base`, `mid`, `tip`, 12 libraries each, carried in the library names as
+`B0/B/M/P` — and `tissue` collapses `base0` and `base` into a single "Leaf Base"
+of 24, calls `mid` "Leaf" and `tip` "Leaf Apex". So the sensitivity covariate
+behind `interaction_p_segment_adj` was being fitted on three levels instead of
+four, and the heatmaps grouped columns on the same collapsed factor.
+
+Both now read the sheet's `segment` column, which carries the four real levels,
+and fail loudly if it is missing rather than falling back to `tissue`.
+
+**Nothing reported here changed.** All 33 segment-adjusted interaction p-values
+shifted, as they must when the covariate gains a level, but by at most 0.014 and
+none crossed 0.05: the count is 4 of 33 before and after. The main test columns
+(`padj`, `log2FC_HighminusLow`) are untouched by construction — segment enters
+only the sensitivity model — and the variance partition below is unchanged at
+20.0% / 12.1% and 18 of 33, because it does not use segment at all. The result
+is therefore robust to the mis-specification, which is worth knowing but was not
+knowable before the fix.
+
 ### Nitrogen or genotype? (step 05 variance partition)
 
 The heatmap columns are grouped by **nitrogen only**, with genotype as an

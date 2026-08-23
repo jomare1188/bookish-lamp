@@ -5,9 +5,10 @@
 # The two designs differ, so the test differs:
 #
 #   sugarcane (Muñoz, 48 libs): 2 genotypes x 2 N levels (High/Low) x leaf.
-#     The three leaf segments (Leaf Apex / Leaf Base / Leaf) are treated as ONE
-#     leaf tissue per the project's decision; segment is kept only as a
-#     sensitivity covariate. With TWO N levels there is no U-shape problem, so a
+#     The four leaf segments (base0, base, mid, tip) are treated as ONE leaf
+#     tissue per the project's decision; segment is kept only as a sensitivity
+#     covariate. It is read from the sheet's `segment` column -- `tissue`
+#     collapses base0 and base and would fit the covariate on three levels. With TWO N levels there is no U-shape problem, so a
 #     per-genotype Welch test is the right instrument — but it must be run
 #     WITHIN genotype, because Muñoz's whole point is a responsive vs
 #     non-responsive genotype contrast that pooling would cancel.
@@ -42,7 +43,17 @@ load_expr <- function(tpmf, metaf, sp) {
   tpm[, gene := sub("\\.v[0-9.]+$", "", gene)]
   meta <- fread(metaf)
   if (sp == "sugarcane") {
-    m <- meta[, .(sample, genotype, treatment, segment = tissue)]
+    # `segment`, NOT the sheet's `tissue` column. The study sampled FOUR leaf
+    # segments -- base0, base, mid, tip, 12 libraries each, carried in the
+    # library names as B0/B/M/P -- and `tissue` collapses base0 and base into a
+    # single "Leaf Base" of 24, calls mid "Leaf" and tip "Leaf Apex". Using it
+    # here fitted the covariate on three levels instead of four.
+    if (!"segment" %in% names(meta))
+      stop("the sugarcane sample sheet has no `segment` column; `tissue` collapses\n",
+           "  base0 and base and must not be used as the leaf-segment factor",
+           call. = FALSE)
+    m <- meta[, .(sample, genotype, treatment, segment)]
+    m[, segment := factor(segment, levels = c("base0", "base", "mid", "tip"))]
     m[, nlev := fifelse(grepl("Low", treatment), "LowN", "HighN")]
     m[, nlev := factor(nlev, levels = c("LowN", "HighN"))]
     m[, genotype := fifelse(genotype == "RB975375", "RB975375 (responsive)",

@@ -58,7 +58,17 @@ load_expr <- function(tpmf, metaf, sp) {
   tpm[, gene := sub("\\.v[0-9.]+$", "", gene)]
   meta <- fread(metaf)
   if (sp == "sugarcane") {
-    m <- meta[, .(sample, genotype, treatment, segment = tissue)]
+    # `segment`, NOT the sheet's `tissue` column. The study sampled FOUR leaf
+    # segments -- base0, base, mid, tip, 12 libraries each, carried in the
+    # library names as B0/B/M/P -- and `tissue` collapses base0 and base into a
+    # single "Leaf Base" of 24, calls mid "Leaf" and tip "Leaf Apex". Using it
+    # here fitted the covariate on three levels instead of four.
+    if (!"segment" %in% names(meta))
+      stop("the sugarcane sample sheet has no `segment` column; `tissue` collapses\n",
+           "  base0 and base and must not be used as the leaf-segment factor",
+           call. = FALSE)
+    m <- meta[, .(sample, genotype, treatment, segment)]
+    m[, segment := factor(segment, levels = c("base0", "base", "mid", "tip"))]
     m[, nlev := factor(fifelse(grepl("Low", treatment), "LowN", "HighN"),
                        levels = c("LowN", "HighN"))]
     m[, genotype := fifelse(genotype == "RB975375", "RB975375\nresponsive",
