@@ -265,3 +265,43 @@ of 244, against 79 observed (empirical p = 0.002). Purple's network is a single
 dense component, so its eigengenes are strongly correlated and one lucky shuffle
 lights up many at once. The 79 are a real signal and are **not** 79 independent
 findings.
+
+---
+
+## 2026-08-23 — GO is asked at three grains, and the middle one is new
+
+**The problem.** `18_module_go.r` tested one module at a time and, in its global
+figure, all responsive modules pooled. Between those two sits the question a
+reader asks first — *what do the modules that go UP with nitrogen do, as a set,
+and is it different from the ones that go DOWN?* — and neither grain answers it.
+Pooling averages the two directions together; per-module testing answers about
+individual modules and does so for very few of them.
+
+**The annotation gate is why "very few" is the right description.** A module needs
+`MODULE_GO_MIN_ANNOTATED` GO-annotated members for the test to be defined. Of
+sugarcane's 465 responsive modules **49** clear that, and 10 of purple's 79 — so
+the per-module grain describes ~11% of the responsive set, biased toward the
+large modules, and cannot be read as characterising it.
+
+**The fix, and why it is not just convenience.** The union of every rising module
+is tested against the union of every falling one, on the same `topGOdata` object,
+the same network-node background, the same weight01 statistic and the same raw-p
+threshold, so all three grains stay directly comparable. Pooling by direction
+dissolves the gate: modules too small to test alone all contribute, and the two
+sets carry 383 and 161 annotated genes drawn from 242 and 223 modules.
+
+**What it found.** Of sugarcane's 103 enriched BP terms, **74 are enriched only
+among the modules that rise, 23 only among those that fall, and 6 in both**
+(purple: 7 / 23 / 3). The split is not one functional programme cut in half, so
+pooling the directions was averaging two distinct programmes into one list. And
+the two are interpretable in a way neither other grain recovered: nitrate
+assimilation, nitric oxide, proline/asparagine/spermidine biosynthesis and a
+defence block go UP; flavonoid biosynthesis, raffinose-family oligosaccharides,
+triglyceride biosynthesis and cold response go DOWN.
+
+**What it does not license.** The direction labels mean "tracks nitrogen supply",
+not "responds to nitrogen stress". In purple the three levels are
+stress-control-stress, so a module moved the same way by both extremes is
+invisible to a monotone test and therefore absent from both direction sets. See
+`Soffic.09G0001580-9H` in [results.md](results.md#module-20-in-purple--one-copy-responds-and-not-monotonically)
+for a gene that does exactly that.
