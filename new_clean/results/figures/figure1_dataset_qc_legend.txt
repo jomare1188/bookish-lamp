@@ -1,0 +1,71 @@
+Figure 1. The two reused datasets, and the result of re-quantifying them through a single
+pipeline. Both studies are public RNA-seq that was downloaded and re-processed here from raw
+reads with one nf-core/rnaseq + salmon workflow, each against its own reference genome
+(Saccharum hybrid R570 for sugarcane; LA purple for purple); no count matrix, mapping or
+quality metric is taken from the original publications. Cross-species orthology throughout this
+work comes from OrthoFinder v3.1.3 (-S diamond -M msa -A famsa -T fasttree) run on one protein
+per gene of the two reference proteomes, which assigns 360,794 of 435,856 genes (82.8%) to
+94,273 orthogroups; it is the backbone every comparison between the two species rests on, and
+it is what makes 'the same gene' a defined object across two polyploid references.
+
+(A) Library counts per study, genotype, nitrogen level and leaf segment; the number in each
+cell is the number of sequenced libraries, and the segments run base to tip in the order
+sampled. The two designs are deliberately shown on the same axes because their mismatch sets
+what the rest of the work can ask. sugarcane contrasts two nitrogen levels across four leaf
+segments -- base0, base, mid and tip, sampled along the developmental gradient of the leaf --
+in two genotypes of contrasting nitrogen-use efficiency (48 libraries); purple uses three
+nitrogen levels in one tissue in two species (18 libraries), and those three levels are NOT a
+monotonic dose series: 2 N is the CONTROL, and 0 N and 6 N are stresses in opposite directions
+-- deficiency and excess. The design is stress-control-stress, so the response a
+nitrogen-sensitive gene is expected to show is a U or an inverted U centred on 2 N, not a trend
+from 0 to 6. The 48 against 18 asymmetry is the single most important fact about this project
+and nearly every underpowered result traces back to it; the SHAPE of the second design is the
+next most important, because any test that assumes monotonicity has little power against a
+symmetric stress response.
+
+(B) Sequencing depth against mapping rate, one point per library, from the salmon logs of each
+nf-core/rnaseq run; shape gives the study and fill the NITROGEN STATUS. Panels B and D colour
+by status rather than by the applied level so that one key serves both studies: sugarcane's Low
+N and purple's 0 N are both `low N`, sugarcane's High N and purple's 6 N are both `high N`, and
+`control` is purple's 2 N alone -- sugarcane has no control level, and its absence is a fact
+about that design rather than an omission from the figure. The scale is DIVERGING (scico
+`managua`, reversed), because low and high are departures from the control in opposite
+directions rather than steps along a ramp; cool is starvation, warm is excess, and the dark
+centre is the reference. Panel A keeps the applied levels on its axis, since that panel exists
+to show what was actually done. Depth and mapping rate are plotted against each other rather
+than as two separate distributions because the failure worth seeing is a library that is both
+shallow and poorly mapped, which is a position on this plane and not a value on either axis.
+sugarcane: median 39.8 M fragments (range 12.8-99.7) and 80.0% mapped (32.2-86.6). purple:
+median 51.3 M fragments (38.9-56.4) and 72.7% mapped (64.4-75.9). Depth is more variable in
+sugarcane and mapping rate lower at its worst (32.2% in one library), which is expected for a
+hybrid genotype read against a single haplotype-resolved reference; no library was excluded on
+these metrics.
+
+(C) Genes surviving each stage from annotation to network, per study, with the percentage of
+the annotated set retained above each bar. Of 190,973 annotated and quantified genes in
+sugarcane, 170,790 (89%) clear the coefficient-of-variation filter used to build the network
+and 103,336 (54%) end up as nodes; for purple the same three numbers are 215,183, 170,740 (79%)
+and 170,736 (79%). The CV filter removes a similar share from both, but the step from filtered
+genes to network nodes does not: a gene becomes a node only by carrying at least one edge above
+the significance threshold, and at n = 18 that threshold is far softer, which is why purple
+retains nearly all of its filtered genes as nodes and sugarcane does not. This panel is the
+context for every node and edge count reported later.
+
+(D) Principal components of the variance-stabilised expression matrix of each study, computed
+independently per study on the 2,000 most variable genes, with the percentage of total variance
+carried by each axis in the panel strip. Fill gives nitrogen status on the shared scale
+described in (B), shape gives genotype. The purpose is to establish, before any network is
+built, that the experimental design is visible in the data at all, and to say plainly what the
+dominant structure is. It is genotype, in both studies and almost exactly: regressing each
+component on each design factor, PC1 tracks genotype at R2 = 0.998 in sugarcane (60% of total
+variance) and R2 = 0.999 in purple (72% of total variance). Nitrogen loads on neither first
+component (R2 = 0.000 and 0.000). It appears on PC2, and only clearly in purple: there PC2 (6%)
+tracks the nitrogen dose at R2 = 0.369, whereas in sugarcane PC2 (13%) is mostly leaf segment
+(R2 = 0.802) with nitrogen a distant second (R2 = 0.090). Two things follow, and they shape
+everything after this figure. First, the nitrogen response is real but it is nowhere near the
+dominant structure in either dataset, so it has to be found AGAINST genotype and tissue rather
+than read off a leading component -- which is why the analyses are run within study and the
+trait is tested per gene and per module rather than by unsupervised decomposition. Second,
+because leaf segment is the second-largest source of variation in sugarcane, every heatmap in
+this work orders columns so that replicates of one segment sit adjacent; sorted by library name
+they interleave and the segment effect reads as vertical striping across the panel.

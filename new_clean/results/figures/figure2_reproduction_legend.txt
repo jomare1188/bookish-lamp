@@ -1,0 +1,63 @@
+Figure 2. The principal nitrogen finding of each source study is recovered in a single,
+independent re-quantification. Public RNA-seq from both studies was re-processed through one
+nf-core/rnaseq + salmon workflow against a common reference per species (Saccharum hybrid R570
+for sugarcane; LA purple for S. officinarum / S. robustum), so neither panel reuses any
+quantification, mapping or statistic from the original publications; the designs, library
+quality and gene yield are in Figure 1, as is the OrthoFinder orthology backbone (v3.1.3;
+94,273 orthogroups over both reference proteomes) that every cross-species comparison in this
+work rests on. That backbone enters this figure in panel B, as one of the lines of evidence
+identifying MYB61; panel A is a within-species mapping problem and is solved differently, as
+described below. In both panels colour is the per-gene z-score of log2(TPM + 1) across that
+panel's libraries, so a row shows the SHAPE of a gene's response rather than its absolute
+level; ramps are clipped at the 98th (A) and 95th (B) percentile of |z|. Because a z-score
+rescales a near-silent gene to look as structured as an abundant one, mean log2(TPM + 1) is
+drawn as a grey bar beside every row. Rows are genes; columns are individual libraries.
+
+(A) Module 20 of Muñoz-Perez et al. (2025), in sugarcane. Their 12 published members are
+TransDecoder ORFs from a de novo assembly and carry no reference coordinates, so placing them
+is a within-species mapping problem rather than an orthology one and the orthogroups are not
+used: they were mapped into the R570 proteome by DIAMOND blastp under a reciprocal-Arabidopsis
+filter -- member and candidate must return the same best Arabidopsis hit -- which resolves them
+to 33 genes at 4 independent Arabidopsis anchors, shown as the 4 row blocks. (The 12 published
+members are therefore not 12 independent units; two have no predicted ORF at all and the nine
+MYB members resolve to only two Arabidopsis MYB genes.) Columns are the 48 leaf libraries,
+split by nitrogen treatment alone (Low N | High N) with genotype as the upper annotation bar,
+and ordered treatment, then genotype, then leaf segment, then library, so replicates of one
+condition are adjacent; rows are hierarchically clustered within each block. This column layout
+is what separates a nitrogen response from a genotype response by eye: a genotype-driven set
+would split into two sub-clusters INSIDE each nitrogen block rather than differ BETWEEN blocks.
+Red marks in the 'N-responsive (RB975375)' track are genes at padj < 0.05 for High vs Low
+nitrogen in the nitrogen-responsive genotype RB975375 (Benjamini-Hochberg corrected); 24 of the
+32 testable genes qualify and all 24 are LOWER at high nitrogen. Teal marks in the 'TF' track
+are the 9 genes independently called MYB by this project's own Pfam/PlnTFDB domain pipeline.
+Partitioning each gene's variance with lm(expression ~ genotype + nitrogen), nitrogen accounts
+for a median 20.0% against 12.1% for genotype, and exceeds genotype in 18 of 33 genes.
+Muñoz-Perez et al.'s core claim is therefore reproduced.
+
+(B) MYB61 of Ta Quang Kiet et al. (2025), in purple. The published identifier
+(Soff.09G0002230-3D) does not resolve in the LA purple annotation, so MYB61 was re-derived from
+sequence: reciprocal best hits from AtMYB61 (AT1G09540) into sorghum and rice, DIAMOND blastp
+of those five anchors into the LA purple proteome, a reciprocal-best-hit filter back to
+AT1G09540, an independent Myb-domain call, the OrthoFinder orthogroups described above, and a
+MAFFT/FastTree phylogeny. The orthogroups place 9 of the 16 purple copies in five orthogroups
+that also hold a sugarcane MYB61 copy, which is what licenses calling them the same gene across
+the two references; the genes at the published identifier fall in four further orthogroups,
+none of which contains any confirmed MYB61 copy of either species. Note that OrthoFinder leaves
+many polyploid haplotype copies unassigned, so absence from an orthogroup is not evidence
+against a copy; that is why it is used alongside rather than instead of the reciprocal search
+and the phylogeny. Rows are the 16 confirmed copies, split into the two grass co-orthologue
+clades left by the grass whole-genome duplication (chr3-type, chr9-type), plus the 5 genes at
+the published identifier as a NEGATIVE CONTROL: that locus carries no Myb domain, never shares
+an orthogroup with a confirmed MYB61 copy, and its genes are one to two orders of magnitude
+more highly expressed than any true copy. Columns are the 18 leaf libraries, split by genotype
+and ordered 0N, 2N, 6N within each, because the published claim is that the two genotypes
+behave differently. Red marks in the 'non-monotonic in 51NG3' track are copies with a
+significant U-shape contrast c(+1, -2, +1) across 0N/2N/6N in 51NG3 (one-way model per
+genotype, Benjamini-Hochberg corrected): 10 of 13 testable copies, against 0 of 13 in TAGZ. A
+non-monotonic, genotype-restricted nitrogen response is therefore present, as reported -- but
+its sign is inverted: all 10 significant copies peak at 2N and fall at both extremes. Since 2 N
+is the CONTROL and 0 N and 6 N are stresses in opposite directions, that reads as MYB61 being
+REPRESSED BY BOTH nitrogen deficiency and nitrogen excess, where the original report describes
+maxima at both stresses. Two limits belong with this panel: the copies are lowly expressed in
+leaf (most below 1 TPM, visible in the grey bars), and the original study emphasises root
+tissue, which this dataset does not contain.

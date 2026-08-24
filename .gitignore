@@ -38,7 +38,26 @@ china/**
 # --- new_clean: track the pipeline, not its output ----------------------------
 # scripts/, config.sh, run.sh and docs/ are the deliverable and are tracked.
 # results/ is ~200 GB of regenerable network output; logs/ is run chatter.
-new_clean/results/
+#
+# THE EXCEPTION IS results/figures/. The seven paper figures are a deliverable in
+# a way the rest of results/ is not: they are what a reader looks at, they are
+# small, and having the PNGs render on GitHub is worth the few megabytes. Their
+# generated legends and stats tables come with them, because a figure whose
+# numbers cannot be checked is not much use.
+#
+# Note the pattern: `new_clean/results/` alone would stop git descending into the
+# directory at all, and a later `!` could not reach inside it. Ignoring the
+# CONTENTS with `/*` and then re-including the one subdirectory is what works.
+new_clean/results/*
+!new_clean/results/figures/
+new_clean/results/figures/*
+!new_clean/results/figures/*.png
+!new_clean/results/figures/*.pdf
+!new_clean/results/figures/*_legend.txt
+!new_clean/results/figures/*_stats.tsv
+# SVG is left out on purpose: it regenerates in seconds (`./run.sh fig*`) and
+# figure 5's alone is 1.7 M of XML that would churn on every redraw. PDF covers
+# the vector need for submission.
 new_clean/logs/
 
 # --- GET_TFS: keep the result tables, drop the heavy intermediates ------------
@@ -102,6 +121,9 @@ dag*.html
 # tree.txt is a 36 M generated directory listing.
 *.pdf
 !plots/**/*.pdf
+# The paper figures' PDFs, re-included here because this blanket rule comes after
+# the new_clean block and a later pattern wins.
+!new_clean/results/figures/*.pdf
 tree.txt
 
 # --- Language and editor junk -------------------------------------------------

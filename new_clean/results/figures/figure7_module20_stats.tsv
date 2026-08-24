@@ -1,0 +1,21 @@
+panel	study	quantity	value
+B	purple	AT3G55960: called MYB	 0
+B	purple	AT4G10770: called MYB	 0
+B	purple	AT5G59780: called MYB	 2
+B	sugarcane	AT3G55960: called MYB	 0
+B	sugarcane	AT4G10770: called MYB	 0
+B	sugarcane	AT5G59780: called MYB	 9
+B	purple	AT3G55960: not MYB	12
+B	purple	AT4G10770: not MYB	12
+B	purple	AT5G59780: not MYB	 1
+B	sugarcane	AT3G55960: not MYB	14
+B	sugarcane	AT4G10770: not MYB	10
+B	sugarcane	AT5G59780: not MYB	 0
+D	purple	Soffic.09G0001580-9H, 51NG3, control	10.8 TPM
+D	purple	Soffic.09G0001580-9H, 51NG3, high N	47.4 TPM
+D	purple	Soffic.09G0001580-9H, 51NG3, low N	124.1 TPM
+D	purple	Soffic.09G0001580-9H, TAGZ, control	40.0 TPM
+D	purple	Soffic.09G0001580-9H, TAGZ, high N	75.6 TPM
+D	purple	Soffic.09G0001580-9H, TAGZ, low N	65.5 TPM
+D	purple	Soffic.09G0001580-9H U-contrast, 51NG3	est +5.39, p 0.0078
+D	purple	Soffic.09G0001580-9H U-contrast, TAGZ	est +1.86, p 0.1420

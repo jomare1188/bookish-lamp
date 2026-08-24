@@ -1,0 +1,75 @@
+Figure 4. Cross-species conservation of network edges, and the failure of the nitrogen response
+to travel with them. An edge is CONSERVED when both of its genes have orthologs in the other
+species and those orthologs are themselves connected there; orthology is the OrthoFinder
+backbone described in Figure 1. Conservation is asked in both directions and the two are not
+interchangeable, because a sugarcane edge searching a 706-million-edge purple network has far
+more opportunity than a purple edge searching a 76-million-edge sugarcane one.
+
+(A) Share of each network's edges with a conserved partner, against a permutation null built
+separately for each direction; bars carry the absolute edge counts and the axis label the
+denominator. sugarcane → purple: 8,197,303 of 76,200,344 edges conserved (10.76%) against
+3,188,929 expected by chance (4.18%), a fold over null of 2.57x. purple → sugarcane: 10,722,788
+of 705,571,723 (1.52%) against 4,305,797 (0.61%), fold 2.49x. The two folds agree closely even
+though the raw percentages differ ~7x, and the fold is the comparable quantity: a sugarcane
+edge searching a 706-million-edge purple network has far more opportunity than the reverse.
+Every layer in both directions clears the null with z between 41 and 79; the empirical p is
+0.048 throughout, which is simply the floor set by 20 permutations and should be read as
+'beyond every permutation drawn' rather than as a precise p-value. Bars on the null are its
+full range over 20 permutations, which shuffle gene labels within the orthology map so that
+orthogroup fan-out and per-gene coverage are preserved and only the pairing is randomised --
+without that the null would mostly measure how many orthologs each gene has. Nulls are computed
+on a 5-million-edge sample of each direction, whose observed rate matches the full set to three
+decimals. THE TWO RAW RATES ARE NOT COMPARABLE WITH EACH OTHER: the ~7x difference between
+directions is opportunity, not biology, which is the reason panel B exists.
+
+(B) What the conserved genes are FOR. Panel A is a structural statement; this asks whether the
+structure that transfers is doing anything recognisable. One topGO BP enrichment per species
+over the genes on at least one conserved edge (39,226 and 44,118 genes, of which 3,779 and
+4,105 carry any GO annotation), tested against that network's OWN GO-annotated nodes as
+background (8,251 and 12,255) rather than against the genome, so the result is not the generic
+'co-expressed genes differ from the genome' effect. Sugarcane returns 106 enriched BP terms and
+purple 155, of which 69 are SHARED (Jaccard 0.36); MF and CC behave the same way, at 39 and 24
+shared terms. Plotted are the 12 shared terms with the strongest agreement, ranked by the WORSE
+of the two p-values so the panel shows terms both species support rather than terms one species
+drives; the two points on a row are the same term in the two networks. The shared set is
+dominated by regulation and core metabolism -- regulation of gene expression, MAPK cascade,
+proteolysis, translation, thylakoid membrane organization -- and it includes two terms that
+speak directly to the trait: GLUTAMATE BIOSYNTHETIC PROCESS and the AMMONIA ASSIMILATION CYCLE,
+enriched in both conserved sets. So the conserved edges are not a structural curiosity: they
+connect genes doing the same recognisable jobs in both species, including nitrogen assimilation
+itself. Read this alongside panel D, which shows that this shared FUNCTION coexists with almost
+no shared responsive GENES -- an ordinary evolutionary pattern, but note the power gap between
+the two tests before reading it as agreement.
+
+(C) Composition of each network by which estimator found the edge, stacked as a share so the
+two are comparable across a 9.3x difference in edge count; absolute counts are on the bars. In
+sugarcane, 73,329,192 edges (96.2%) are found by Pearson alone, 2,004,577 (2.6%) by both
+estimators, and 866,575 (1.1%) by mutual information alone; in purple the same three are
+625,775,930 (88.7%), 50,179,988 (7.1%) and 29,615,805 (4.2%). Purple's larger non-linear share
+is NOT more non-linear biology: the two layers are matched on p-value, and at n = 18 the p
+implied by |r| = 0.8 is 6.7e-05 against 9.0e-12 at n = 48, so purple's MI floor is far softer
+in absolute terms.
+
+Read against the conservation results, this panel is the case against the MI layer. The MI-ONLY
+edges are a small minority of both networks -- 1.1% and 4.2% -- and they are not better
+conserved than Pearson-only edges once chance is accounted for: their fold over null is 2.58x
+and 2.27x against 2.57x and 2.46x for Pearson-only, i.e. parity in one direction and BELOW
+Pearson in the other. Any apparent MI advantage in the raw conserved rate is opportunity bias
+-- MI-only edges connect genes with more orthologs, so they had more chances to match by
+accident, and the permutation null absorbs exactly that. The one layer that does earn its place
+is `both`: edges the two estimators agree on conserve at 2.76x and 2.95x, above Pearson-only in
+both directions. So the defensible statement is not that mutual information finds
+better-conserved edges -- it does not -- but that agreement between two estimators marks
+better-conserved edges than either alone.
+
+(D) Where the comparative question closes, per species, on a log axis. Of 103,336 sugarcane
+nodes, 39,226 sit on at least one conserved edge, 3,265 of those are nitrogen-responsive, and 2
+have an ortholog that is responsive in purple too. The purple column is 170,736 -> 44,118 -> 32
+-> 2. The funnel does not close at the orthology step or at the conservation step -- both leave
+tens of thousands of genes -- it closes at purple's 32 responsive genes, and that is a POWER
+result rather than a biological one: at n = 18 over 44,118 genes a gene needs |r| ~ 0.80 merely
+to clear the false-discovery correction. Selection here is the `union` rule (responsive by
+Pearson or by mutual information); the Pearson-only and MI-only rules give 1 and 0 conserved
+responsive pairs respectively, so no choice of statistic rescues it. At the EDGE level the
+count is 0 under every rule, because a conserved responsive edge needs two connected genes
+responsive on both sides and there are at most 2 such genes in the whole analysis.

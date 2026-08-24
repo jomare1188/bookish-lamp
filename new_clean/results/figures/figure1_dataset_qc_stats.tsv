@@ -1,0 +1,11 @@
+panel	study	quantity	value
+B	sugarcane	libraries / median M fragments / median % mapped	48 / 39.8 / 80.0
+B	purple	libraries / median M fragments / median % mapped	18 / 51.3 / 72.7
+C	sugarcane	annotated & quantified	190,973 (100.0%)
+C	sugarcane	CV >= 15% retained	170,790 (89.4%)
+C	sugarcane	in the network	103,336 (54.1%)
+C	purple	annotated & quantified	215,183 (100.0%)
+C	purple	CV >= 15% retained	170,740 (79.3%)
+C	purple	in the network	170,736 (79.3%)
+D	sugarcane	PC1 / PC2 % variance	60.2 / 12.7
+D	purple	PC1 / PC2 % variance	71.9 / 5.5

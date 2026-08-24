@@ -560,6 +560,12 @@ between a figure and its legend: change a threshold, re-run the figure, re-run
 It lives outside `results/` deliberately — `results/` is gitignored as
 regenerable output, and legends are manuscript text.
 
+**`results/figures/` is the one tracked part of `results/`.** The seven figures'
+PNGs and PDFs are committed, along with each figure's generated legend and stats
+table, so they render on GitHub and a reader can check any number without a
+re-run. SVG is excluded on purpose: it regenerates in seconds and figure 5's
+alone is 1.7 MB of XML that would churn on every redraw.
+
 **All three devices are cairo** (`png(type="cairo")`, `cairo_pdf`, `svglite`).
 The base `pdf()` device transliterates UTF-8, which turned *Muñoz* into *Munoz*
 and em dashes into hyphens.

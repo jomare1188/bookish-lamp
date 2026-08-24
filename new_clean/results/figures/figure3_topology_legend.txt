@@ -1,0 +1,57 @@
+Figure 3. Topology of the two co-expression networks. Each network is the union of a linear
+(Pearson) and a non-linear (Kraskov-Stogbauer-Grassberger mutual information) layer,
+thresholded at the same per-edge false-positive rate so the union is legitimate, built from the
+variance-stabilised matrix of its own study. sugarcane: 103,336 nodes, 76,200,344 edges, edge
+density 0.014, 939 connected components with a giant component of 101,253. purple: 170,736
+nodes, 705,571,723 edges, density 0.048, and a SINGLE connected component. Both are dense
+thresholded correlation networks, not sparse interaction graphs: mean degree is 1,475 and
+8,265. Every statement made later about hubs, modules or centrality has to be read against
+that, and in particular against the fact that purple has no separable components at all.
+
+(A) Degree distribution as the complementary cumulative distribution, P(K >= k), on log-log
+axes. The CCDF rather than a frequency histogram because at this size the upper tail of a
+histogram holds one node per bin and reads as noise, whereas the CCDF is monotone by
+construction. sugarcane has a median degree of 52 and a maximum of 16,019; purple a median of
+859 and a maximum of 40,960. Neither curve is a straight line, so neither network is scale-free
+in the usual sense; both bend down at the tail, which is what a hard correlation threshold does
+to a dense graph. The two curves are offset rather than differently shaped -- purple is the
+same kind of object, shifted to higher degree, and the shift is a consequence of n = 18 rather
+than of biology: at 18 libraries the correlation needed to clear the threshold is far easier to
+reach by chance.
+
+(B) Mean weight PER EDGE of a node against its degree, degrees binned on the same log-spaced
+grid and bins of fewer than twenty nodes dropped, since the sparser mid-range bins spike on
+sampling noise. The quantity is deliberately not node strength: strength is the SUM of a node's
+edge weights, so it rises with degree by construction (Spearman rho = 0.983 and 0.994) and
+plotting it answers nothing. Dividing by degree asks the question that matters -- is a
+high-degree gene well connected, or merely connected to many weak partners? The answer is not a
+trend but a step, and the step is at the very top. Across the first NINE degree deciles
+per-edge weight is essentially flat -- 0.174 to 0.203 in sugarcane, and drifting mildly DOWN
+from 0.360 to 0.255 in purple -- and then rises sharply in the tenth, to 0.321 and 0.500. The
+positive rank correlation over all nodes (Spearman rho = +0.317 and +0.169) is produced almost
+entirely by that top decile and should not be read as a gradient. For most of the network
+degree carries no information about edge quality; only the very highest-degree genes are also
+connected by stronger-than-average edges. Degree and per-edge weight are therefore reported
+separately throughout and never treated as one axis.
+
+(C) Composition of each network by which estimator found the edge, as a share of that network's
+edges so the two are comparable despite a 9.3x difference in edge count. In sugarcane,
+73,329,192 edges (96.2%) are found by Pearson alone, 2,004,577 (2.6%) by both, and 866,575
+(1.1%) by mutual information alone; in purple the same three are 625,775,930 (88.7%),
+50,179,988 (7.1%) and 29,615,805 (4.2%). purple's larger non-linear share is NOT more
+non-linear biology: the two layers are matched on p-value, and at n = 18 the p implied by |r| =
+0.8 is 6.7e-05 against 9.0e-12 at n = 48, so its MI floor is far softer in absolute terms. The
+comparison to make between the two studies is of the `both` class, which is the one an
+estimator cannot enter by accident.
+
+(D) MCL module size as a complementary cumulative distribution on log-log axes. sugarcane
+resolves into 10,309 modules (median 3 genes, largest 19,604, modularity Q = 0.1005) and purple
+into 9,881 (median 3, largest 47,887, Q = 0.1631). These counts are of NAMED modules only: the
+clustering also leaves 401 and 14,594 genes in groups below the minimum module size, pooled as
+`Unassigned` and excluded here -- a pooled leftover is not a module, and in purple including it
+would put a spurious 14,594-gene point into the size distribution, second only to the real
+largest module. Both partitions have the same shape -- one very large module and a long tail of
+small ones -- and both modularity values are low, which is what clustering a dense graph
+produces. purple's largest module holds 28% of its nodes against 19% for sugarcane, so purple's
+module structure in particular should be treated as a working partition rather than as biology,
+and any per-module claim from it read with that in mind.

@@ -1,0 +1,17 @@
+panel	study	quantity	value
+A	sugarcane	responsive	465
+A	purple	responsive	 79
+A	sugarcane	individually testable	 49
+A	purple	individually testable	 10
+A	sugarcane	with >= 1 term	 44
+A	purple	with >= 1 term	 10
+B	sugarcane	negative: modules / genes / GO-annotated / terms	223 / 1,613 / 161 / 29
+B	sugarcane	positive: modules / genes / GO-annotated / terms	242 / 3,211 / 383 / 80
+B	purple	negative: modules / genes / GO-annotated / terms	47 / 460 / 47 / 26
+B	purple	positive: modules / genes / GO-annotated / terms	32 / 202 / 23 / 10
+C	sugarcane	terms enriched: rises with N	74
+C	sugarcane	terms enriched: both	 6
+C	sugarcane	terms enriched: falls with N	23
+C	purple	terms enriched: rises with N	 7
+C	purple	terms enriched: both	 3
+C	purple	terms enriched: falls with N	23

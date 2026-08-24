@@ -1,0 +1,13 @@
+panel	study	quantity	value
+A	sugarcane	nodes / mean / median / max degree	103,336 / 1,475 /  52 / 16,019
+A	purple	nodes / mean / median / max degree	170,736 / 8,265 / 859 / 40,960
+B	sugarcane	per-edge weight: deciles 1-9 span, then top decile	0.174-0.203, then 0.321
+B	purple	per-edge weight: deciles 1-9 span, then top decile	0.255-0.360, then 0.500
+C	sugarcane	Pearson only	 73,329,192 (96.23%)
+C	sugarcane	both estimators	  2,004,577 (2.63%)
+C	sugarcane	MI only	    866,575 (1.14%)
+C	purple	Pearson only	625,775,930 (88.69%)
+C	purple	both estimators	 50,179,988 (7.11%)
+C	purple	MI only	 29,615,805 (4.20%)
+D	sugarcane	modules / median / largest / Q	10,309 / 3 / 19,604 / 0.1005
+D	purple	modules / median / largest / Q	 9,881 / 3 / 47,887 / 0.1631

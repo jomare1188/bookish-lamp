@@ -1,0 +1,20 @@
+panel	study	quantity	value
+A	sugarcane → purple	ALL: observed / null / fold	0.1076 / 0.0418 / 2.57
+A	sugarcane → purple	Pearson only: observed / null / fold	0.1069 / 0.0417 / 2.57
+A	sugarcane → purple	both estimators: observed / null / fold	0.1280 / 0.0463 / 2.76
+A	sugarcane → purple	MI only: observed / null / fold	0.1207 / 0.0468 / 2.58
+A	purple → sugarcane	ALL: observed / null / fold	0.0152 / 0.0061 / 2.49
+A	purple → sugarcane	Pearson only: observed / null / fold	0.0150 / 0.0061 / 2.46
+A	purple → sugarcane	both estimators: observed / null / fold	0.0184 / 0.0062 / 2.95
+A	purple → sugarcane	MI only: observed / null / fold	0.0141 / 0.0062 / 2.27
+B	both	BP terms: sugarcane / purple / shared	106 / 155 / 69 (Jaccard 0.359)
+B	both	MF terms: sugarcane / purple / shared	70 / 93 / 39 (Jaccard 0.315)
+B	both	CC terms: sugarcane / purple / shared	38 / 48 / 24 (Jaccard 0.387)
+D	sugarcane	nodes in the network	103,336
+D	sugarcane	on a conserved edge	 39,226
+D	sugarcane	nitrogen- responsive	  3,265
+D	sugarcane	responsive on both sides	      2
+D	purple	nodes in the network	170,736
+D	purple	on a conserved edge	 44,118
+D	purple	nitrogen- responsive	     32
+D	purple	responsive on both sides	      2

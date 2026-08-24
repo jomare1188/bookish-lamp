@@ -1,0 +1,10 @@
+panel	study	quantity	value
+A	Muñoz-Perez 2025 (sugarcane)	genes mapped / libraries	33 / 48
+A	Muñoz-Perez 2025 (sugarcane)	N-responsive in RB975375 (padj<0.05)	24 / 32
+A	Muñoz-Perez 2025 (sugarcane)	of those, down at high N	24 / 24
+A	Muñoz-Perez 2025 (sugarcane)	median % variance: nitrogen	20.0%
+A	Muñoz-Perez 2025 (sugarcane)	median % variance: genotype	12.1%
+B	Ta Quang Kiet 2025 (purple)	MYB61 copies / libraries	16 / 18
+B	Ta Quang Kiet 2025 (purple)	U-contrast padj<0.05 in 51NG3	10 / 13
+B	Ta Quang Kiet 2025 (purple)	of those, inverted vs the paper	10 / 10
+B	Ta Quang Kiet 2025 (purple)	U-contrast padj<0.05 in TAGZ	0
