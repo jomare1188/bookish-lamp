@@ -833,14 +833,22 @@ follows in C.
 | inputs | the module20 readout tables, both TPM matrices, both sample sheets |
 
 The comparative question about Module 20, and the answer is not "less of the
-same". **A** the 12 published members resolve to three Arabidopsis anchors and
-the mapped genes are haplotype *copies* of those loci (33 sugarcane genes from
-10 members, 27 purple from 6); only the AtMYB59 anchor carries a MYB call.
-**B** all 27 purple copies, as **absolute** log2(TPM+1) — a z-score would rescale
-a silent copy to look as structured as an expressed one, which is the specific
-error this panel exists to prevent. **C** `Soffic.09G0001580-9H`, the only
-expressed AtMYB59 copy in purple (60.8 TPM against 0.01 and 0.00). **D** the same
-anchor in sugarcane.
+same". **A** the module as Muñoz report it, reproduced — 33 mapped sugarcane
+genes × 48 libraries, small, because it is the premise rather than the result.
+**B** the 12 published members resolve to three Arabidopsis anchors and the
+mapped genes are haplotype *copies* of those loci (33 sugarcane genes from 10
+members, 27 purple from 6); only the AtMYB59 anchor carries a MYB call.
+**C** all 27 purple copies as a **per-gene z-score**, split by **genotype** as
+well as nitrogen, with only the responding copy labelled. **D**
+`Soffic.09G0001580-9H` on its own.
+
+> Two deliberate choices in C, both reversals of an earlier draft. The **z-score**
+> is what makes the responding copy legible: on an absolute scale it is a bright
+> row among dim ones and the *shape* of its response cannot be seen. Splitting by
+> **genotype** is what makes the dominant structure visible — in purple these
+> genes vary far more between the two species than across nitrogen, and a panel
+> split by nitrogen alone hides that and invites the reader to credit the
+> treatment.
 
 > **The finding.** That one copy responds in a **U centred on the control** —
 > 124.1 TPM under starvation, 10.8 at the 2 N control, 47.4 under excess in

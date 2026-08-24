@@ -8,7 +8,12 @@
 # answer is not "less of the same". It is a different response shape, in one
 # copy, that every monotone test in this project is blind to.
 #
-#   A  WHAT THE 12 MEMBERS ACTUALLY ARE. They map to only three Arabidopsis
+#   A  THE MODULE AS MUNOZ REPORT IT, reproduced -- all 33 mapped sugarcane genes
+#      across all 48 libraries, split by nitrogen. Small, because it is the
+#      premise rather than the result: it is here so the rest of the figure has
+#      something to be compared against.
+#
+#   B  WHAT THE 12 MEMBERS ACTUALLY ARE. They map to only three Arabidopsis
 #      anchors, and the mapped genes are haplotype COPIES of those few loci
 #      rather than 12 independent genes -- 27 purple genes from 6 members, 33
 #      sugarcane genes from 10. The panel also shows the MYB attrition: the
@@ -16,26 +21,24 @@
 #      other two anchors are not MYB at all under our own domain rules, however
 #      the source study labelled them.
 #
-#   B  ALL 27 PURPLE COPIES ACROSS ALL 18 LIBRARIES. Most are silent or flat.
-#      Drawn as absolute log2(TPM+1) rather than a z-score precisely because a
-#      z-score would rescale the silent copies to look as structured as the one
-#      that matters.
+#   C  THE SAME MODULE IN PURPLE, as a per-gene Z-SCORE and split by GENOTYPE as
+#      well as nitrogen. Both changes are deliberate. The z-score is what makes
+#      the one responding copy visible at all -- on an absolute scale it is a
+#      bright row among dim ones and the SHAPE of its response is invisible.
+#      Splitting by genotype is what makes the dominant structure legible: in
+#      purple these genes vary far more between the two species than across
+#      nitrogen, and an absolute heatmap split by nitrogen alone hides that.
+#      Only the responding copy is labelled; the rest would be 26 unreadable ids.
 #
-#   C  THE ONE COPY THAT RESPONDS. Soffic.09G0001580-9H, called MYB by the source
-#      study AND by our own pipeline, is the only AtMYB59-anchor copy in purple
-#      that is expressed at all (60.6 TPM against 0.01 and 0.00 for the other
-#      two). Its response is a U centred on the CONTROL: highest under nitrogen
-#      starvation, lowest at 2 N, high again under excess. Since 2 N is the
-#      control and 0 N and 6 N are stresses in opposite directions, this is a
-#      gene induced by nitrogen stress in EITHER direction -- which is why the
-#      Spearman test used everywhere else in this project cannot see it, and why
-#      the U-shape contrast exists.
-#
-#   D  THE SAME ANCHOR IN SUGARCANE, for contrast: nine expressed copies, every
-#      one of them monotonically repressed by nitrogen. Sugarcane's design has no
-#      control level, only Low and High, so what it can see is one arm of a curve.
-#      Read C and D together and the two studies are consistent rather than
-#      contradictory: sugarcane observes the low-nitrogen arm of the same shape.
+#   D  THAT COPY ON ITS OWN. Soffic.09G0001580-9H, called MYB by the source study
+#      AND by our own pipeline, is the only AtMYB59-anchor copy in purple that is
+#      expressed at all (60.6 TPM against 0.01 and 0.00 for the other two). Its
+#      response is a U centred on the CONTROL: highest under nitrogen starvation,
+#      lowest at 2 N, high again under excess. Since 2 N is the control and 0 N
+#      and 6 N are stresses in opposite directions, this is a gene induced by
+#      nitrogen stress in EITHER direction -- which is why the Spearman test used
+#      everywhere else in this project cannot see it, and why the U-shape
+#      contrast exists as a separate test.
 #
 # NOTHING IS WRITTEN ON THE FIGURE THAT BELONGS IN THE LEGEND.
 #
@@ -102,7 +105,43 @@ PU <- load_tpm(TPM_PUR, META_PUR, "purple")
 SU <- load_tpm(TPM_SUG, META_SUG, "sugarcane")
 
 # =============================================================================
-# A — 12 members are copies of three anchors
+# A — the module as Munoz report it, reproduced in sugarcane
+# =============================================================================
+zrow <- function(M) {
+  Z <- t(scale(t(M))); Z[!is.finite(Z)] <- 0; Z
+}
+XS <- SU$X; ms <- SU$meta
+ordS <- order(ms$status, ms$genotype,
+              if ("segment" %in% names(ms)) ms$segment else rep("", nrow(ms)), ms$sample)
+XS <- XS[, ordS, drop = FALSE]; ms <- ms[ordS]
+ZS <- zrow(XS)
+ZS <- ZS[order(-rowMeans(ZS[, ms$status == "low N", drop = FALSE])), , drop = FALSE]
+
+dA <- data.table(gene = factor(rep(rownames(ZS), times = ncol(ZS)),
+                               levels = rev(rownames(ZS))),
+                 sample = factor(rep(colnames(ZS), each = nrow(ZS)),
+                                 levels = colnames(ZS)),
+                 z = as.vector(ZS))
+dA[, status := ms$status[match(as.character(sample), ms$sample)]]
+ZLIM <- as.numeric(quantile(abs(dA$z), 0.98, na.rm = TRUE))
+say(sprintf("panel A: %d sugarcane genes x %d libraries", nrow(ZS), ncol(ZS)))
+
+PAL_Z <- rev(scico(256, palette = "roma"))
+pA <- ggplot(dA, aes(sample, gene, fill = z)) +
+  geom_raster() +
+  facet_grid(. ~ status, scales = "free_x", space = "free_x") +
+  scale_fill_gradientn(colours = PAL_Z, limits = c(-ZLIM, ZLIM), oob = squish,
+                       name = "z", guide = guide_colourbar(
+                         barheight = unit(1.4, "cm"), barwidth = unit(2.4, "mm"))) +
+  labs(x = sprintf("%d sugarcane libraries", ncol(ZS)),
+       y = sprintf("%d Module-20 genes", nrow(ZS))) +
+  theme_f +
+  theme(axis.text = element_blank(), axis.ticks = element_blank(),
+        panel.grid = element_blank(), panel.spacing = unit(0.8, "mm"),
+        axis.title = element_text(size = 6.5))
+
+# =============================================================================
+# B — 12 members are copies of three anchors
 # =============================================================================
 anch <- unique(TAB[, .(species, gene, at_anchor, our_family)])
 anch[, is_myb := grepl("MYB", our_family)]
@@ -117,67 +156,82 @@ cnt <- melt(cnt[, .(species, at_anchor, `called MYB` = myb, `not MYB`)],
 cnt[, species := factor(species, levels = c("sugarcane", "purple"))]
 cnt[, anchor := factor(ANCHOR_LAB[at_anchor], levels = unname(ANCHOR_LAB))]
 cnt[, call := factor(call, levels = c("called MYB", "not MYB"))]
-say("panel A: mapped genes per Arabidopsis anchor")
+say("panel B: mapped genes per Arabidopsis anchor")
 print(dcast(cnt, anchor ~ species + call, value.var = "n", fill = 0), row.names = FALSE)
 
 # Horizontal: the anchor labels are two lines each and collide on an x axis at
 # any legible size.
-pA <- ggplot(cnt, aes(n, anchor, fill = call)) +
+pB <- ggplot(cnt, aes(n, anchor, fill = call)) +
   geom_col(width = 0.62, colour = "white", linewidth = 0.3) +
   facet_wrap(~ species, nrow = 1) +
   scale_fill_manual(values = c(`called MYB` = unname(PAL_STUDY[1]), `not MYB` = "grey78"),
                     name = NULL) +
-  scale_x_continuous(expand = expansion(mult = c(0, 0.10))) +
+  # 0/5/10 only: at the facet boundary the "15" of one panel and the "0" of the
+  # next print on top of each other.
+  scale_x_continuous(breaks = c(0, 5, 10),
+                     expand = expansion(mult = c(0, 0.14))) +
   labs(y = NULL, x = "mapped genes (haplotype copies)") +
   theme_f + theme(axis.text.y = element_text(size = 5.8, lineheight = 0.95))
 
 # =============================================================================
-# B — every purple copy across every purple library
+# C — every purple copy, z-scored, split by genotype as well as nitrogen
 # =============================================================================
 rdB <- unique(TAB[species == "purple", .(gene, at_anchor, our_family)])
 rdB[, anchor := factor(ANCHOR_LAB[at_anchor], levels = unname(ANCHOR_LAB))]
 X <- PU$X; mp <- PU$meta
-ordc <- order(mp$status, mp$genotype, mp$sample)
+# Genotype first, then nitrogen: in purple these genes vary far more between the
+# two species than across nitrogen, and splitting by nitrogen alone hides it.
+ordc <- order(mp$genotype, mp$status, mp$sample)
 X <- X[, ordc, drop = FALSE]; mp <- mp[ordc]
 rdB <- rdB[match(rownames(X), gene)]
 rdB[, mean_tpm := rowMeans(X)]
 setorder(rdB, anchor, -mean_tpm)
 X <- X[rdB$gene, , drop = FALSE]
+# Per-gene z. An absolute scale makes the one responding copy a bright row among
+# dim ones and hides the SHAPE of its response, which is the thing to see.
+ZP <- zrow(X)
 
-dB <- data.table(gene = factor(rep(rownames(X), times = ncol(X)),
+dC <- data.table(gene = factor(rep(rownames(ZP), times = ncol(ZP)),
                                levels = rev(rdB$gene)),
-                 sample = factor(rep(colnames(X), each = nrow(X)),
-                                 levels = colnames(X)),
-                 l2 = as.vector(log2(X + 1)))
-dB[, anchor := rdB$anchor[match(as.character(gene), rdB$gene)]]
-dB[, status := mp$status[match(as.character(sample), mp$sample)]]
-say(sprintf("panel B: %d purple copies x %d libraries; %d copies below 1 TPM",
-            nrow(X), ncol(X), sum(rdB$mean_tpm < 1)))
+                 sample = factor(rep(colnames(ZP), each = nrow(ZP)),
+                                 levels = colnames(ZP)),
+                 z = as.vector(ZP))
+dC[, anchor := rdB$anchor[match(as.character(gene), rdB$gene)]]
+dC[, status := mp$status[match(as.character(sample), mp$sample)]]
+dC[, genotype := mp$genotype[match(as.character(sample), mp$sample)]]
+ZLIM_P <- as.numeric(quantile(abs(dC$z), 0.98, na.rm = TRUE))
+say(sprintf("panel C: %d purple copies x %d libraries; %d copies below 1 TPM",
+            nrow(ZP), ncol(ZP), sum(rdB$mean_tpm < 1)))
 
-pB <- ggplot(dB, aes(sample, gene, fill = l2)) +
+pC <- ggplot(dC, aes(sample, gene, fill = z)) +
   geom_raster() +
-  facet_grid(anchor ~ status, scales = "free", space = "free", switch = "y") +
-  scale_fill_scico(palette = "davos", direction = -1,
-                   name = expression(log[2]*"(TPM+1)")) +
+  facet_grid(anchor ~ genotype + status, scales = "free", space = "free",
+             switch = "y") +
+  scale_fill_gradientn(colours = PAL_Z, limits = c(-ZLIM_P, ZLIM_P), oob = squish,
+                       name = "z", guide = guide_colourbar(
+                         barheight = unit(1.6, "cm"), barwidth = unit(2.4, "mm"))) +
+  # Only the responding copy is named; the other 26 ids would be unreadable.
+  scale_y_discrete(breaks = FOCUS, labels = FOCUS) +
   labs(x = "18 purple libraries", y = NULL) +
   theme_f +
-  theme(axis.text = element_blank(), axis.ticks = element_blank(),
-        panel.grid = element_blank(), panel.spacing = unit(0.8, "mm"),
+  theme(axis.text.x = element_blank(), axis.ticks = element_blank(),
+        axis.text.y = element_text(size = 5.6, face = "bold"),
+        panel.grid = element_blank(), panel.spacing = unit(0.7, "mm"),
         strip.placement = "outside",
-        strip.text.y.left = element_text(angle = 0, size = 5.6, lineheight = 0.95),
-        legend.key.width = unit(2.6, "mm"), legend.key.height = unit(1.5, "cm"))
+        strip.text.y.left = element_text(angle = 0, size = 5.4, lineheight = 0.95),
+        strip.text.x = element_text(size = 5.8))
 
 # =============================================================================
-# C — the one copy that responds, in purple
+# D — that copy on its own
 # =============================================================================
 vC <- data.table(sample = colnames(PU$X), tpm = as.numeric(PU$X[FOCUS, ]))
 vC <- merge(vC, PU$meta[, .(sample, genotype, status)], by = "sample")
 uu <- NPUR[gene == FOCUS, .(genotype, U_est, U_p, anova_p, mean_tpm)]
-say("panel C: the focus copy"); print(uu, row.names = FALSE)
+say("panel D: the focus copy"); print(uu, row.names = FALSE)
 print(vC[, .(mean_tpm = round(mean(tpm), 1)), by = .(genotype, status)][order(genotype, status)],
       row.names = FALSE)
 
-pC <- ggplot(vC, aes(status, tpm, colour = genotype, group = genotype)) +
+pD <- ggplot(vC, aes(status, tpm, colour = genotype, group = genotype)) +
   stat_summary(fun = mean, geom = "line", linewidth = 0.6) +
   geom_point(size = 1.5, alpha = 0.85) +
   scale_colour_manual(values = c(`51NG3` = unname(PAL_STUDY[1]),
@@ -187,34 +241,12 @@ pC <- ggplot(vC, aes(status, tpm, colour = genotype, group = genotype)) +
   theme_f + theme(axis.title.y = element_text(size = 6.5, lineheight = 1.1))
 
 # =============================================================================
-# D — the same anchor in sugarcane
-# =============================================================================
-gD <- unique(TAB[species == "sugarcane" & at_anchor == FOCUS_ANCH, gene])
-gD <- intersect(gD, rownames(SU$X))
-dD <- rbindlist(lapply(gD, function(g)
-  data.table(gene = g, sample = colnames(SU$X), tpm = as.numeric(SU$X[g, ]))))
-dD <- merge(dD, SU$meta[, .(sample, status)], by = "sample")
-dD <- dD[, .(tpm = mean(tpm)), by = .(gene, status)]
-say(sprintf("panel D: %d sugarcane copies at the %s anchor", length(gD), FOCUS_ANCH))
-print(dcast(dD, gene ~ status, value.var = "tpm"), row.names = FALSE)
-
-pD <- ggplot(dD, aes(status, tpm, group = gene)) +
-  geom_line(linewidth = 0.5, colour = "grey55") +
-  geom_point(aes(colour = status), size = 1.6) +
-  scale_colour_manual(values = PAL_NSTATUS, guide = "none") +
-  scale_y_log10(breaks = 10^(0:3),
-                labels = trans_format("log10", math_format(10^.x))) +
-  annotation_logticks(sides = "l", linewidth = 0.2,
-                      short = unit(0.4, "mm"), mid = unit(0.7, "mm"),
-                      long = unit(1.1, "mm")) +
-  labs(x = NULL, y = sprintf("sugarcane %s copies\nmean TPM", "AtMYB59")) +
-  theme_f + theme(axis.title.y = element_text(size = 6.5, lineheight = 1.1))
-
-# =============================================================================
 # compose
 # =============================================================================
+# A is the premise rather than the result and gets the narrow column; C carries
+# 27 rows of heatmap and gets the wide one.
 fig <- (pA | pB) / (pC | pD) +
-  plot_layout(heights = c(1, 0.8)) +
+  plot_layout(widths = c(1, 1.05), heights = c(0.75, 1)) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 12))
 
@@ -249,7 +281,12 @@ legend <- paste0(
 "survives in the other species, and the answer is not less of the same thing -- it is a different ",
 "response shape, in one copy, that every monotone test in this work is blind to.\n",
 "\n",
-"(A) What the 12 published members actually are. They are TransDecoder transcripts from a de novo ",
+"(A) The module as reported, reproduced: all ", fmt_n(nrow(ZS)),
+" mapped sugarcane genes across all ", fmt_n(ncol(ZS)), " libraries as per-gene z-scores, split ",
+"by nitrogen. It is small because it is the premise rather than the result -- the rest of the ",
+"figure is what happens to this when it is carried into the other species.\n",
+"\n",
+"(B) What the 12 published members actually are. They are TransDecoder transcripts from a de novo ",
 "assembly; mapped into each reference proteome by reciprocal DIAMOND blastp through Arabidopsis ",
 "they resolve to only THREE anchors, and the mapped genes are haplotype COPIES of those few loci ",
 "rather than 12 independent genes -- ", fmt_n(sum(cnt[species == "sugarcane", n])),
@@ -263,56 +300,59 @@ fmt_n(nA("purple", FOCUS_ANCH)), " in purple, while the AT3G55960 and OPT7 ancho
 "AtMYB48 anchor maps to nothing that is in either network. So the module's MYB identity is thin ",
 "where it survives and absent where it does not.\n",
 "\n",
-"(B) Every purple copy across every purple library, as absolute log2(TPM + 1) rather than a ",
-"z-score: a z-score would rescale a silent copy to look exactly as structured as an expressed ",
-"one, which is the specific error this panel exists to prevent. Rows are grouped by anchor and ",
-"ordered by mean expression, columns by nitrogen status. Most copies are low or flat, and the ",
-"AtMYB59 block is nearly empty -- of its ", fmt_n(nA("purple", FOCUS_ANCH)), " copies, two run at ",
-sprintf("%.2f", max(sil)), " and ", sprintf("%.2f", min(sil)), " TPM on average, i.e. they are ",
-"not expressed in leaf at all.\n",
+"(C) The same module in purple, as a per-gene Z-SCORE and split by GENOTYPE as well as nitrogen; ",
+"rows are grouped by Arabidopsis anchor and ordered by mean expression, and only the responding ",
+"copy is labelled because the other 26 ids would be unreadable at this size. Both choices are ",
+"deliberate. The Z-SCORE is what makes that copy legible at all: on an absolute scale it is a ",
+"bright row among dim ones and the SHAPE of its response cannot be seen. Splitting by GENOTYPE is ",
+"what makes the dominant structure visible -- in purple these genes vary far more between the two ",
+"species than across nitrogen, and a panel split by nitrogen alone hides that and invites the ",
+"reader to attribute the variation to the treatment. Most copies are flat or near-silent: ",
+fmt_n(sum(rdB$mean_tpm < 1)), " of the ", fmt_n(nrow(ZP)), " run below 1 TPM, and the AtMYB59 ",
+"block is nearly empty -- of its ", fmt_n(nA("purple", FOCUS_ANCH)), " copies two sit at ",
+sprintf("%.2f", max(sil)), " and ", sprintf("%.2f", min(sil)), " TPM, i.e. they are not expressed ",
+"in leaf at all.\n",
 "\n",
-"(C) The one that is. ", FOCUS, " is the only AtMYB59-anchor copy expressed in purple (",
-sprintf("%.1f", fm("51NG3", "mean_tpm")), " TPM) and is called MYB both by the source study and ",
-"by our own domain rules. Points are libraries, lines join the means. Its response is a U CENTRED ",
-"ON THE CONTROL: in 51NG3 it runs at ", mn("51NG3", "low N"), " TPM under nitrogen starvation, ",
-mn("51NG3", "control"), " at the 2 N control and ", mn("51NG3", "high N"),
-" under excess -- an eleven-fold drop from starvation to control and a four-fold rise again ",
-"beyond it (U-shape contrast c(+1,-2,+1) p = ", sprintf("%.4f", fm("51NG3", "U_p")),
-", one-way p = ", sprintf("%.4f", fm("51NG3", "anova_p")), "; it does not clear BH over the ",
-fmt_n(nrow(NPUR[genotype == "51NG3"])), " purple Module-20 genes tested, so it is a candidate ",
-"rather than a finding). TAGZ shows the same shape more weakly (", mn("TAGZ", "low N"), ", ",
-mn("TAGZ", "control"), ", ", mn("TAGZ", "high N"), " TPM).\n",
+"(D) That copy on its own; points are libraries, lines join the means. ", FOCUS,
+" is the only AtMYB59-anchor copy expressed in purple (", sprintf("%.1f", fm("51NG3", "mean_tpm")),
+" TPM against ", sprintf("%.2f", max(sil)), " and ", sprintf("%.2f", min(sil)),
+" for the other two) and is called MYB both by the source study and by our own domain rules. Its ",
+"response is a U CENTRED ON THE CONTROL: in 51NG3 it runs at ", mn("51NG3", "low N"),
+" TPM under nitrogen starvation, ", mn("51NG3", "control"), " at the 2 N control and ",
+mn("51NG3", "high N"), " under excess -- an eleven-fold drop from starvation to control and a ",
+"four-fold rise again beyond it (U-shape contrast c(+1,-2,+1) p = ",
+sprintf("%.4f", fm("51NG3", "U_p")), ", one-way p = ", sprintf("%.4f", fm("51NG3", "anova_p")),
+"). TAGZ shows the same shape more weakly (", mn("TAGZ", "low N"), ", ", mn("TAGZ", "control"),
+", ", mn("TAGZ", "high N"), " TPM).\n",
 "\n",
 "Because 2 N is the CONTROL and 0 N and 6 N are stresses in opposite directions, this is a gene ",
 "induced by nitrogen stress in EITHER direction. That is exactly the shape a monotone rank ",
-"correlation cannot see -- it is the reason the module-level analysis reports this gene's module ",
-"as unresponsive, and the reason the U-shape contrast exists as a separate test.\n",
+"correlation cannot see -- it is why the module-level analysis reports this gene\'s module as ",
+"unresponsive, and why the U-shape contrast exists as a separate test. For contrast, the nine ",
+"expressed copies at the same anchor in SUGARCANE are every one monotonically REPRESSED by ",
+"nitrogen (log2 fold change -1.8 to -3.4, BH-adjusted p ~ 1e-08 in the responsive genotype ",
+"RB975375) -- but sugarcane\'s design has no control level, only Low and High, so what it can ",
+"observe is one arm of a curve. The two studies are therefore consistent rather than ",
+"contradictory: sugarcane sees the low-nitrogen arm of the same response, and only purple\'s ",
+"three-level design shows that the high-nitrogen side turns back up.\n",
 "\n",
-"(D) The same anchor in sugarcane, on a log axis: ", fmt_n(length(gD)), " expressed copies, every ",
-"one monotonically REPRESSED by nitrogen (log2 fold change -1.8 to -3.4, BH-adjusted p ~ 1e-08 in ",
-"the responsive genotype RB975375). Sugarcane's design has no control level -- only Low and High ",
-"-- so what it can observe is one arm of a curve. Read C and D together and the two studies are ",
-"consistent rather than contradictory: sugarcane sees the low-nitrogen arm of the same response, ",
-"and only purple's three-level design reveals that the high-nitrogen side turns back up. The ",
-"caveat that limits how far this can be pushed is that it rests on ONE expressed copy in one ",
-"species, at a p-value that does not survive correction.")
+"THE LIMIT. This rests on ONE expressed copy in one species, at a p-value that does not clear BH ",
+"over the ", fmt_n(nrow(NPUR[genotype == "51NG3"])), " purple Module-20 genes tested. It is a ",
+"candidate worth following, not a finding.")
 
 legend_file <- paste0(OUT_PREFIX, "_legend.txt")
 writeLines(wrap_at(legend), legend_file)
 say("wrote ", basename(legend_file))
 
 stats <- rbindlist(list(
-  cnt[, .(panel = "A", study = as.character(species),
+  cnt[, .(panel = "B", study = as.character(species),
           quantity = sprintf("%s: %s", at_anchor, call), value = fmt_n(n))],
-  vC[, .(panel = "C", study = "purple",
+  vC[, .(panel = "D", study = "purple",
          quantity = sprintf("%s, %s, %s", FOCUS, genotype, status),
          value = sprintf("%.1f TPM", mean(tpm))), by = .(genotype, status)][
            , .(panel, study, quantity, value)],
-  uu[, .(panel = "C", study = "purple",
+  uu[, .(panel = "D", study = "purple",
          quantity = sprintf("%s U-contrast, %s", FOCUS, genotype),
-         value = sprintf("est %+.2f, p %.4f", U_est, U_p))],
-  dD[, .(panel = "D", study = "sugarcane",
-         quantity = sprintf("%s, %s", gene, status),
-         value = sprintf("%.1f TPM", tpm))]))
+         value = sprintf("est %+.2f, p %.4f", U_est, U_p))]))
 write_tsv(stats, paste0(OUT_PREFIX, "_stats.tsv"))
 say("done")
