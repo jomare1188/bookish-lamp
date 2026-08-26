@@ -165,6 +165,8 @@ scripts/
   03_merge_layers.py     the two layers -> the network
   04_network_stats.r     node + global topology
   05_mcl_clustering.r    MCL modules
+  27_sbm_membership.r    an SBM fit, in the same two files MCL writes
+  28_fig_clustering_compare.r  MCL vs SBM, same downstream analysis
   06_conservation_join.r cross-species conserved edges, broken down by layer
   07_gene_trait_cor.r    per-gene expression vs trait
   08_conserved_cor_genes.r  node-level conservation of the N response

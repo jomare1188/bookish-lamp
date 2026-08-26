@@ -274,6 +274,73 @@ be misread as absent shared response when it is really absent orthology coverage
 
 ---
 
+## 05b · an alternative clustering — `./run.sh sbmclust <study>`
+
+A stochastic block model was fitted to the sugarcane network (`sbm/` at the repo
+root, outside this pipeline) as an alternative to MCL. `27_sbm_membership.r`
+converts that fit into **the two files every module-level stage reads**, in MCL's
+exact schema, so the alternative can be carried through the identical downstream
+analysis and the two compared on their biology.
+
+| | |
+|---|---|
+| cost | ~6 min, almost all of it the modularity pass over the 76 M-row edge table |
+| env | `r_net_env` |
+| inputs | `<SBM_DIR>/<SBM_TAG>_node_blocks.tsv`, the node-metric table, the edge table |
+
+**The contract.** `<prefix>_membership.tsv` (`gene, module_name, strength,
+degree`) and `<prefix>_module_summary.tsv` (`module, n_genes, modularity_Q, …`),
+with `module_name` ranked largest-first as `Module_%03d` or the literal
+`Unassigned` — every convention copied from `05_mcl_clustering.r`, because
+`22_fig_topology.r` separates real modules from the leftover pool with
+`grepl("^Module_", module)` and `14_module_eigengene.r` drops `Unassigned` by name.
+
+**No edge table is read for `strength`/`degree`.** MCL's own columns are
+*whole-graph* igraph values, not intramodular ones, which makes them identical to
+the columns already in `network_<study>_node_metrics.tsv`. Only one consumer uses
+`strength` at all — `16_module_heatmaps.r`, to take the top N genes of a module
+too large to draw.
+
+**Modularity is computed anyway**, on the same graph, because it is the number
+`05_mcl_clustering.r` reports for MCL and a comparison needs both sides measured
+the same way. It comes out at **0.0081** against MCL's **0.1005** — expected, not
+a defect: an SBM minimises a description length and does not optimise modularity.
+`SBM_COMPUTE_Q=0` skips the slow pass and writes NA.
+
+The script **fails** rather than warns if the fit's gene set and the network's
+disagree, because a partition of a different graph would silently produce modules
+that are not the ones the fit found.
+
+### The `CLUSTERING` switch
+
+`CLUSTERING=mcl|sbm` in `config.sh`, honoured from the environment
+(`CLUSTERING="${CLUSTERING:-mcl}"`) so `CLUSTERING=sbm ./run.sh eigengene
+sugarcane` works. Two helpers derive every path:
+
+```sh
+clus_prefix()   # which membership/summary the module stages READ
+module_dir()    # where their outputs are WRITTEN
+```
+
+With `mcl` both are exactly what they have always been, so the existing results
+cannot be disturbed; with `sbm` the outputs land in `results/<study>/sbm/`.
+
+> **run.sh announces the active clustering** on every module-level stage. That
+> line exists because the first attempt at this went wrong silently: `config.sh`
+> assigned `CLUSTERING=mcl` unconditionally, so an exported `CLUSTERING=sbm` was
+> clobbered on sourcing and three stages re-ran MCL into the MCL location while
+> appearing to do SBM work. Nothing was lost — the outputs are deterministic and
+> reproduced byte-identically — but only a checksum proved it. A stage using the
+> wrong clustering writes plausible output to a plausible place, and being told
+> which one is active before the work starts is the only cheap defence.
+
+> **The Module-20 readout stays on MCL.** `module20/03_network_readout.r` asks
+> which of *our* modules hold the Module-20 genes — a question about one specific
+> clustering — and `run.sh` invokes that stage with no environment at all. Its
+> membership paths are now `Sys.getenv` with the MCL files as defaults, so it
+> cannot drift with the switch; point `CLEAN_M20_MODS_SUGARCANE` at another
+> membership file to re-run it against one.
+
 ## 14-19 · module-level analysis
 
 ```
@@ -617,6 +684,22 @@ nitrogen loads on neither first component), and the second measured segment on
 the collapsed `tissue` column. On the four real segments, leaf segment explains
 **0.802** of sugarcane's PC2 against 0.450 on the collapsed three — which is also
 the quantitative case for `HEATMAP_GROUP_BY="segment"`.
+
+### `figclustering` — MCL against the SBM
+
+```
+./run.sh figclustering [study]   # -> figure<N>_clustering_<study>.{png,pdf}
+```
+
+Not a paper figure — evidence for a decision that has not been made, numbered
+past the seven so it cannot be mistaken for one. Both partitions carried through
+the identical downstream analysis: **A** module-size CCDFs with the adjusted Rand
+index, **B** eigengene coherence, **C** the module–trait test at each threshold,
+**D** what share of each partition's responsive modules can be *named*.
+
+Panel D is a share, not a count, on purpose: counts would put 465 modules beside
+325 GO terms on one axis and invite reading the partition with more modules as
+the better one.
 
 ### `figrepro` — reproducing each source study's own finding
 

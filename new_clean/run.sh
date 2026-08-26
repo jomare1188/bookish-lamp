@@ -16,6 +16,7 @@
 #   ./run.sh merge     <study>               layers -> the network
 #   ./run.sh stats     <study>               node + global metrics, plots
 #   ./run.sh mcl       <study>               MCL modules
+#   ./run.sh sbmclust  <study>               SBM fit -> the same two files
 #   ./run.sh conserve  sugarcane_to_purple|purple_to_sugarcane
 #   ./run.sh conservenull <direction>        permutation null for the above
 #   ./run.sh trait     <study>               gene-trait correlations
@@ -39,6 +40,7 @@
 #   ./run.sh figmodules                      module-level nitrogen response
 #   ./run.sh figmodulego                     module-level GO, incl. by direction
 #   ./run.sh figmodule20                     Munoz Module 20 in purple
+#   ./run.sh figclustering [study]           MCL vs SBM, same downstream analysis
 #   ./run.sh figrepro                        both source studies reproduced
 #   ./run.sh legends                         assemble figures_legends.txt
 #   ./run.sh build     <study>               export + both layers + merge
@@ -83,6 +85,13 @@ main() {
   LOG="${LOGS}/${STAGE}${ARG:+_$ARG}_$(date +%Y%m%d_%H%M%S).log"
   exec > >(tee -a "$LOG") 2>&1
   echo "=== ${STAGE} ${ARG} :: $(date '+%F %T') :: log ${LOG}"
+  # Announced on every run. A module-level stage silently using the wrong
+  # clustering writes plausible-looking output to the wrong place, and the only
+  # way to catch it is to be told which one is active before the work starts.
+  case "$STAGE" in
+    eigengene|moduletrait|moduleprofile|moduleheatmap|modulesummary|modulego|figtopology|figmodules|figmodulego)
+      echo "=== clustering: ${CLUSTERING}  ->  $(module_dir "${ARG:-sugarcane}")" ;;
+  esac
 
   case "$STAGE" in
 
@@ -190,6 +199,27 @@ main() {
       "$RSCRIPT_NET" "${SCRIPTS}/05_mcl_clustering.r"
     ;;
 
+  # Converts a graph-tool nested SBM fit into the two files every module-level
+  # stage reads, in MCL's exact schema, so the alternative clustering can be
+  # carried through the identical downstream analysis. Writes beside the MCL
+  # files; nothing is overwritten.
+  sbmclust)
+    check_study "$ARG"
+    SBM_DIR="$(cfg SBM_DIR "$ARG")"
+    [ -d "$SBM_DIR" ] || die "no SBM output for '$ARG' at $SBM_DIR"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_SBM_NODE_BLOCKS="${SBM_DIR}/${SBM_TAG}_node_blocks.tsv" \
+    CLEAN_NODE_METRICS="$(study_dir "$ARG")/network_${ARG}_node_metrics.tsv" \
+    CLEAN_EDGES="$(network_tsv "$ARG")" \
+    CLEAN_PREFIX="$(study_dir "$ARG")/sbm_${ARG}" \
+    CLEAN_SBM_LEVEL="$SBM_LEVEL" \
+    CLEAN_SBM_COMPUTE_Q="$SBM_COMPUTE_Q" \
+    CLEAN_MIN_MODULE_SIZE="$MCL_MIN_MODULE_SIZE" \
+    CLEAN_MIN_MODULE_SIZE_PLOT="$MCL_MIN_MODULE_SIZE_PLOT" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_NET" "${SCRIPTS}/27_sbm_membership.r"
+    ;;
+
   # --- 06 conservation --------------------------------------------------------
   conserve)
     case "$ARG" in
@@ -269,8 +299,8 @@ main() {
     check_study "$ARG"
     CLEAN_STUDY="$ARG" \
     CLEAN_VST_PREFIX="$(vst_prefix "$ARG")" \
-    CLEAN_MEMBERSHIP="$(study_dir "$ARG")/mcl_${ARG}_membership.tsv" \
-    CLEAN_OUT_PREFIX="$(study_dir "$ARG")/modules/${ARG}_eigengenes" \
+    CLEAN_MEMBERSHIP="$(clus_prefix "$ARG")_membership.tsv" \
+    CLEAN_OUT_PREFIX="$(module_dir "$ARG")/modules/${ARG}_eigengenes" \
     CLEAN_MIN_MODULE_SIZE_EIGEN="$MIN_MODULE_SIZE_EIGEN" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_NET" "${SCRIPTS}/14_module_eigengene.r"
@@ -283,11 +313,11 @@ main() {
   moduletrait)
     check_study "$ARG"
     CLEAN_STUDY="$ARG" \
-    CLEAN_EIGENGENE_PREFIX="$(study_dir "$ARG")/modules/${ARG}_eigengenes" \
+    CLEAN_EIGENGENE_PREFIX="$(module_dir "$ARG")/modules/${ARG}_eigengenes" \
     CLEAN_META="$(cfg META "$ARG")" \
     CLEAN_TRAITS="$(cfg TRAITS "$ARG")" \
     CLEAN_SELECT_TRAIT="$SELECT_TRAIT" \
-    CLEAN_OUT_FILE="$(study_dir "$ARG")/module_trait_${ARG}.tsv" \
+    CLEAN_OUT_FILE="$(module_dir "$ARG")/module_trait_${ARG}.tsv" \
     CLEAN_MODULE_R_THR="$MODULE_R_THR" \
     CLEAN_MODULE_PADJ_THR="$MODULE_PADJ_THR" \
     CLEAN_MODULE_PERM="$MODULE_PERM" \
@@ -298,12 +328,12 @@ main() {
   moduleprofile)
     check_study "$ARG"
     CLEAN_STUDY="$ARG" \
-    CLEAN_MODULE_TRAIT="$(study_dir "$ARG")/module_trait_${ARG}.tsv" \
-    CLEAN_MEMBERSHIP="$(study_dir "$ARG")/mcl_${ARG}_membership.tsv" \
-    CLEAN_PC1_VARIANCE="$(study_dir "$ARG")/modules/${ARG}_eigengenes_pc1_variance.tsv" \
+    CLEAN_MODULE_TRAIT="$(module_dir "$ARG")/module_trait_${ARG}.tsv" \
+    CLEAN_MEMBERSHIP="$(clus_prefix "$ARG")_membership.tsv" \
+    CLEAN_PC1_VARIANCE="$(module_dir "$ARG")/modules/${ARG}_eigengenes_pc1_variance.tsv" \
     CLEAN_TF_FILE="${RESULTS}/readouts/get_tfs/${ARG}/TF_in_network.tsv" \
     CLEAN_NODE_METRICS="$(study_dir "$ARG")/network_${ARG}_node_metrics.tsv" \
-    CLEAN_OUT_FILE="$(study_dir "$ARG")/module_profile_${ARG}.tsv" \
+    CLEAN_OUT_FILE="$(module_dir "$ARG")/module_profile_${ARG}.tsv" \
     CLEAN_PADJ_THR="$MODULE_PADJ_THR" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_NET" "${SCRIPTS}/15_module_profile.r"
@@ -313,12 +343,12 @@ main() {
     check_study "$ARG"
     CLEAN_STUDY="$ARG" \
     CLEAN_VST_PREFIX="$(vst_prefix "$ARG")" \
-    CLEAN_MODULE_PROFILE="$(study_dir "$ARG")/module_profile_${ARG}.tsv" \
-    CLEAN_MEMBERSHIP="$(study_dir "$ARG")/mcl_${ARG}_membership.tsv" \
+    CLEAN_MODULE_PROFILE="$(module_dir "$ARG")/module_profile_${ARG}.tsv" \
+    CLEAN_MEMBERSHIP="$(clus_prefix "$ARG")_membership.tsv" \
     CLEAN_META="$(cfg META "$ARG")" \
     CLEAN_TRAITS="$(cfg TRAITS "$ARG")" \
     CLEAN_TF_FILE="${RESULTS}/readouts/get_tfs/${ARG}/TF_in_network.tsv" \
-    CLEAN_OUT_DIR="$(study_dir "$ARG")/heatmaps" \
+    CLEAN_OUT_DIR="$(module_dir "$ARG")/heatmaps" \
     CLEAN_HEATMAP_TOP_N="$HEATMAP_TOP_N" \
     CLEAN_HEATMAP_MAX_GENES="$HEATMAP_MAX_GENES" \
     CLEAN_HEATMAP_MODULES="${EXTRA[0]:-}" \
@@ -330,11 +360,11 @@ main() {
   modulesummary)
     check_study "$ARG"
     CLEAN_STUDY="$ARG" \
-    CLEAN_EIGENGENE_PREFIX="$(study_dir "$ARG")/modules/${ARG}_eigengenes" \
-    CLEAN_MODULE_PROFILE="$(study_dir "$ARG")/module_profile_${ARG}.tsv" \
+    CLEAN_EIGENGENE_PREFIX="$(module_dir "$ARG")/modules/${ARG}_eigengenes" \
+    CLEAN_MODULE_PROFILE="$(module_dir "$ARG")/module_profile_${ARG}.tsv" \
     CLEAN_META="$(cfg META "$ARG")" \
     CLEAN_TRAITS="$(cfg TRAITS "$ARG")" \
-    CLEAN_OUT_PREFIX="$(study_dir "$ARG")/module_summary_${ARG}" \
+    CLEAN_OUT_PREFIX="$(module_dir "$ARG")/module_summary_${ARG}" \
     CLEAN_SUMMARY_MAX_MODULES="$SUMMARY_MAX_MODULES" \
     CLEAN_MODULE_R_THR="$MODULE_R_THR" \
     CLEAN_MODULE_PADJ_THR="$MODULE_PADJ_THR" \
@@ -349,11 +379,11 @@ main() {
   modulego)
     check_study "$ARG"
     CLEAN_STUDY="$ARG" \
-    CLEAN_MODULE_PROFILE="$(study_dir "$ARG")/module_profile_${ARG}.tsv" \
-    CLEAN_MEMBERSHIP="$(study_dir "$ARG")/mcl_${ARG}_membership.tsv" \
+    CLEAN_MODULE_PROFILE="$(module_dir "$ARG")/module_profile_${ARG}.tsv" \
+    CLEAN_MEMBERSHIP="$(clus_prefix "$ARG")_membership.tsv" \
     CLEAN_NODE_METRICS="$(study_dir "$ARG")/network_${ARG}_node_metrics.tsv" \
     CLEAN_EMAPPER="$(cfg EMAPPER "$ARG")" \
-    CLEAN_OUT_DIR="$(study_dir "$ARG")/module_go" \
+    CLEAN_OUT_DIR="$(module_dir "$ARG")/module_go" \
     CLEAN_ONTOLOGY="${EXTRA[0]:-$MODULE_GO_ONTOLOGY}" \
     CLEAN_GO_P="$GO_P" \
     CLEAN_GO_NTOP="$GO_NTOP" \
@@ -397,8 +427,8 @@ main() {
     CLEAN_NODES_PURPLE="$(study_dir purple)/network_purple_node_metrics.tsv" \
     CLEAN_GLOBAL_SUGARCANE="$(study_dir sugarcane)/network_sugarcane_global_metrics.tsv" \
     CLEAN_GLOBAL_PURPLE="$(study_dir purple)/network_purple_global_metrics.tsv" \
-    CLEAN_MCL_SUGARCANE="$(study_dir sugarcane)/mcl_sugarcane_module_summary.tsv" \
-    CLEAN_MCL_PURPLE="$(study_dir purple)/mcl_purple_module_summary.tsv" \
+    CLEAN_MCL_SUGARCANE="$(clus_prefix sugarcane)_module_summary.tsv" \
+    CLEAN_MCL_PURPLE="$(clus_prefix purple)_module_summary.tsv" \
     CLEAN_LAYERS_SUGARCANE="$(study_dir sugarcane)/network_sugarcane_edges.summary.json" \
     CLEAN_LAYERS_PURPLE="$(study_dir purple)/network_purple_edges.summary.json" \
     CLEAN_TOPO_GRID="$TOPO_GRID" \
@@ -481,6 +511,17 @@ main() {
     CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_MODULE20}_module20" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/26_fig_module20.r"
+    ;;
+
+  figclustering)
+    CLEAN_STUDY="${ARG:-sugarcane}" \
+    CLEAN_STUDY_DIR="$(study_dir "${ARG:-sugarcane}")" \
+    CLEAN_FIG_NUM="$FIG_CLUSTERING" \
+    CLEAN_GO_ONTOLOGY="$MODULE_GO_ONTOLOGY" \
+    CLEAN_TOPO_GRID="$TOPO_GRID" \
+    CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_CLUSTERING}_clustering_${ARG:-sugarcane}" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_PLOT" "${SCRIPTS}/28_fig_clustering_compare.r"
     ;;
 
   figrepro)

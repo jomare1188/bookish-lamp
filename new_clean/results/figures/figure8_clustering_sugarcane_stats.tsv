@@ -1,0 +1,15 @@
+panel	clustering	quantity	value
+A	MCL	modules / median / max / Q / unassigned	10,309 /  3 / 19,604 / 0.1005 / 401
+A	SBM	modules / median / max / Q / unassigned	   995 / 51 /  1,366 / 0.0081 /  14
+B	MCL	median PC1 variance explained	81.1%
+B	SBM	median PC1 variance explained	77.6%
+C	MCL	tested	6,576
+C	MCL	padj <= 0.05	1,792
+C	MCL	|rho| >= 0.6	  465
+C	MCL	responsive	  465
+C	SBM	tested	  979
+C	SBM	padj <= 0.05	  136
+C	SBM	|rho| >= 0.6	   23
+C	SBM	responsive	   23
+D	MCL	responsive / GO-testable / with a term / terms returned	465 / 49 / 44 / 246
+D	SBM	responsive / GO-testable / with a term / terms returned	 23 / 20 / 20 / 325

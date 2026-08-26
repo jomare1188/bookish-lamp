@@ -89,6 +89,26 @@ GPU_MEM_GB=5              # working set budget; the A4500 has 20 GB
 RAM_LIMIT_GB=64           # host RAM for the FDR pass (8 B per candidate edge)
 
 # --- clustering --------------------------------------------------------------
+# WHICH CLUSTERING THE MODULE-LEVEL STAGES USE: mcl | sbm
+#
+# `mcl` is the default and every path it produces is byte-identical to what the
+# pipeline has always written, so switching to `sbm` and back cannot disturb the
+# MCL results. A stochastic block model was fitted to the sugarcane network as an
+# alternative (sbm/ at the repo root, not part of this pipeline); this switch is
+# what lets the two be carried through the SAME downstream analysis and compared
+# on their biology rather than on partition shape alone.
+#
+# The two clusterings differ far more than a parameter change would suggest: MCL
+# gives 10,309 modules with a median of 3 genes and one holding 19% of the
+# network, the SBM 1,009 blocks with a median of 50 and no giant block, and their
+# adjusted Rand index is 0.0156. Do not read one's results as the other's.
+#
+# Overridable from the environment -- `CLUSTERING=sbm ./run.sh eigengene
+# sugarcane` -- which is the whole point, since the comparison needs the same
+# stages run twice. run.sh sourcing this file must NOT clobber an explicit
+# choice, so the assignment is conditional.
+CLUSTERING="${CLUSTERING:-mcl}"
+
 MCL_INFLATION=2
 
 # 2, matching the original mcl_clustering.r. This does NOT affect the clustering
@@ -115,6 +135,27 @@ MCL_BIN="/home/genomics/miniconda3/envs/r_net_env/bin/mcl"
 # mcl writes a temporary .abc file that is tens of GB for purple. Do not let it
 # land on a small system /tmp.
 MCL_TMPDIR="/dados04/jorge/tmp"
+
+# --- stochastic block model (CLUSTERING=sbm) ---------------------------------
+# Output of the graph-tool nested fit, which lives outside this pipeline. The
+# per-study directory names are the fit's, not the pipeline's.
+SBM_ROOT="${BASE}/sbm/output"
+SBM_DIR_sugarcane="${SBM_ROOT}/sugar"
+SBM_DIR_purple="${SBM_ROOT}/purple"
+SBM_TAG=01_minimize
+
+# Which level of the nested hierarchy is "the modules". 0 is the finest and the
+# only one at module granularity -- 1,009 blocks, median 50 genes, max 1,366.
+# Level 1 already coarsens to 294 blocks with a median of 276, and by level 3 the
+# partition is 49 blocks and no longer a module set.
+SBM_LEVEL=0
+
+# Newman modularity of the SBM partition, computed on the same graph so it is
+# comparable with the number 05_mcl_clustering.r reports for MCL. It is the only
+# slow step (it reads the 76 M-row edge table); set 0 to skip and write NA. An
+# SBM minimises description length rather than modularity, so a low Q is the two
+# methods optimising different things, not a failure.
+SBM_COMPUTE_Q=1
 
 # --- topology ----------------------------------------------------------------
 # Local transitivity is O(sum deg^2) and took ~15 h on purple. Nothing in the
@@ -307,6 +348,11 @@ FIG_MODULES=5
 FIG_MODULE_GO=6
 FIG_MODULE20=7
 
+# The MCL-vs-SBM comparison is not a paper figure yet -- it is the evidence for a
+# decision that has not been made. Numbered past the seven so it cannot be
+# mistaken for one.
+FIG_CLUSTERING=8
+
 # Module-20 figure. The focus copy is the ONLY AtMYB59-anchor copy expressed in
 # purple (60.6 TPM against 0.01 and 0.00 for the other two) and the only
 # Module-20 gene there with a significant U-shape response to nitrogen.
@@ -354,6 +400,16 @@ EMAPPER_purple="${BASE}/annotation/purple/emapper.annotations"
 
 # --- derived paths (do not edit) ---------------------------------------------
 study_dir()   { echo "${RESULTS}/$1"; }
+
+# Where the module-level stages read their clustering from, and where they write.
+# With CLUSTERING=mcl both are exactly what they have always been, so the
+# existing results cannot be touched; with sbm the outputs land in a parallel
+# subdirectory and the two sets sit side by side.
+clus_prefix() { echo "$(study_dir "$1")/${CLUSTERING}_$1"; }
+module_dir()  {
+  if [ "$CLUSTERING" = "mcl" ]; then echo "$(study_dir "$1")"
+  else echo "$(study_dir "$1")/${CLUSTERING}"; fi
+}
 vst_prefix()  { echo "${RESULTS}/$1/vst/$1"; }
 layer_out()   { echo "${RESULTS}/$1/layers/$1_$2"; }
 network_tsv() { echo "${RESULTS}/$1/network_$1_edges.tsv"; }

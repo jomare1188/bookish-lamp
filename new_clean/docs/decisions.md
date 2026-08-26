@@ -305,3 +305,56 @@ stress-control-stress, so a module moved the same way by both extremes is
 invisible to a monotone test and therefore absent from both direction sets. See
 `Soffic.09G0001580-9H` in [results.md](results.md#module-20-in-purple--one-copy-responds-and-not-monotonically)
 for a gene that does exactly that.
+
+---
+
+## 2026-08-26 — A stochastic block model is fitted alongside MCL, and neither is chosen yet
+
+**Why.** MCL's partition of the sugarcane network has a shape that makes the
+module-level analysis awkward: 10,309 modules with a **median of 3 genes** and a
+single module holding 19,604 (19% of the network). A median of 3 is below the
+GO annotation gate almost by construction, which is why only 49 of the 465
+responsive modules could be tested for function at all. A stochastic block model
+was fitted to the same network to see whether a different partition removes that.
+
+**How it is wired, and why nothing was rewritten.** Every module-level stage
+reads the clustering through exactly two files. `27_sbm_membership.r` writes
+those two files from the SBM fit in MCL's exact schema, so **no consumer changed**
+— the alternative is carried through the identical eigengene, Spearman,
+TF-hypergeometric and topGO code. A `CLUSTERING=mcl|sbm` switch selects which
+clustering is read and sends its outputs to a separate directory, so the MCL
+results are untouched by construction rather than by care. Level 0 of the nested
+fit is used: 1,009 blocks, median 51 genes, no giant block. Levels 1 and up
+coarsen fast (294 blocks by level 1, 49 by level 3) and stop being a module set.
+
+**They are not the same structure re-parameterised.** Adjusted Rand index between
+the two partitions is **0.0156** over all 103,336 genes. Newman modularity is
+0.1005 for MCL and 0.0081 for the SBM — expected, since an SBM minimises a
+description length and does not optimise modularity, so this is the two methods
+answering different questions rather than one failing.
+
+**What the comparison shows** (`./run.sh figclustering`, sugarcane):
+
+| | MCL | SBM level 0 |
+|---|---|---|
+| modules / median size / largest | 10,309 / 3 / 19,604 | 995 / 51 / 1,366 |
+| genes left unassigned | 401 | 14 |
+| modules tested | 6,576 | 979 |
+| responsive | **465** | **23** |
+| median PC1 variance explained | 81.1% | 77.6% |
+| responsive modules GO-testable | **49 (11%)** | **20 (87%)** |
+| BP terms returned | 246 | **325** |
+
+The trade is stark. MCL finds twenty times more responsive modules, of which
+**nine in ten cannot be tested for function**. The SBM finds 23, of which almost
+all can, and they return more GO terms than MCL's 465 do. Eigengene coherence is
+close, slightly favouring MCL — but its median is dominated by very small
+modules, where one component explains most of the variance almost by
+construction, so the two medians are not measured on comparable objects.
+
+**Not decided.** Which partition is preferable depends on whether the next step
+is to name modules or to count them, and the comparison exists only for
+sugarcane — purple has an input graph but no fit, so it cannot yet be checked
+against the second species. MCL remains the default. Switching would be one line
+(`CLUSTERING=sbm`), but figures 5–7, the Module-20 readout and the module
+sections of results.md all describe the MCL partition and would need regenerating.

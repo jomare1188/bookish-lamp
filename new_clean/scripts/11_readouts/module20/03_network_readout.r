@@ -45,14 +45,22 @@ cfg <- list(
     map   = file.path(cache, "module20_map_sugarcane.tsv"),
     nodes = file.path(base, "new_clean/results/sugarcane/network_sugarcane_node_metrics.tsv"),
     strip = "\\.v[0-9.]+$",
-    mods  = file.path(base, "new_clean/results/sugarcane/mcl_sugarcane_membership.tsv"),
+    # Overridable, but MCL by default and deliberately so. This readout asks
+    # which of OUR modules hold the Module-20 genes, which is a question about a
+    # specific clustering -- and run.sh invokes this stage with no environment,
+    # so an unqualified path here would silently follow whatever CLUSTERING
+    # happened to be set. Point CLEAN_M20_MODS_SUGARCANE at another membership
+    # file to re-run the readout against it.
+    mods  = Sys.getenv("CLEAN_M20_MODS_SUGARCANE",
+              file.path(base, "new_clean/results/sugarcane/mcl_sugarcane_membership.tsv")),
     tf    = "/dados04/jorge/comparative_saccharum/new_clean/results/readouts/get_tfs/sugarcane/TF_in_network.tsv",
     cons  = file.path(base, "new_clean/results/conservation/conserved_genes_sugarcane_FULL.txt")),
   purple = list(
     map   = file.path(cache, "module20_map_purple.tsv"),
     nodes = file.path(base, "new_clean/results/purple/network_purple_node_metrics.tsv"),
     strip = NULL,
-    mods  = file.path(base, "new_clean/results/purple/mcl_purple_membership.tsv"),
+    mods  = Sys.getenv("CLEAN_M20_MODS_PURPLE",
+              file.path(base, "new_clean/results/purple/mcl_purple_membership.tsv")),
     tf    = "/dados04/jorge/comparative_saccharum/new_clean/results/readouts/get_tfs/purple/TF_in_network.tsv",
     cons  = file.path(base, "new_clean/results/conservation/conserved_genes_purple_FULL.txt"))
 )

@@ -60,6 +60,13 @@ new_clean/results/figures/*
 # the vector need for submission.
 new_clean/logs/
 
+# --- sbm/: the block-model fits, which live outside the pipeline --------------
+# 24 GB, nearly all of it serialised graph-tool graphs (the purple input alone is
+# 14 GB). The pipeline reads only <tag>_node_blocks.tsv from here and converts it
+# into results/<study>/sbm_<study>_membership.tsv, which is small; the fit itself
+# is an input, not a deliverable, and does not belong in git.
+sbm/output/
+
 # --- GET_TFS: keep the result tables, drop the heavy intermediates ------------
 # The TF / MYB61 / module20 result TSVs total ~18 M and are read by the readout
 # scripts, so they stay. The HMM databases and per-chunk search output do not.

@@ -1,0 +1,38 @@
+Figure 8. MCL against a stochastic block model, on the same sugarcane network. Both partitions
+are carried through the IDENTICAL downstream analysis -- the same eigengene construction, the
+same Spearman module-trait test at the same two thresholds, the same TF hypergeometric and the
+same topGO run against the same background -- so the two can be compared at every step rather
+than only as partitions. This is evidence for a decision that has not been made, not a result.
+
+(A) Module-size complementary CDFs. The two partitions are barely related: MCL gives 10,309
+modules with a median of 3 genes and one holding 19,604 (19% of the network), the SBM 995
+blocks with a median of 51 and a largest of 1,366. Their ADJUSTED RAND INDEX is 0.0156 --
+essentially no agreement, so this is a genuine alternative rather than a re-parameterisation of
+the same structure. Newman modularity is 0.1005 for MCL against 0.0081 for the SBM, which is
+expected and not a defect: MCL optimises a flow-based criterion that correlates with
+modularity, an SBM minimises a description length and does not.
+
+(B) How well one eigengene summarises its own module -- the assumption every module-level
+result rests on. The two are close, with MCL slightly ahead on the median (81.1% against 77.6%)
+but a wider low tail for the SBM, which is what larger modules cost. Note the medians are not
+measured on comparable objects: MCL's are dominated by very small modules, where a single
+component explains a lot almost by construction.
+
+(C) The module-trait test. The SBM tests 979 modules against MCL's 6,576 -- a 6.7x lighter
+multiple-testing burden -- and returns 23 responsive modules against 465. In both partitions
+the |rho| floor binds and BH does not, so the difference is not a correction artefact. Fewer
+responsive modules is not automatically worse: an SBM module holds a median of 51 genes, so 23
+of them cover far more genes than the raw counts suggest.
+
+(D) Whether the responsive modules can be NAMED, as a share of each partition's own responsive
+set. This is the largest difference in the figure and the one that bears most on the decision.
+Only 49 of MCL's 465 responsive modules (11%) carry enough GO-annotated members to be tested at
+all, because its median module holds 3 genes. For the SBM it is 20 of 23 (87%), and those
+return 325 BP terms against MCL's 246 from a set twenty times larger. The SBM partition also
+leaves only 14 genes unassigned against MCL's 401.
+
+READ AS: the SBM trades a much smaller responsive set for modules that can almost all be
+interpreted, while MCL finds many more responsive modules of which nine in ten cannot be tested
+for function. Which is preferable depends on whether the next step is to name modules or to
+count them. Only sugarcane has an SBM fit, so this comparison cannot yet be checked against the
+second species.

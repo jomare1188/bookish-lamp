@@ -52,6 +52,9 @@ PU_NODES="${BASE}/new_clean/results/purple/network_purple_node_metrics.tsv"
 SC_NODE_STRIP='\.v[0-9.]+$'      # node ids carry .v2.1; gene ids do not
 PU_NODE_STRIP=''
 
+# NOTE: 03_network_readout.r does not read these two -- it carries its own
+# defaults (overridable via CLEAN_M20_MODS_SUGARCANE / _PURPLE). Change both
+# together or they will disagree about which clustering the readout used.
 SC_MODULES="${BASE}/new_clean/results/sugarcane/mcl_sugarcane_membership.tsv"
 PU_MODULES="${BASE}/new_clean/results/purple/mcl_purple_membership.tsv"
 
