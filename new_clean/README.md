@@ -49,6 +49,10 @@ cd /dados04/jorge/comparative_saccharum/new_clean
 ./run.sh stats    purple           #                                      65 min
 ./run.sh mcl      sugarcane        # modules                              13 min
 ./run.sh mcl      purple           #                                        2 h
+
+# an alternative clustering, run beside MCL rather than instead of it
+./run.sh sbmclust sugarcane        # an SBM fit -> the same two files      6 min
+
 ./run.sh conserve sugarcane_to_purple    # cheaper direction — run first  11 min
 ./run.sh conserve purple_to_sugarcane    # 9x more outer edges           ~75 min
 ./run.sh conservenull sugarcane_to_purple ; ./run.sh conservenull purple_to_sugarcane
@@ -65,6 +69,9 @@ cd /dados04/jorge/comparative_saccharum/new_clean
 ./run.sh modulego <study>          # topGO BP per responsive module      45 s
 ./run.sh moduleheatmap <study>     # per-module gene heatmaps            1 min
 ./run.sh modulesummary <study>     # one figure: all responsive modules
+
+# the clustering comparison — evidence, not a paper figure
+./run.sh figclustering sugarcane   # MCL vs SBM, same downstream analysis  15 s
 
 # paper figures
 ./run.sh figdataset                # dataset, QC and quantification        30 s
@@ -84,6 +91,32 @@ needs, and nothing else.
 Every description lives in the legend, which each figure script GENERATES from
 the variables that drew it — so a number cannot disagree between a figure and its
 legend. Never hand-edit `figures_legends.txt`; re-run the figure, then `legends`.
+
+## Two clusterings
+
+The module-level stages read their clustering through exactly two files, so an
+alternative can be swapped in without touching a single consumer. `CLUSTERING`
+in `config.sh` selects which:
+
+```bash
+./run.sh eigengene sugarcane                  # mcl, the default
+CLUSTERING=sbm ./run.sh eigengene sugarcane   # the block model
+```
+
+With `mcl` every path is what it has always been, so the MCL results cannot be
+disturbed; with `sbm` the module-level outputs land in `results/<study>/sbm/` and
+the two sit side by side. Every module-level stage prints which clustering it is
+using and where it is writing before it starts.
+
+**MCL is still the default and the decision is open.** On sugarcane the two
+partitions barely overlap (adjusted Rand index 0.0156) and trade off sharply:
+MCL finds 465 responsive modules of which only 49 can be tested for function,
+the SBM finds 23 of which 20 can. See
+[`docs/decisions.md`](docs/decisions.md) and
+`results/figures/figure8_clustering_sugarcane.png`.
+
+**Purple has no fit yet** — it is running on another machine. Until it lands the
+comparison is sugarcane-only, which is why nothing has been switched.
 
 `build` is `export` + `network <study> pearson` + `network <study> ksg` +
 `merge`; run those individually if you want to watch them.

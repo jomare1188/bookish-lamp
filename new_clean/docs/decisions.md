@@ -352,9 +352,29 @@ close, slightly favouring MCL — but its median is dominated by very small
 modules, where one component explains most of the variance almost by
 construction, so the two medians are not measured on comparable objects.
 
-**Not decided.** Which partition is preferable depends on whether the next step
-is to name modules or to count them, and the comparison exists only for
-sugarcane — purple has an input graph but no fit, so it cannot yet be checked
-against the second species. MCL remains the default. Switching would be one line
-(`CLUSTERING=sbm`), but figures 5–7, the Module-20 readout and the module
-sections of results.md all describe the MCL partition and would need regenerating.
+**Not decided, and deliberately waiting.** Which partition is preferable depends
+on whether the next step is to name modules or to count them — and that question
+cannot be settled on sugarcane alone. **The purple fit is running on another
+machine as of 2026-08-27**; until it lands the comparison covers one species, and
+a change that would regenerate every module-level figure should not rest on one
+species.
+
+The specific thing purple will decide is whether the trade above is a property of
+the METHOD or of this network. Sugarcane's MCL partition is pathological in a
+particular way — a median module of 3 genes and one holding 19% of the nodes —
+and if purple's MCL partition is better behaved, the SBM's advantage may shrink
+to nothing there. Purple is also the harder case for the SBM: its network is a
+single dense component of 170,736 nodes with mean degree 8,265, where MCL already
+produces 9,881 modules with a median of 3, so whether a block model finds
+structure in it at all is an open question rather than a formality.
+
+MCL remains the default until then. Switching is one line (`CLUSTERING=sbm`), but
+figures 5–7, the Module-20 readout and the module sections of results.md all
+describe the MCL partition and would all need regenerating — so the switch is a
+decision about the paper, not just about the pipeline.
+
+**What is already in place for when it lands.** `sbmclust` takes a study argument
+like every other stage, `SBM_DIR_purple` is already configured, and the comparison
+figure takes a study argument too — so purple needs `./run.sh sbmclust purple`,
+the module chain under `CLUSTERING=sbm`, and `./run.sh figclustering purple`.
+Nothing else has to change.

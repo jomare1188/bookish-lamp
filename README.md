@@ -308,6 +308,38 @@ purple Module-20 genes: a candidate, not a finding.
   nitrogen response transfers between studies; its network position does not.
   See above for the one purple copy that does respond.
 
+### An alternative clustering is being tested — MCL vs a block model
+
+Every module-level result above rests on MCL's partition, and that partition has
+an awkward shape: **10,309 modules with a median of 3 genes**, one holding 19% of
+the network. A median of 3 sits below the GO annotation gate almost by
+construction, which is why only 49 of the 465 responsive modules could be tested
+for function at all.
+
+A stochastic block model has been fitted to the same sugarcane network and
+carried through the *identical* downstream analysis — same eigengenes, same
+Spearman test at the same thresholds, same TF and GO code:
+
+| | MCL | SBM |
+|---|---|---|
+| modules / median size / largest | 10,309 / 3 / 19,604 | 995 / **51** / 1,366 |
+| genes left unassigned | 401 | 14 |
+| responsive modules | **465** | 23 |
+| of those, GO-testable | 49 (**11%**) | 20 (**87%**) |
+| BP terms returned | 246 | **325** |
+
+The two partitions barely overlap — adjusted Rand index **0.0156** — so this is a
+real alternative, not a re-parameterisation. The trade is sharp: MCL finds twenty
+times more responsive modules, of which nine in ten cannot be tested for
+function; the SBM finds 23, of which almost all can, and they return more GO
+terms than MCL's 465 do.
+
+**Nothing has been switched.** MCL remains the default, and **purple has no fit
+yet** — it is running on another machine. Until it lands the comparison is
+sugarcane-only, and a decision that changes every module-level figure should not
+rest on one species. See `new_clean/docs/decisions.md` and
+`new_clean/results/figures/figure8_clustering_sugarcane.png`.
+
 ## Repository layout
 
 ```
@@ -327,6 +359,8 @@ scripts/              the EARLIER pipeline, kept for history. Superseded by
 files/                correlation matrices, edge lists, networks (gitignored,
                       ~1.2 TB). files/pearson_baseline/ holds the pre-augmentation
                       results for comparison.
+sbm/                  stochastic block model fits (gitignored, 24 GB — the
+                      pipeline reads one 8 MB node-block table from it)
 GET_TFS/              TF identification: HMM databases and cached hmmsearch output
 annotation/           eggNOG-mapper annotations for both references
 china/, run1/         nf-core/rnaseq output for the two studies (gitignored)
