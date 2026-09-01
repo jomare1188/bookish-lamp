@@ -34,6 +34,31 @@ dead pipeline. The apparent lineage-specific decline (omega 0.393 -> 0.301 acros
 conservation bins) is an **expression** effect: it vanishes within expression
 tertiles. See [`../../docs/dnds.md`](../../docs/dnds.md).
 
+## A second network measure (steps 14-16)
+
+Local clustering coefficient, added because the constraint analysis tested only
+degree. Betweenness and closeness are excluded on information grounds, not cost:
+at mean degree 1,475 the diameter is 2-3 hops, so closeness has almost no
+variance and betweenness collapses toward a degree function.
+
+**C(k) RISES in this network** -- 0.00 at degree 1 to 0.81 at degree 2,637 --
+the opposite of the C(k) ~ 1/k assumed when planning it. A thresholded
+correlation network is not a growth network: a hub sits inside a dense module, so
+its neighbourhood is near-complete. So the redundancy screen PASSES
+(rho with degree = +0.48, 73% of spread retained within degree deciles) and
+clustering really is a second description of position.
+
+It still explains almost nothing. dR2 when dropped: degree 0.0028, edge
+conservation 0.00045, clustering 0.00011 (omega) / 0.00045 (constraint score).
+Its marginal correlation flips sign between the two readouts. With
+`constraint_score` -- which already has dS, GC3, expression and length regressed
+out -- network position described three ways explains **0.6%** of what is left.
+
+Step 06 now also writes `constraint_score`: the residual of log(dN) on log(dS),
+GC3, expression and length. omega assumes dN scales 1:1 with dS; the fitted slope
+is 0.511 alone and 0.725 with covariates, so omega over-corrects. The two readouts
+agree at rho = +0.82 and every conclusion above holds under both.
+
 ## The polyploid half (steps 08-13)
 
 Steps 01-07 used strict 1:1 orthologs -- 12,334 of ~103k network nodes. Steps

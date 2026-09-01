@@ -54,6 +54,14 @@ run 11  11_percopy_omega.sh
 run 12  12_decoupling_test.r  "$RSCRIPT_NET"
 run 13  13_fig_decoupling.r   "$RSCRIPT_PLOT"
 
+# --- a second network measure (14-16) --------------------------------------
+# The constraint analysis tests only degree. Local clustering is added as a
+# structurally different description of position. 14 runs under graph-tool's
+# python, not the R interpreters.
+run 14  14_centrality.sh
+run 15  15_centrality_test.r  "$RSCRIPT_NET"
+run 16  16_fig_centrality.r   "$RSCRIPT_PLOT"
+
 echo
 echo "======================================================================"
 echo "Done. Key outputs in ${OUTDIR}:"
@@ -76,4 +84,9 @@ echo "  percopy_omega_icc_<study>.tsv    the power gate on copy-specific selecti
 echo "  decoupling_tests.tsv             sequence identity vs network position"
 echo "  decoupling_mapping_control_*.tsv the control that can kill the result"
 echo "  fig_decoupling.{png,pdf,svg}     the polyploid figure"
+echo "  --- second network measure ---"
+echo "  centrality_sugarcane.tsv         per-gene local clustering (+ coreness)"
+echo "  centrality_ck_curve.tsv          C(k): the redundancy screen"
+echo "  centrality_tests.tsv             partial effects beside degree and conservation"
+echo "  fig_centrality.{png,pdf,svg}     the clustering figure"
 echo "======================================================================"

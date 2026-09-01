@@ -72,6 +72,43 @@ e_sc <- mean_log_tpm(env("TPM_sugarcane"), TRUE)
 setnames(e_sc, c("sugarcane_gene", "sc_mean_log_tpm"))
 d <- merge(d, unique(e_sc, by = "sugarcane_gene"), by = "sugarcane_gene", all.x = TRUE)
 
+# ------------------------------------------- a better constraint readout ----
+# omega = dN/dS assumes amino-acid divergence scales 1:1 with synonymous
+# divergence. It does not here: regressing log dN on log dS ALONE gives a slope
+# of 0.511 (CI 0.492-0.530), and 0.725 once GC3, expression and length are also
+# in the model -- the gap between the two is how much of the dS signal is really
+# base composition. Either way the slope is below 1, so omega OVER-CORRECTS, and
+# because GC3 inflates dS about threefold (spearman(GC3, log dS) = +0.744 against
+# +0.176 for log dN) dividing by dS injects composition into the constraint
+# measure instead of removing the neutral rate.
+#
+# constraint_score is the residual of log(dN) once the neutral rate and
+# composition are regressed out with FITTED rather than assumed coefficients:
+# "more or less amino-acid change than expected for a gene with this synonymous
+# rate, base composition, expression level and length". Negative = constrained.
+#
+# It is built here, not in a later stage, so every downstream analysis can use it.
+d[, constraint_score := NA_real_]
+fit_rows <- d[, which(sc_sb_dN > 0 & sc_sb_dS >= DS_MIN & sc_sb_dS <= DS_MAX &
+                        !is.na(gc3) & !is.na(sc_mean_log_tpm) & !is.na(aln_codons))]
+if (length(fit_rows) > 100) {
+  fit <- lm(log(sc_sb_dN) ~ log(sc_sb_dS) + gc3 + sc_mean_log_tpm + aln_codons,
+            data = d[fit_rows])
+  d[fit_rows, constraint_score := residuals(fit)]
+  b <- coef(fit)[["log(sc_sb_dS)"]]
+  say("== constraint_score: log(dN) ~ log(dS) + GC3 + expression + length")
+  say("   fitted dS slope = %.3f (omega assumes 1.000) over %d genes; R2 = %.3f",
+      b, length(fit_rows), summary(fit)$r.squared)
+  # Both are oriented so that LOW = more constrained (low omega; negative
+  # residual = less amino-acid change than expected), so they should agree
+  # POSITIVELY. A strong but imperfect agreement is the point: they are two
+  # different corrections of the same quantity, and the disagreement is exactly
+  # the dS/GC3 distortion omega carries and this does not.
+  say("   spearman(constraint_score, log omega) = %+.3f  (both: low = constrained)",
+      cor(d[fit_rows, constraint_score], log(d[fit_rows, sc_sb_omega]),
+          method = "spearman", use = "complete.obs"))
+}
+
 # --------------------------------------------------------------- filters ----
 # Every filter is counted and written out. None is applied silently.
 n0 <- nrow(d)

@@ -137,6 +137,31 @@ PID_NEAR_IDENTICAL="${PID_NEAR_IDENTICAL:-0.99}"
 # Expression-matched null: random gene pairs give "28x apart" a scale.
 NULL_PAIRS="${NULL_PAIRS:-200000}"
 
+# --- a second network measure (steps 14-16) ---------------------------------
+# The constraint analysis tests exactly one network property: degree. Local
+# CLUSTERING COEFFICIENT is added as a structurally different description of
+# position -- how densely a gene's neighbours connect to each other.
+#
+# Why not betweenness or closeness, and it is not mainly cost: sugarcane has mean
+# degree 1,475 (density 1.4%) and purple 8,265 (4.8%), so the effective diameter
+# is 2-3 hops. At that density closeness has almost no variance between nodes and
+# betweenness degenerates into a function of degree and clustering -- they would
+# carry little information even computed exactly and for free.
+#
+# CAUTION built into 15: in dense graphs clustering falls off with degree roughly
+# as C(k) ~ 1/k, so clustering and degree are MECHANICALLY anti-correlated. Only
+# the partial effect after degree means anything.
+#
+# The graph already exists in graph-tool form from the SBM stage: 103,336
+# vertices and 76,200,344 edges, matching this pipeline's own network exactly.
+# 14 re-verifies that rather than trusting it.
+GT_PYTHON="${GT_PYTHON:-/home/genomics/miniconda3/envs/sbm_3.7/bin/python}"
+GRAPH_sugarcane="${BASE}/sbm/output/sugar/input_graph.gt.gz"
+
+# Coreness is O(E), a genuine centrality, and ~5 min on the same graph load.
+# Scaffolded but off: switch on with COMPUTE_CORENESS=1, no new code needed.
+COMPUTE_CORENESS="${COMPUTE_CORENESS:-0}"
+
 MODULES_sugarcane="${CLEAN}/results/sugarcane/mcl_sugarcane_membership.tsv"
 MODULES_purple="${CLEAN}/results/purple/mcl_purple_membership.tsv"
 
@@ -157,4 +182,5 @@ export BASE CLEAN OUTDIR WORKDIR SEQDIR \
        CONSDIR CONS_EDGES_sugarcane CONS_EDGES_purple TPM_sugarcane TPM_purple \
        RSCRIPT_NET RSCRIPT_PLOT DNDS_SUBSET \
        FAMILIES_MIN_COPIES MAX_FAMILY_COPIES KMER_K MIN_FRAC_UNIQUE PID_NEAR_IDENTICAL NULL_PAIRS \
-       MODULES_sugarcane MODULES_purple
+       MODULES_sugarcane MODULES_purple \
+       GT_PYTHON GRAPH_sugarcane COMPUTE_CORENESS

@@ -227,6 +227,56 @@ model that already has expression, degree, length and GC3. For scale, in the sam
 model expression carries p = 1.8e-123 and GC3 p ≈ 0, and the whole model reaches
 adjusted R² = 0.244.
 
+### What actually drives omega here: mostly the denominator
+
+The model in test 2 reaches adjusted R2 = 0.244, and it is worth knowing where
+that comes from, because the answer is not what the literature would predict.
+
+| predictor | R2 alone | dR2 if dropped | std. coef | omega, q10 -> q90 |
+|---|---|---|---|---|
+| **GC3** | **0.190** | **0.224** | **-0.543** | **x 0.33** |
+| mean log2 TPM | 0.009 | 0.035 | -0.203 | x 0.68 |
+| alignment length | 0.010 | 0.010 | -0.109 | — |
+| log degree | 0.000 | 0.004 | -0.069 | — |
+| edge conservation | 0.000 | 0.0005 | -0.024 | x 0.97 |
+
+GC3 dominates. But it is dominating the **ratio**, not selection — it acts almost
+entirely on the synonymous denominator:
+
+| | spearman with GC3 |
+|---|---|
+| log dN | +0.176 |
+| **log dS** | **+0.744** |
+| log omega | -0.454 |
+
+Across GC3 tertiles dN rises 0.0177 -> 0.0254 (1.4x) while dS rises 0.0726 ->
+0.2198 (3x). GC-rich third positions accumulate synonymous changes faster --
+mutational bias, GC-biased gene conversion, codon usage -- which inflates dS and
+deflates omega. That is composition acting on the measurement, not stronger
+purifying selection.
+
+And expression, which the model makes look like the main biological driver, has
+almost no marginal relationship with omega at all:
+
+| | spearman with mean log2 TPM |
+|---|---|
+| log dN | -0.311 |
+| log dS | -0.301 |
+| **log omega** | **-0.049** |
+
+Expression lowers dN and dS by nearly the same factor, so the ratio barely moves.
+Highly expressed genes evolve more slowly overall -- a real and well-known effect,
+visible here at 40% lower rates -- but that is a **rate** result, not a
+selection-intensity one. Expression's apparent weight in the model is conditional
+on GC3 being in it (the two correlate at -0.285).
+
+**So the honest summary of this whole stage: nothing we measured moves omega
+much.** Substitution *rates* vary strongly and predictably with expression and
+base composition; the *ratio* is close to flat across expression, degree,
+conservation and everything else tested. Anyone wanting to rank these genes by
+selective constraint should be aware that omega here is buffered, and that dN
+with an explicit rate control may be the more informative readout.
+
 ### The positive control works, so this is a real null
 
 Hubs are more constrained — median ω **0.1774** against **0.1860**, p = 6.0e-04.
@@ -258,15 +308,95 @@ Re-forming the same ratio **within expression tertiles** removes the trend:
 | (0.1, 0.2] | **0.485** | 0.363 | 0.261 |
 | > 0.2 | 0.407 | 0.365 | 0.215 |
 
-No column declines with conservation; the low-expression column rises. What does
-change, hugely and monotonically, is expression — within every conservation bin.
-Genes in conserved neighbourhoods are highly expressed, highly expressed genes
-are under stronger constraint, and that is the entire pooled effect.
+The low and mid columns are flat — the pooled decline does not reproduce in
+them. The **high** column does decline, 0.310 → 0.215, so expression accounts for
+most of the pooled trend but not all of it; a residual survives in the most
+highly expressed third, which is also the third where the counts are best
+measured. That residual is not clean either: GC3 falls from 0.767 to 0.541 across
+the same bins and carries a coefficient of −2.15 in the per-gene model, so the
+tertile split controls expression but not composition.
+
+The per-gene analysis is the one that can hold everything at once, and it agrees:
+the partial effect of conservation is real, negative, and worth 0.04% of adjusted
+R². Read the two together as "there is something there, and it is far too small
+to matter", not as "there is nothing".
 
 **Conclusion: network edge conservation does not predict selective constraint, at
 either timescale, once expression level is accounted for.** Panel D of the figure
 is drawn to show this directly — the pooled line in grey, the stratified lines
 over it.
+
+## A second description of network position: local clustering
+
+The analysis above tests constraint against exactly one network property,
+degree. Steps 14-16 add the **local clustering coefficient** -- of all the pairs
+of a gene's neighbours, what fraction are connected to each other.
+
+### Why not betweenness or closeness
+
+Not mainly cost. Sugarcane has mean degree **1,475** (density 1.4%) and purple
+**8,265** (4.8%), so the effective diameter is **2-3 hops**. When nearly every
+pair of nodes is two steps apart, closeness has almost no variance between nodes
+and betweenness degenerates into a function of degree and clustering: they would
+carry little information here even computed exactly and for free. (Exact
+betweenness is also O(V.E) ~ 7.8e12 for sugarcane, so it is not free.)
+
+Clustering is the measure that stays meaningful in a dense graph, because it
+describes neighbourhood *shape* rather than distance.
+
+### C(k) rises here, which was not the expectation
+
+The plan for this step assumed C(k) ~ 1/k -- the falling curve of
+preferential-attachment networks -- and predicted clustering would be largely
+redundant with degree. **Measured, it is the opposite**, and the prediction was
+wrong:
+
+| degree decile | median degree | median clustering |
+|---|---|---|
+| 1 | 1 | 0.000 |
+| 3 | 8 | 0.444 |
+| 5 | 43 | 0.440 |
+| 8 | 545 | 0.504 |
+| **9** | **2,637** | **0.812** |
+| 10 | 11,279 | 0.715 |
+
+A thresholded correlation network is not a growth network. A hub here sits inside
+a dense co-expressed module, so its neighbours are correlated with each other too
+and its neighbourhood is close to complete. The two global statistics corroborate
+it: mean local clustering **0.464** against global transitivity **0.690**, and
+transitivity is triangle-weighted, hence dominated by exactly those hubs.
+
+The practical consequence is that the **redundancy screen passes**:
+rho(clustering, degree) = **+0.484**, and **73%** of clustering's spread survives
+within degree deciles. Clustering is a genuinely second description of position
+in this network, not degree relabelled -- which is what made it worth computing.
+
+### And it explains almost nothing about constraint
+
+DeltaR-squared when each term is dropped -- the only currency in which the three
+network terms compare:
+
+| term | omega readout | constraint_score readout |
+|---|---|---|
+| **degree** | **0.0028** | **0.0029** |
+| edge conservation | 0.00045 | 0.00010 |
+| **clustering** | **0.00011** | 0.00045 |
+
+Clustering's partial coefficient is -0.033 (p = 0.18, n.s.) under omega and
+-0.057 (p = 0.018, Holm 0.036) under constraint_score. Its marginal correlation
+even **flips sign between the two readouts** (+0.034 vs -0.063), and the
+within-decile signs are inconsistent (4 of 10 negative for omega, 7 of 10 for
+constraint_score). Degree remains 6-26x more explanatory than clustering, and
+degree itself explains 0.3%.
+
+Adding clustering does not disturb what was already concluded: conservation's
+DeltaR-squared moves by -0.00004. Degree's moves by -0.0017, which is expected --
+the two share rho = 0.48, so clustering absorbs a little of degree's share.
+
+The `constraint_score` model is the cleanest statement available. Because that
+score already has the synonymous rate, GC3, expression and length regressed out,
+its R-squared is what network position explains of *residual* constraint:
+**0.0064**. Network position, described three ways, accounts for well under 1%.
 
 ## The polyploid half
 
