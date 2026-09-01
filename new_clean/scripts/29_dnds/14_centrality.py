@@ -83,12 +83,35 @@ def main():
         die("%d self-loops present; clustering would be distorted" % n_self)
 
     # --- the measure -------------------------------------------------------
-    print("== local clustering (unweighted, C++/OpenMP)")
-    # Unweighted deliberately: this is the standard definition and the one the
-    # C(k) ~ 1/k literature is stated in. Edge weights here are a transformed
-    # correlation, so a weighted variant (Barrat) would need its own argument
-    # rather than being substituted silently.
-    clust = local_clustering(g).a.copy()
+    # Clustering is the expensive part (sum deg^2 = 1.46e12 here, ~35 min across
+    # ~50 cores); coreness is O(E) and takes minutes. So a rerun that only wants
+    # to add coreness should not pay for clustering again. Reuse is allowed only
+    # when the cached table covers EXACTLY this graph's gene set -- the graph has
+    # already been checked against node_metrics above, so that makes the cached
+    # values provably about this network.
+    clust = None
+    if os.path.exists(out):
+        cached = {}
+        with open(out) as fh:
+            fh.readline()
+            for line in fh:
+                f = line.rstrip("\n").split("\t")
+                if f[2] != "NA":
+                    cached[f[0]] = float(f[2])
+        if len(cached) == len(names) and all(n in cached for n in names):
+            clust = np.array([cached[n] for n in names])
+            print("== local clustering: reusing %d cached values from %s"
+                  % (len(clust), os.path.basename(out)))
+        elif cached:
+            print("== cached clustering covers a different gene set -- recomputing")
+
+    if clust is None:
+        print("== local clustering (unweighted, C++/OpenMP)")
+        # Unweighted deliberately: this is the standard definition and the one the
+        # C(k) ~ 1/k literature is stated in. Edge weights here are a transformed
+        # correlation, so a weighted variant (Barrat) would need its own argument
+        # rather than being substituted silently.
+        clust = local_clustering(g).a.copy()
     print("   mean %.4f   median %.4f   range [%.4f, %.4f]"
           % (clust.mean(), np.median(clust), clust.min(), clust.max()))
     if clust.min() < 0 or clust.max() > 1:

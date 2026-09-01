@@ -366,10 +366,35 @@ and its neighbourhood is close to complete. The two global statistics corroborat
 it: mean local clustering **0.464** against global transitivity **0.690**, and
 transitivity is triangle-weighted, hence dominated by exactly those hubs.
 
-The practical consequence is that the **redundancy screen passes**:
-rho(clustering, degree) = **+0.484**, and **73%** of clustering's spread survives
-within degree deciles. Clustering is a genuinely second description of position
-in this network, not degree relabelled -- which is what made it worth computing.
+The practical consequence is that the **redundancy screen passes** for
+clustering: rho(clustering, degree) = **+0.484**, and **73%** of its spread
+survives within degree deciles. Clustering is a genuinely second description of
+position in this network, not degree relabelled -- which is what made it worth
+computing.
+
+### Coreness was tested too, and failed the same screen
+
+k-core number is a real centrality and cost five minutes on the same graph load
+(`COMPUTE_CORENESS=1`; max core 6,668, median 43). It does not survive:
+
+| measure | rho with degree | spread retained within degree deciles |
+|---|---|---|
+| clustering | +0.484 | **73%** |
+| **coreness (log)** | **+0.995** | **11%** |
+
+At rho = 0.995 coreness is degree wearing a different name, which is unsurprising
+in a graph this dense -- a node's core number is bounded by its degree, and here
+almost saturates it.
+
+**It is therefore excluded from the models, not merely flagged.** That matters:
+when coreness was left in, its collinearity with degree drove clustering's
+coefficient to 0.0005 (dR2 2.5e-08, p = 0.98) purely through variance inflation.
+Reporting that with a caveat attached would have corrupted the estimate this step
+exists to make, rather than qualifying it. A measure that fails the screen is
+described and set aside; only measures that pass enter a model. Its marginal
+correlations are still reported (spearman with omega +0.013, with
+constraint_score -0.072) as description, since those do not suffer from
+collinearity.
 
 ### And it explains almost nothing about constraint
 

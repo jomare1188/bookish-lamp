@@ -33,6 +33,9 @@ a <- d[in_network == TRUE & ds_ok_sc == TRUE & omega_outlier == FALSE &
          sc_sb_omega > 0 & !is.na(clustering)]
 tests <- fread(file.path(OUTDIR, "centrality_tests.tsv"))
 rho_cd <- tests[statistic == "spearman_clustering_vs_degree", value][1]
+rho_core <- tests[statistic == "spearman_lcore_vs_degree", value]
+rho_core <- if (length(rho_core)) rho_core[1] else NA_real_
+excluded <- tests[["measures_excluded"]][1]
 
 # --- A: is clustering just degree upside down? ------------------------------
 ck <- fread(file.path(OUTDIR, "centrality_ck_curve.tsv"))
@@ -46,8 +49,12 @@ pA <- ggplot(a, aes(sc_degree, clustering)) +
              colour = "grey15", size = 1.2) +
   labs(x = "degree (log)", y = "local clustering coefficient",
        title = "C(k) rises here, so clustering is not degree relabelled",
-       subtitle = sprintf("black = median per degree decile; spearman = %+.3f (redundancy screen passes)",
-                          rho_cd)) +
+       subtitle = sprintf(
+         "black = median per degree decile; spearman = %+.3f, screen passes%s",
+         rho_cd,
+         if (!is.na(rho_core))
+           sprintf("\ncoreness was also tested and FAILED: spearman = %+.3f with degree, excluded",
+                   rho_core) else "")) +
   theme_f
 
 # --- B: clustering against constraint ---------------------------------------
@@ -77,7 +84,8 @@ pC <- ggplot(cmp, aes(term, dR2, fill = rd)) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
   labs(x = NULL, y = expression(Delta*R^2~"when the term is dropped"),
        title = "How much each network term explains",
-       subtitle = "the only currency in which the three are comparable") +
+       subtitle = paste0("comparable currency",
+                         if (nzchar(excluded)) "; coreness excluded" else "")) +
   theme_f + theme(legend.position = "bottom", axis.text.x = element_text(size = 6.4))
 
 # --- D: is the sign stable once degree is fixed? ----------------------------

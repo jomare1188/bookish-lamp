@@ -48,7 +48,12 @@ its neighbourhood is near-complete. So the redundancy screen PASSES
 (rho with degree = +0.48, 73% of spread retained within degree deciles) and
 clustering really is a second description of position.
 
-It still explains almost nothing. dR2 when dropped: degree 0.0028, edge
+Coreness was tested too (`COMPUTE_CORENESS=1`, five minutes on the same graph
+load) and FAILED the screen: rho = +0.995 with degree, 11% of spread retained. It
+is excluded from the models rather than flagged -- left in, its collinearity drove
+clustering's coefficient to 0.0005 (p = 0.98) through variance inflation alone.
+
+Clustering still explains almost nothing. dR2 when dropped: degree 0.0028, edge
 conservation 0.00045, clustering 0.00011 (omega) / 0.00045 (constraint score).
 Its marginal correlation flips sign between the two readouts. With
 `constraint_score` -- which already has dS, GC3, expression and length regressed
