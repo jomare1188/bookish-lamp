@@ -165,6 +165,15 @@ COMPUTE_TRANSITIVITY=0
 
 # --- conservation ------------------------------------------------------------
 ORTHOGROUPS="${BASE}/files/fix_orthofinder/proteins/OrthoFinder/Results_Jun04_2/Orthogroups/Orthogroups.tsv"
+
+# DO NOT REPOINT ORTHOGROUPS. Every conservation number this pipeline reports
+# was computed from the two-species run above. The dN/dS stage (scripts/29_dnds)
+# adds a Sorghum bicolor outgroup through a SEPARATE three-species OrthoFinder
+# run in files/orthofinder_3sp/. The file above stays its analysis unit: sorghum
+# is attached to THESE single-copy pairs, so the dN/dS and conservation layers
+# describe the same genes. Its own paths live in scripts/29_dnds/config.sh, which
+# is where that stage's parameters belong -- this file stays the source of truth
+# for the stages run.sh drives directly.
 CHUNK_SIZE=2000000
 
 # Permutation null for the conservation rate (13_conservation_null.r).

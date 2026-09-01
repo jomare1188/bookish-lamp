@@ -28,6 +28,7 @@ differently from linear co-expression?*
 | why it is built this way | [`new_clean/docs/decisions.md`](new_clean/docs/decisions.md) |
 | what each stage does | [`new_clean/docs/methods.md`](new_clean/docs/methods.md) |
 | the MI threshold argument | [`new_clean/docs/thresholds.md`](new_clean/docs/thresholds.md) |
+| whether sequence evolution follows network conservation | [`new_clean/docs/dnds.md`](new_clean/docs/dnds.md) |
 | the paper figures and their legends | [`figures_legends.txt`](figures_legends.txt) |
 
 **`new_clean/` is the pipeline.** Everything at the top level of `scripts/` is the

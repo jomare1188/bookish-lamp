@@ -34,6 +34,7 @@
 #   ./run.sh tfchar                          TF characterisation
 #   ./run.sh myb61     [from-step]           MYB61 readout (default 07)
 #   ./run.sh module20  [from-step]           Module-20 readout (default 03)
+#   ./run.sh dnds      [from-step]           dN/dS vs network conservation (default 00)
 #   ./run.sh figdataset                      dataset, QC and quantification figure
 #   ./run.sh figtopology                     network topology of both networks
 #   ./run.sh figconservation                 cross-species edge conservation
@@ -597,6 +598,13 @@ main() {
 
   module20)
     "${SCRIPTS}/11_readouts/module20/run_all.sh" "${ARG:-03}"
+    ;;
+
+  # Sequence-evolution layer. Two of its steps are long and deliberate --
+  # 02 (OrthoFinder, 3 species, 2h17m as measured) and 04 -- so it is usually
+  # driven step by step from scripts/29_dnds/ rather than through this stage.
+  dnds)
+    "${SCRIPTS}/29_dnds/run_all.sh" "${ARG:-00}"
     ;;
 
   *) die "unknown stage '$STAGE'" ;;
