@@ -268,6 +268,131 @@ either timescale, once expression level is accounted for.** Panel D of the figur
 is drawn to show this directly — the pooled line in grey, the stratified lines
 over it.
 
+## The polyploid half
+
+The result above covers 12,334 of ~103,000 sugarcane network nodes, because it
+used strict 1:1 orthologs. Steps 08–13 look at the duplicated majority. The
+question there is not the same one with more genes — it is sharper, and the 1:1
+set structurally could not ask it.
+
+### What the duplicates actually are
+
+Of multi-copy families with a single sorghum anchor, **97%** have every copy on
+*one chromosome across several haplotypes* — polyploid **homeologs**, the same
+ancestral locus retained 2–8 times, not dispersed paralogs. Purple behaves the
+same way. Each *pair* is classified too, because a homeolog family can contain a
+tandem array inside one haplotype (`OG0000138` has three copies on 05C alone).
+
+Families larger than `MAX_FAMILY_COPIES` (20) are labelled `oversized` and
+excluded: R570 is ~10–12x and LA purple ~8x, so a genuine homeolog series cannot
+be much bigger, and pair count grows quadratically — in purple, **136 such
+families (up to 651 copies) would have contributed 70% of all copy pairs**.
+
+| | sugarcane | purple |
+|---|---|---|
+| homeolog families | 12,227 | 16,778 |
+| copy pairs | 93,512 | 285,811 |
+| copies, median CDS identity | **0.981** | **0.985** |
+| copy pairs identical in protein / in CDS | 14.3% / **5.4%** | — |
+
+That last row is why every quantification filter here uses CDS, not protein:
+salmon reads DNA, and protein identity overstates the problem nearly threefold.
+
+### The claim that did not survive
+
+The scoping observation was that copies of one locus differ by a median **28×**
+in network degree. That number is a within-family max/min ratio, inflated by
+family size. The honest pairwise figure is **6.4×** (sugarcane) and 6.6×
+(purple) — and it has to be read against a baseline, which changes everything:
+
+| | sugarcane | purple |
+|---|---|---|
+| homeologous copy pairs, median fold difference in degree | 6.4× | 6.6× |
+| **expression-matched random gene pairs** | **15.0×** | **10.7×** |
+| copies in different MCL modules | 77.6% | 63.9% |
+| **random pairs in different modules** | **94.4%** | **84.0%** |
+
+**Copies are more similar than chance, not less** — 2.3× and 1.6× closer in
+degree, and markedly more likely to share a module. There is no decoupling to
+report.
+
+Nor does sequence identity predict network position: Spearman ρ = **0.048**
+(sugarcane) and **0.010** (purple) against degree divergence, and the regression
+coefficient on CDS identity **flips sign between the two species** (+0.75 vs
+−1.03). Within expression strata the identity trend is flat; expression
+divergence alone carries adjusted R² 0.026 / 0.017, and identity adds nothing
+stable on top.
+
+### And part of what is left is a mapping artefact
+
+Homeologs 98% identical in CDS cannot be told apart by salmon, whose EM then
+splits their reads on weak evidence. Counting 31-mers (salmon's default k) unique
+to each copy within its family:
+
+| | sugarcane | purple |
+|---|---|---|
+| copies with **< 5%** unique 31-mers | 44.0% | 68.0% |
+| copies with **zero** unique 31-mers | 19.6% | **45.5%** |
+
+Splitting the headline on that is decisive, and it points the wrong way for a
+biological reading. Among near-identical pairs:
+
+| | sugarcane | purple |
+|---|---|---|
+| copies salmon **can** separate | 6.31× (n=300) | **3.73×** (n=714) |
+| copies that are **k-mer ambiguous** | 8.41× (n=8,262) | **7.08×** (n=52,550) |
+
+Copies that can be quantified independently are *more* alike in the network than
+copies that cannot, and the continuous version agrees at scale: the coefficient
+on `frac_unique_min` is −1.53 (p = 6.8e-08) and −1.85 (p = 1.6e-31). Apparent
+expression divergence rises the same way (median 0.46 → 0.80 and 0.38 → 0.85),
+which is backwards for biology — sequences that are harder to distinguish should
+not be *more* differently expressed — and is exactly the EM-splitting signature.
+
+### Copy-specific selection is not measurable here, and the gate said so first
+
+Step 11 gives every copy its own ω against the family's sorghum anchor, then
+asks — before any within-family test — whether copies are distinguishable at all.
+They are not:
+
+| | sugarcane | purple |
+|---|---|---|
+| copies with an ω | 49,984 / 51,263 | 101,815 / 105,000 |
+| **ICC(1) over families** | **0.940** | **0.939** |
+| MS between families / MS within | 0.128 / 0.0020 | 0.168 / 0.0020 |
+| verdict | **gate shut** | **gate shut** |
+
+**94% of ω variance is between families and 6% within them.** ω is a property of
+the gene, not of which copy of it you look at — which is what 98% identity and a
+shared branch back to sorghum predict. No within-family selection test can work
+on this, so none was run, and branch models were not escalated to. This is the
+gate doing its job: the alternative was a well-formed table of within-family
+comparisons with no power behind it.
+
+One thing worth keeping from that table anyway. Median ω is **0.1819** across
+49,599 polyploid copies, against **0.1827** across the 12,334 single-copy
+orthologs — indistinguishable. The duplicated fraction of the genome is under the
+same average purifying selection as the single-copy fraction, with no sign of the
+relaxation duplicates are classically expected to show. It also retires the
+"biased slice" caveat on the 1:1 result at the level of ω itself: the tidy slice
+was not, in this respect, unrepresentative.
+
+### The caveat this leaves for the rest of the project
+
+This one reaches past the dN/dS stage. Among the genes scorable here:
+
+| | sugarcane | purple |
+|---|---|---|
+| network nodes that are k-mer-ambiguous copies | 12.3% | **30.5%** |
+| network nodes with **zero** unique 31-mers | 5.1% | **18.9%** |
+
+Nearly a fifth of purple's network nodes carry expression values that are not
+independently identifiable from the reads. They have lower degree than the rest
+(median 633 vs 878), so they are not driving the hub structure, but they are
+present in every module and every conservation count. This is a lower bound —
+only genes in multi-copy families with a single sorghum anchor were scored
+(29% and 49% of each network).
+
 ## Caveat that belongs with any result from this stage
 
 Single-copy orthogroups are a **biased slice**: by construction they are the more

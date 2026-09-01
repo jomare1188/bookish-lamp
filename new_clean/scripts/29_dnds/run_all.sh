@@ -43,6 +43,17 @@ run 05  05_conserved_degree.sh
 run 06  06_join_and_test.r "$RSCRIPT_NET"
 run 07  07_plots.r         "$RSCRIPT_PLOT"
 
+# --- the polyploid half (08-13) --------------------------------------------
+# Steps 01-07 used strict 1:1 orthologs -- 12,334 of ~103k network nodes, the
+# tidy slice of a polyploid. 08-13 look at the duplicated majority, where the
+# copies of a family are ~98% identical yet sit ~28x apart in network degree.
+run 08  08_homeolog_families.sh
+run 09  09_family_identity.sh
+run 10  10_kmer_uniqueness.sh
+run 11  11_percopy_omega.sh
+run 12  12_decoupling_test.r  "$RSCRIPT_NET"
+run 13  13_fig_decoupling.r   "$RSCRIPT_PLOT"
+
 echo
 echo "======================================================================"
 echo "Done. Key outputs in ${OUTDIR}:"
@@ -56,4 +67,13 @@ echo "  dnds_tests.tsv                   the six tests, in reading order"
 echo "  dnds_by_degree_decile.tsv        the stratified check"
 echo "  dnds_saccharum_pair_binned.tsv   R570 vs LA purple, counts summed per bin"
 echo "  fig_dnds.{png,pdf,svg}           the figure"
+echo "  --- polyploid layer ---"
+echo "  families_<study>.tsv             homeolog / dispersed / unplaced families"
+echo "  family_pairs_<study>.tsv         per copy pair: protein and CDS identity"
+echo "  kmer_uniqueness_<study>.tsv      can salmon tell the copies apart?"
+echo "  percopy_omega_<study>.tsv        omega per copy vs its sorghum anchor"
+echo "  percopy_omega_icc_<study>.tsv    the power gate on copy-specific selection"
+echo "  decoupling_tests.tsv             sequence identity vs network position"
+echo "  decoupling_mapping_control_*.tsv the control that can kill the result"
+echo "  fig_decoupling.{png,pdf,svg}     the polyploid figure"
 echo "======================================================================"

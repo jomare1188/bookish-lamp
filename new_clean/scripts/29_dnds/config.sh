@@ -107,6 +107,39 @@ TPM_purple="${BASE}/china/run2_onlyL/salmon/salmon.merged.gene_tpm.tsv"
 RSCRIPT_NET="${RSCRIPT_NET:-/home/genomics/miniconda3/envs/r_net_env/bin/Rscript}"
 RSCRIPT_PLOT="${RSCRIPT_PLOT:-/home/genomics/miniconda3/envs/r_env/bin/Rscript}"
 
+# --- polyploid layer (steps 08-13) ------------------------------------------
+# The duplicated majority of the genome. 97% of multi-copy families put every
+# copy on ONE chromosome across several haplotypes, so these are polyploid
+# HOMEOLOGS -- the same ancestral locus retained 2-8 times -- not dispersed
+# paralogs. They are ~98% identical in protein yet differ ~28x in network degree,
+# which is the question steps 08-13 exist to test.
+FAMILIES_MIN_COPIES="${FAMILIES_MIN_COPIES:-2}"
+
+# Upper bound on copies in a "family". R570 is ~10-12x and LA purple ~8x, so a
+# genuine set of homeologous copies of ONE locus cannot be much larger than this;
+# above it we are looking at a gene superfamily OrthoFinder has lumped, not a
+# polyploid series. The cap is also what keeps the analysis from being dominated
+# by a handful of them: in purple, 0.69% of families (136, up to 651 copies) would
+# contribute 70% of ALL copy pairs, because pair count grows quadratically.
+# Oversized families are labelled and reported, never silently dropped.
+MAX_FAMILY_COPIES="${MAX_FAMILY_COPIES:-20}"
+
+# Salmon's default k. A copy sharing nearly all its 31-mers with a sibling cannot
+# be quantified independently, so apparent expression -- and therefore network --
+# divergence between such copies may be an EM artefact rather than biology. This
+# floor gates the headline; its effect is always reported, never applied quietly.
+KMER_K="${KMER_K:-31}"
+MIN_FRAC_UNIQUE="${MIN_FRAC_UNIQUE:-0.05}"
+
+# "Near-identical" for the headline claim, on CDS (salmon reads DNA, not protein).
+PID_NEAR_IDENTICAL="${PID_NEAR_IDENTICAL:-0.99}"
+
+# Expression-matched null: random gene pairs give "28x apart" a scale.
+NULL_PAIRS="${NULL_PAIRS:-200000}"
+
+MODULES_sugarcane="${CLEAN}/results/sugarcane/mcl_sugarcane_membership.tsv"
+MODULES_purple="${CLEAN}/results/purple/mcl_purple_membership.tsv"
+
 # --- subset switch: every step honours it, so the whole chain is testable ---
 # DNDS_SUBSET=200 ./run_all.sh   -> 200 orthogroups end to end, minutes not hours
 DNDS_SUBSET="${DNDS_SUBSET:-0}"
@@ -122,4 +155,6 @@ export BASE CLEAN OUTDIR WORKDIR SEQDIR \
        DNDS_DS_MIN DNDS_DS_MAX DNDS_OMEGA_FLAG \
        NODE_METRICS_sugarcane NODE_METRICS_purple HUBS_sugarcane HUBS_purple \
        CONSDIR CONS_EDGES_sugarcane CONS_EDGES_purple TPM_sugarcane TPM_purple \
-       RSCRIPT_NET RSCRIPT_PLOT DNDS_SUBSET
+       RSCRIPT_NET RSCRIPT_PLOT DNDS_SUBSET \
+       FAMILIES_MIN_COPIES MAX_FAMILY_COPIES KMER_K MIN_FRAC_UNIQUE PID_NEAR_IDENTICAL NULL_PAIRS \
+       MODULES_sugarcane MODULES_purple

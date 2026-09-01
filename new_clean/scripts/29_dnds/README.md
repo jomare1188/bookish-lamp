@@ -34,6 +34,40 @@ dead pipeline. The apparent lineage-specific decline (omega 0.393 -> 0.301 acros
 conservation bins) is an **expression** effect: it vanishes within expression
 tertiles. See [`../../docs/dnds.md`](../../docs/dnds.md).
 
+## The polyploid half (steps 08-13)
+
+Steps 01-07 used strict 1:1 orthologs -- 12,334 of ~103k network nodes. Steps
+08-13 look at the duplicated majority, where 97% of multi-copy families are
+polyploid HOMEOLOGS (one chromosome, several haplotypes), ~98% identical in CDS.
+
+**That result did not survive its controls either**, and the controls are the
+output worth reading:
+
+- Copies differ by a median **6.4x** in network degree -- but expression-matched
+  random gene pairs differ by **15x**. Copies are MORE similar than chance, not
+  less. (The 28x figure from scoping was a within-family max/min ratio inflated
+  by family size; the pairwise median is 6.4x.)
+- 77.6% of copy pairs sit in different MCL modules, against a chance rate of
+  **94.4%**.
+- Sequence identity does not predict network position: rho = 0.048 (sugarcane),
+  0.010 (purple), and the regression coefficient flips sign between species.
+- **Part of what remains is a mapping artefact.** 44% of sugarcane and 68% of
+  purple copies have <5% unique 31-mers; 19.6% and 45.5% have NONE. Among
+  near-identical pairs, copies salmon CAN separate diverge less (6.31x / 3.73x)
+  than copies it cannot (8.41x / 7.08x) -- the opposite of a biological signal.
+
+Step 11 also gates copy-specific selection before testing it: **ICC = 0.94 in
+both species**, i.e. 94% of omega variance is between families and 6% within, so
+copies of a gene are not distinguishable in omega and no within-family test was
+run. Median omega is 0.1819 over 49,599 polyploid copies against 0.1827 over the
+12,334 single-copy orthologs -- the duplicated genome is under the same average
+constraint, with no relaxation.
+
+**A caveat this leaves for the whole project:** 12.3% of sugarcane network nodes
+and **30.5% of purple's** are copies that cannot be quantified independently of a
+sibling; 18.9% of purple's nodes have zero unique 31-mers. Lower bound -- only
+multi-copy families with a single sorghum anchor were scored.
+
 ## The one thing to know before reading any output
 
 R570 and LA purple are 95–99% identical at the protein level, so **~40% of genes
