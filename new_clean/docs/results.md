@@ -429,6 +429,67 @@ sides, so no denominator choice produces one. Reported uncorrected (raw p ≤ 0.
 \|r\| ≥ 0.6) the candidate count is 128 — the most generous available reading, and
 it should carry that label.
 
+### And it survives a non-monotone test, which is the one blind spot that mattered
+
+Every selection rule above is **monotone** — Pearson, mutual information, their
+union. Purple's design is stress–control–stress (0 mM and 6 mM are deficiency and
+excess, 2 mM the control), so a gene moved the *same way* by both stresses is
+structurally invisible to all of them. Until now the U-shape contrast
+`c(+1,−2,+1)` had only ever been run on a handful of named genes and once at
+module level, so the negative above was, strictly, a claim about monotone
+responses only.
+
+It has now been run genome-wide at gene level (`./run.sh ushape`, then
+`./run.sh conscor 0 ushape` and `conscor 1 ushape`). Blocked model
+`expr ~ genotype + treatment`, genotype a block rather than a pool because 51NG3
+is *S. robustum* and TAGZ *S. officinarum*; 170,740 genes, residual df 14.
+
+| | |
+|---|---|
+| genes tested | 170,740 |
+| **survive BH at 0.05** | **1** (a peak at the control, not a trough) |
+| raw p ≤ 0.05, uncorrected | 17,528 |
+| expected by chance | 8,537 |
+| **fold over chance** | **2.05×** |
+| **conserved responsive ortholog pairs, genome-wide burden** | **0** |
+| **conserved responsive ortholog pairs, directed burden (BH over 4,745)** | **0** |
+
+**Both readings matter, and they say different things.** The 2.05× enrichment at
+raw p — roughly 9,000 genes' worth of excess — says purple really does contain
+non-monotone nitrogen responses that the monotone tests cannot see. The single BH
+survivor says that at n = 18 over 170,740 tests, essentially none of them can be
+individually resolved. The blind spot was real; closing it changes nothing,
+because the wall is power, not test shape.
+
+Under the directed burden the U-contrast selects **0 of 4,745** candidate
+orthologs, against the monotone rules' 1–2. So the non-monotone test does not
+merely fail to add conserved pairs, it adds fewer candidates than the monotone
+one at the same burden.
+
+**`Soffic.09G0001580-9H`, calibrated at last.** The Module-20 copy that motivated
+this — the one concrete case of a gene the monotone tests miss — sits at **rank
+890 of 170,740** (percentile **0.52**), u_est **+3.67** (a trough: up at both 0 N
+and 6 N), raw p **0.0037**, **padj 0.485**. It is genuinely in the top half-percent
+genome-wide and it is nowhere near surviving correction. It remains an anecdote,
+but now a numbered one.
+
+The p-value histogram is skewed toward zero (19% in the first decile against 10%
+expected), consistent with that diffuse real signal rather than with a flat null.
+That is a reason to believe the 2.05×, and equally a reason not to read anything
+into the top of the list gene by gene.
+
+**What this bounds.** The sentence "the two species' responsive sets are
+independent in ortholog space" no longer carries an unstated *"among monotone
+responders"*. It survives a non-monotone test under both correction burdens. What
+it does not survive is a power argument — and that was already the finding.
+
+One asymmetry is forced and should be stated wherever this is quoted: sugarcane's
+design has **two** nitrogen levels and cannot express a U-shape, so under
+`SELECTION=ushape` purple is selected by the contrast while sugarcane keeps its
+monotone rule. The question answered is *"does purple have non-monotone responders
+whose orthologs are sugarcane-responsive?"* — not *"do the two species share a
+non-monotone response?"*, which these two designs cannot ask.
+
 **The zero survives three selection rules, two correction burdens, and both
 conservation directions.**
 

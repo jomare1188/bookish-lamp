@@ -179,6 +179,18 @@ sides. (At raw p ≤ 0.05 and |r| ≥ 0.6 — no multiple-testing correction —
 candidates qualify; that is the most generous reading available and should be
 labelled uncorrected.)
 
+**It also survives a non-monotone test.** Every rule above is monotone, and
+purple's design is stress-control-stress, so a gene induced by both deficiency
+and excess is invisible to all of them. The U-shape contrast c(+1,-2,+1) run
+genome-wide at gene level (170,740 genes, blocked on genotype, residual df 14)
+finds **1** gene surviving BH and **0** conserved responsive ortholog pairs under
+either the genome-wide or the directed burden. The blind spot was real -- there
+are **2.05x** more genes at raw p <= 0.05 than chance, ~9,000 genes' worth of
+excess non-monotone signal -- but at n = 18 almost none of it resolves
+individually. `Soffic.09G0001580-9H`, the Module-20 copy that motivated the test,
+lands at rank **890 of 170,740** (top 0.52%) with padj **0.485**. See
+[`new_clean/docs/results.md`](new_clean/docs/results.md).
+
 **The zero survives three selection rules, two correction burdens and both
 conservation directions.** n = 18 with 0/2/6 mM in triplicate is a design limit,
 not a method limit.

@@ -59,9 +59,29 @@ SPECIES_SUGARCANE <- env_opt("CLEAN_OG_SPECIES_SUGARCANE", "sugarcane_one_transc
 SPECIES_PURPLE    <- env_opt("CLEAN_OG_SPECIES_PURPLE", "one_transcript_purple_proteins")
 setDTthreads(as.integer(env_num("CLEAN_CORES", 100)))
 
-if (!SELECTION %in% c("pearson", "mi", "union"))
-  stop("CLEAN_SELECTION must be pearson, mi or union (got '", SELECTION, "')",
+if (!SELECTION %in% c("pearson", "mi", "union", "ushape"))
+  stop("CLEAN_SELECTION must be pearson, mi, union or ushape (got '", SELECTION, "')",
        call. = FALSE)
+
+# `ushape` selects purple by the c(+1,-2,+1) contrast over 0N/2N/6N instead of by
+# a monotone statistic, because purple's design is stress-control-stress and a
+# gene moved the SAME WAY by deficiency and excess is invisible to Pearson, MI
+# and Spearman alike.
+#
+# THE ASYMMETRY IS FORCED AND MUST NOT BE READ PAST. Sugarcane's design has TWO
+# nitrogen levels, so it cannot express a U-shape at all; under this rule it keeps
+# its monotone selection. The question this answers is therefore "does purple have
+# non-monotone responders whose orthologs are sugarcane-responsive?", NOT "do the
+# two species share a non-monotone response" -- the latter is unanswerable with
+# these two designs.
+ushape_file <- function(s) file.path(RESULTS, s, sprintf("gene_trait_ushape_%s.tsv", s))
+if (SELECTION == "ushape") {
+  if (!file.exists(ushape_file("purple")))
+    stop("missing ", basename(ushape_file("purple")),
+         "\n  run  ./run.sh ushape  first", call. = FALSE)
+  say("SELECTION=ushape: purple by the c(+1,-2,+1) contrast; sugarcane by",
+      " pearson|mi (two-level design, no U-shape is expressible)")
+}
 
 TAG <- if (DIRECTED) "_directed" else ""
 banner(paste0("conserved nitrogen response  [selection: ", SELECTION,
@@ -115,10 +135,41 @@ responsive <- function(study, restrict = NULL) {
   t[, by_pearson := !is.na(pearson_padj) & pearson_padj <= PADJ_THR &
                     abs(pearson) >= R_THR]
   t[, by_mi      := !is.na(padj) & padj <= PADJ_THR]
+
+  # The U-shape column exists only for a study whose design has three nitrogen
+  # levels. Where it does not, by_ushape falls back to the monotone union, and
+  # the fallback is announced rather than assumed.
+  t[, by_ushape := NA]
+  t[, direction := NA_character_]
+  if (SELECTION == "ushape") {
+    if (file.exists(ushape_file(study))) {
+      u <- fread(ushape_file(study), select = c("gene", "u_est", "u_pval",
+                                                "u_padj", "direction"))
+      u[, gene := strip_version(gene)]
+      if (!is.null(restrict)) {
+        # Same argument as the monotone branch above: re-correct over the
+        # candidate orthologs rather than the transcriptome.
+        u <- u[gene %chin% restrict]
+        u[, u_padj := p.adjust(u_pval, method = "BH")]
+      }
+      t <- merge(t, u, by = "gene", all.x = TRUE, suffixes = c("", "_u"))
+      t[, by_ushape := !is.na(u_padj) & u_padj <= PADJ_THR]
+      say(sprintf("  %-9s U-shape: %s tested, %s selected (trough %s, peak %s)",
+                  study, fmt_n(sum(!is.na(t$u_padj))), fmt_n(sum(t$by_ushape, na.rm = TRUE)),
+                  fmt_n(t[by_ushape == TRUE & direction == "trough_at_control", .N]),
+                  fmt_n(t[by_ushape == TRUE & direction == "peak_at_control", .N])))
+    } else {
+      t[, by_ushape := by_pearson | by_mi]
+      say(sprintf("  %-9s has no U-shape table (two-level design) -- falling back",
+                  study), " to pearson|mi")
+    }
+  }
+
   t[, selected := switch(SELECTION,
                          pearson = by_pearson,
                          mi      = by_mi,
-                         union   = by_pearson | by_mi)]
+                         union   = by_pearson | by_mi,
+                         ushape  = by_ushape)]
   say(sprintf("  %-9s conserved genes %s | pearson %s | mi %s | union %s -> selected %s",
               study, fmt_n(nrow(t)), fmt_n(sum(t$by_pearson)), fmt_n(sum(t$by_mi)),
               fmt_n(sum(t$by_pearson | t$by_mi)), fmt_n(sum(t$selected))))

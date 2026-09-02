@@ -28,6 +28,7 @@
 #   ./run.sh modulesummary <study>           one figure: all responsive modules
 #   ./run.sh modulego  <study> [BP|MF|CC]    GO enrichment per responsive module
 #   ./run.sh conscor   [0|1] [selection]     conserved N response; 1 = directed test
+#   ./run.sh ushape                          U-shape contrast, genome-wide (purple)
 #   ./run.sh go        BP|MF|CC              GO enrichment
 #   ./run.sh gosem                           GO semantic clustering
 #   ./run.sh tfs       <study>               TFs in the network (step 04 only)
@@ -279,6 +280,20 @@ main() {
       --out    "$(study_dir "$ARG")/gene_trait_mi_${ARG}" \
       --k "$TRAIT_MI_K" --n-perm "$TRAIT_MI_PERM" --alpha "$PADJ_THR" \
       "${EXTRA[@]}"
+    ;;
+
+  # Purple's design is stress-control-stress, so a gene induced by BOTH nitrogen
+  # deficiency and excess is invisible to every monotone test in this pipeline.
+  # This is the only genome-wide gene-level test of that shape. Feeds
+  # `./run.sh conscor 0 ushape` and `./run.sh conscor 1 ushape`.
+  ushape)
+    S="${ARG:-purple}"; check_study "$S"
+    CLEAN_STUDY="$S" \
+    CLEAN_VST_PREFIX="$(vst_prefix "$S")" \
+    CLEAN_META="$(cfg META "$S")" \
+    CLEAN_OUT_FILE="${RESULTS}/${S}/gene_trait_ushape_${S}.tsv" \
+    CLEAN_SELECT_TRAIT="$SELECT_TRAIT" \
+      "$RSCRIPT_NET" "${SCRIPTS}/30_gene_trait_ushape.r"
     ;;
 
   conscor)
