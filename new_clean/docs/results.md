@@ -466,7 +466,8 @@ orthologs, against the monotone rules' 1–2. So the non-monotone test does not
 merely fail to add conserved pairs, it adds fewer candidates than the monotone
 one at the same burden.
 
-**`Soffic.09G0001580-9H`, calibrated at last.** The Module-20 copy that motivated
+**`Soffic.09G0001580-9H`, calibrated at last.** (Full per-gene dossier:
+[gene_Soffic_09G0001580_9H.md](gene_Soffic_09G0001580_9H.md).) The Module-20 copy that motivated
 this — the one concrete case of a gene the monotone tests miss — sits at **rank
 890 of 170,740** (percentile **0.52**), u_est **+3.67** (a trough: up at both 0 N
 and 6 N), raw p **0.0037**, **padj 0.485**. It is genuinely in the top half-percent
