@@ -10,7 +10,8 @@
 #
 # THE CONTRACT, and it is honoured exactly:
 #   <prefix>_membership.tsv      gene, module_name, strength, degree
-#   <prefix>_module_summary.tsv  module, n_genes, modularity_Q, inflation,
+#   <prefix>_module_summary.tsv  module, n_genes, modularity_Q,
+#                                modularity_Q_weighted, inflation,
 #                                min_module_size, shown_in_plot
 # `module_name` is Module_%03d ranked LARGEST FIRST, or the literal "Unassigned"
 # for genes in blocks below MIN_SIZE -- both conventions copied from
@@ -107,6 +108,7 @@ say(sprintf("blocks >= %d genes: %s named | %s genes unassigned",
 
 # --- modularity of the SBM partition, on the same graph ----------------------
 q <- NA_real_
+qw <- NA_real_
 if (COMPUTE_Q) {
   assert_network_schema(EDGES)
   say("reading edges for modularity — the slow step (CLEAN_SBM_COMPUTE_Q=0 skips it)")
@@ -122,8 +124,16 @@ if (COMPUTE_Q) {
   key <- mem[match(V(g)$name, gene)]
   comm <- ifelse(key$module_name == "Unassigned", NA_character_, key$module_name)
   comm <- ifelse(is.na(comm), paste0("solo_", V(g)$name), comm)
-  q <- modularity(g, membership = as.integer(factor(comm)), weights = E(g)$weight)
-  say(sprintf("modularity Q of the SBM partition: %.4f", q))
+  # BOTH, and this is a correction. This stage used to compute only the WEIGHTED
+  # modularity while 05_mcl_clustering.r computed only the UNWEIGHTED one --
+  # igraph does not pick up the `weight` attribute when `weights` is NULL -- so
+  # the headline "MCL 0.1005 vs SBM 0.0081" was a comparison between two
+  # different statistics, asserted as like-for-like in four places in the docs.
+  cm <- as.integer(factor(comm))
+  q  <- modularity(g, membership = cm)
+  qw <- modularity(g, membership = cm, weights = E(g)$weight)
+  say(sprintf("modularity Q of the SBM partition: %.4f (unweighted), %.4f (weighted)",
+              q, qw))
   rm(g); invisible(gc())
 } else {
   say("NOTE: CLEAN_SBM_COMPUTE_Q=0 — modularity_Q written as NA")
@@ -136,13 +146,14 @@ write_tsv(mem[, .(gene, module_name, strength, degree)],
 summ <- mem[, .N, by = module_name][order(-N)]
 setnames(summ, c("module", "n_genes"))
 summ[, modularity_Q    := if (is.na(q)) NA_real_ else round(q, 4)]
+summ[, modularity_Q_weighted := if (is.na(qw)) NA_real_ else round(qw, 4)]
 # `inflation` is an MCL parameter with no SBM equivalent; the column is kept so
 # the schema matches and carries the level instead, which is the analogous knob.
 summ[, inflation       := NA_real_]
 summ[, sbm_level       := LEVEL]
 summ[, min_module_size := MIN_SIZE]
 summ[, shown_in_plot   := n_genes >= MIN_PLOT & module != "Unassigned"]
-write_tsv(summ[, .(module, n_genes, modularity_Q, inflation, sbm_level,
+write_tsv(summ[, .(module, n_genes, modularity_Q, modularity_Q_weighted, inflation, sbm_level,
                    min_module_size, shown_in_plot)],
           paste0(PREFIX, "_module_summary.tsv"))
 

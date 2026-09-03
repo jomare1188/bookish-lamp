@@ -16,6 +16,11 @@
 #   ./run.sh merge     <study>               layers -> the network
 #   ./run.sh stats     <study>               node + global metrics, plots
 #   ./run.sh mcl       <study>               MCL modules
+#   ./run.sh mclload   <study>               network -> native MCL matrix (once)
+#   ./run.sh mclsurvey <study>               degree survey; choose the k-NN cut
+#   ./run.sh mclsweep  <study> [k-list]      inflation x k-NN grid + clm info/dist
+#   ./run.sh clusterhomog <study>            annotation homogeneity of each cell
+#   ./run.sh figclusterchoice                figure 10, the granularity choice
 #   ./run.sh sbmclust  <study>               SBM fit -> the same two files
 #   ./run.sh conserve  sugarcane_to_purple|purple_to_sugarcane
 #   ./run.sh conservenull <direction>        permutation null for the above
@@ -178,6 +183,69 @@ main() {
     CLEAN_TRANSITIVITY="$COMPUTE_TRANSITIVITY" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_NET" "${SCRIPTS}/04_network_stats.r"
+    ;;
+
+  # --- MCL toolchain: load once, survey degrees, sweep granularity -------------
+  # The giant module is a node-degree problem, not an inflation one; see
+  # docs/decisions.md. These stages read the network and write only diagnostics --
+  # nothing published moves until `mcl` is re-run with the chosen settings.
+  mclload)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_EDGES="$(network_tsv "$ARG")" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLEAN_MCL_BIN_DIR="$(dirname "$MCL_BIN")" \
+    CLEAN_FORCE="${EXTRA[0]:-0}" \
+    CLEAN_CORES="$NUM_CORES" \
+      bash "${SCRIPTS}/34_mcl_load.sh"
+    ;;
+
+  mclsurvey)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLEAN_MCL_BIN_DIR="$(dirname "$MCL_BIN")" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")" \
+    CLEAN_KNN_RANGE="$MCL_SWEEP_KNN_RANGE" \
+    CLEAN_NODE_METRICS="$(study_dir "$ARG")/network_${ARG}_node_metrics.tsv" \
+    CLEAN_FORCE="${EXTRA[0]:-0}" \
+    CLEAN_CORES="$NUM_CORES" \
+      bash "${SCRIPTS}/35_mcl_survey.sh"
+    ;;
+
+  mclsweep)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLEAN_MCL_BIN_DIR="$(dirname "$MCL_BIN")" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")" \
+    CLEAN_SWEEP_I="$MCL_SWEEP_I" \
+    CLEAN_SWEEP_I_NONE="$(cfg MCL_SWEEP_I_NONE "$ARG")" \
+    CLEAN_SWEEP_K="${EXTRA[0]:-}" \
+    CLEAN_CORES="$NUM_CORES" \
+      bash "${SCRIPTS}/36_mcl_sweep.sh"
+    ;;
+
+  clusterhomog)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLEAN_MCL_BIN_DIR="$(dirname "$MCL_BIN")" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")" \
+    CLEAN_EMAPPER="$(cfg EMAPPER "$ARG")" \
+    CLEAN_MAX_GENES="$HOMOGENEITY_MAX_GENES" \
+    CLEAN_PERM="$HOMOGENEITY_PERM" \
+    CLEAN_SEED="$HOMOGENEITY_SEED" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_NET" "${SCRIPTS}/37_cluster_homogeneity.r"
+    ;;
+
+  figclusterchoice)
+    CLEAN_RESULTS="$RESULTS" \
+    CLEAN_OUT_DIR="${RESULTS}/figures" \
+    CLEAN_STUDIES="sugarcane purple" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+      "$RSCRIPT_PLOT" "${SCRIPTS}/38_fig_clustering_choice.r"
     ;;
 
   # --- 05 clustering ----------------------------------------------------------

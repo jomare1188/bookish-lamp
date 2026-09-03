@@ -136,6 +136,79 @@ MCL_BIN="/home/genomics/miniconda3/envs/r_net_env/bin/mcl"
 # land on a small system /tmp.
 MCL_TMPDIR="/dados04/jorge/tmp"
 
+# --- the MCL toolchain: native matrices, degree reduction, granularity -------
+# WHY THIS EXISTS. MCL at -I 2 gives purple one module holding 28% of the network
+# (47,887 genes) and a median module of 3. That is not an inflation problem.
+# mclfaq(7) 7.3 names the cause exactly: "Preferably the network should not have
+# nodes of very high degree... Such nodes tend to obscure cluster structure and
+# contribute to coarse clusters", and clmprotocols(5) puts a number on it for
+# co-expression graphs -- "the median node degree should be at most one hundred
+# neighbours". Purple's median degree is 859, its p90 is 33,071 and its worst hub
+# has 40,960 neighbours out of 170,736 nodes.
+#
+# So the handle is a k-NN degree reduction applied to the matrix MCL clusters.
+# THE NETWORK ITSELF IS NOT TOUCHED -- edges, conservation and every published
+# figure are unchanged; only what MCL is handed is reduced.
+#
+# Working directory for native binary matrices. Loading each network ONCE with
+# mcxload replaces the 36 GB text .abc round-trip that 05_mcl_clustering.r pays
+# on every run, which is what made a parameter sweep look unaffordable.
+MCL_WORK_DIR="${MCL_TMPDIR}/mcl_work"
+
+# k for the #knn() reduction, per study. EMPTY = no reduction, which is what the
+# pipeline has always done. Set from 35_mcl_survey.sh using the author's own
+# heuristic: the k that brings median degree toward <=100 without materially
+# increasing the number of singletons.
+#
+# NOTE #knn INTERSECTS neighbour lists -- an edge survives only if it is among the
+# top k for BOTH endpoints -- so a small k can empty the graph. #knnj joins
+# instead and is the fallback; 36 records which was used.
+MCL_KNN_sugarcane=""
+MCL_KNN_purple=""
+
+# Per-study inflation, chosen by the sweep. Falls back to MCL_INFLATION when
+# empty, so the historical setting stays in force until the sweep has run.
+MCL_INFLATION_sugarcane=""
+MCL_INFLATION_purple=""
+
+# The sweep grid. The inflation values are the FAQ's own starting set (7.2: "A
+# good set of values to start with is 1.4, 2 and 6") widened around the
+# pipeline's current 2. k values are filled in per study by 35; "none" is the
+# no-reduction control and must stay in the grid so the current setting is on the
+# plot like any other cell.
+MCL_SWEEP_I="1.4 2 3 4 6"
+
+# The unreduced control's ladder, kept separate because mcl on the full matrix is
+# ~40x the work of a k-NN-reduced one (sugarcane keeps 2.4% of its arcs at
+# k = 180). Measured: a full-matrix sugarcane cell is ~3.5 min, so the whole
+# ladder is affordable there and this is the same list. Purple's matrix is 9.3x
+# larger; shorten this to "2 4 6" for that study if the full ladder does not fit.
+# Three points still answer the control's only question -- does inflation alone
+# flatten the giant module?
+# Per study, because purple's unreduced matrix is 9.3x sugarcane's: a full-matrix
+# sugarcane cell is ~3 min, a purple one was 1 h 12 min in the original run.
+MCL_SWEEP_I_NONE_sugarcane="1.4 2 3 4 6"
+MCL_SWEEP_I_NONE_purple="2 6"
+MCL_SWEEP_KNN_RANGE="40/800/40"
+
+# --- clustering quality ------------------------------------------------------
+# Sorensen-Dice annotation homogeneity, the metric cogeqc::calculate_H uses for
+# orthogroups, applied to modules. cogeqc itself is NOT used: it skips groups
+# larger than max_size (200) entirely -- which would silently refuse to score the
+# very giant modules being diagnosed -- and it enumerates every pair through
+# combn() in an R loop. 37 reimplements the same score sparse and vectorised.
+#
+# Modules above this size are SUBSAMPLED rather than skipped, with a fixed seed,
+# and the subsampling is recorded per module so a score is never mistaken for
+# exact.
+HOMOGENEITY_MAX_GENES=2000
+
+# Homogeneity rises trivially as modules shrink, and the whole point of raising
+# inflation is to make modules smaller. Only the excess over a SIZE-MATCHED
+# random partition is evidence, so every clustering is scored against one.
+HOMOGENEITY_PERM=100
+HOMOGENEITY_SEED=1188
+
 # --- stochastic block model (CLUSTERING=sbm) ---------------------------------
 # Output of the graph-tool nested fit, which lives outside this pipeline. The
 # per-study directory names are the fit's, not the pipeline's.

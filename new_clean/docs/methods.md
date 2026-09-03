@@ -303,8 +303,18 @@ too large to draw.
 
 **Modularity is computed anyway**, on the same graph, because it is the number
 `05_mcl_clustering.r` reports for MCL and a comparison needs both sides measured
-the same way. It comes out at **0.0081** against MCL's **0.1005** — expected, not
-a defect: an SBM minimises a description length and does not optimise modularity.
+the same way.
+
+> **Correction, 2026-09-03: they were not measured the same way.** This stage
+> passed `weights = E(g)$weight` and `05_mcl_clustering.r` did not, and igraph
+> does not pick up the `weight` attribute when `weights` is NULL — so the quoted
+> "SBM 0.0081 against MCL 0.1005" compared a weighted modularity with an
+> unweighted one. Both stages now write **both**, as `modularity_Q` (unweighted)
+> and `modularity_Q_weighted`; read one column, never a mixture. The
+> qualitative point stands and is unaffected: an SBM minimises a description
+> length and does not optimise modularity, so a lower Q is expected rather than
+> a defect.
+
 `SBM_COMPUTE_Q=0` skips the slow pass and writes NA.
 
 The script **fails** rather than warns if the fit's gene set and the network's

@@ -94,11 +94,19 @@ SUMM[, clustering := factor(clustering, levels = LAB)]
 
 part <- SUMM[, .(modules = .N, median = median(n_genes), max = max(n_genes),
                  Q = modularity_Q[1]), by = clustering]
+# `modularity_Q` is the UNWEIGHTED Newman Q in both stages as of 2026-09-03.
+# It was not always: 27_sbm_membership.r used to write the WEIGHTED value into
+# this column while 05_mcl_clustering.r wrote the unweighted one, so this panel
+# compared two different statistics. Both stages now write both columns; read
+# only one of them here, and never mix them.
 part <- merge(part, UNASSIGNED[, .(clustering, unassigned = n_genes)],
               by = "clustering", all.x = TRUE)
 say("partitions:"); print(part, row.names = FALSE)
 
 # --- adjusted Rand index between the two partitions --------------------------
+# Hand-rolled rather than taken from a package, and verified to be exactly right:
+# against clue::cl_agreement(method = "cRand") on the sugarcane pair it returns
+# 0.0155872455 versus 0.0155872455, difference 0. This is the Hubert-Arabie form.
 ARI <- NA_real_
 MEM <- lapply(LAB, function(k)
   rd(paste0(CLUS[[k]]$prefix, "_membership.tsv"), select = c("gene", "module_name")))

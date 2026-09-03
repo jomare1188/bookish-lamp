@@ -178,10 +178,15 @@ important caveat on every purple result downstream:
   most genes share a coarse genotype-or-treatment response, which is real
   covariation but not specific co-regulation.
 
-If purple's modules turn out to be uninformative, the fix is a stricter threshold
-for purple specifically — not a different clustering algorithm. That would break
-the equal-specificity matching with sugarcane, so it is a deliberate trade to
-make and document, not a tuning knob.
+~~If purple's modules turn out to be uninformative, the fix is a stricter
+threshold for purple specifically — not a different clustering algorithm.~~
+**Superseded 2026-09-03.** The fix is neither: it is a k-NN degree reduction
+applied to the matrix MCL clusters, leaving the network untouched. See
+[the giant module is a node-degree artefact](#the-giant-module-is-a-node-degree-artefact-and-mcl-had-been-saying-so)
+below. A stricter purple threshold remains a separate, unmade decision — it would
+break the equal-specificity matching with sugarcane, so it is a deliberate trade
+to make and document, not a tuning knob, and the evidence for it is now recorded
+in `mcl_threshold_survey_purple.tsv`.
 
 Local transitivity is NA by design (`COMPUTE_TRANSITIVITY=0`).
 
@@ -213,6 +218,90 @@ Purple's first module holds 47,887 genes — 28% of the network — and 14,594 g
 land in modules too small to name. Sugarcane's largest is 19,604 (19%) with only
 401 unassigned. Purple's partition is the more top-heavy of the two, which is
 consistent with its density, though it is *not* the less modular one by Q.
+
+
+### The giant module is a node-degree artefact, and MCL had been saying so
+
+The partition above was produced by `mcl <file>.abc --abc -I 2 -te 100 -o <out>`
+and nothing else — no transform, and `stderr` discarded. Both of those turn out
+to matter.
+
+**MCL grades its own pruning, and the grade was going to `/dev/null`.** The
+default `-scheme 7` tracks at most ~1,200 neighbours per node during computation;
+purple's top decile of nodes has more than 33,000. Recovering the jury synopsis
+from stderr, on the unreduced sugarcane graph:
+
+| -I | 1.4 | **2 — the shipped partition** | 3 | 4 | 6 |
+|---|---|---|---|---|---|
+| jury | 34.8 woeful | **39.2 deplorable** | 43.4 poor | 45.5 dodgy | 47.2 shabby |
+| largest module | 25.3% | 19.0% | 16.0% | 14.4% | 12.6% |
+
+**No inflation value fixes either problem.** Across the whole range the largest
+module never drops below 12.6% of the network, and mcl never rates its own
+computation better than "shabby". This is what `mclfaq(7)` §7.3 predicts —
+*"nodes of very high degree... tend to obscure cluster structure and contribute
+to coarse clusters"* — and the degrees are extreme: purple's median is 859 with
+p90 = 33,071 and a worst hub of 40,960, against the ≤ 100 median that
+`clmprotocols(5)` recommends for co-expression graphs.
+
+**The documented remedy works, on the same graph, at the same inflation.**
+`-tf '#knn(k)'` requires an edge to be in the top k for *both* endpoints; k is
+chosen by `mcx query -vary-knn` (`./run.sh mclsurvey`) as the gentlest reduction
+meeting the degree target. Sugarcane, `#knn(180)`:
+
+| | largest module | modules | median | singletons | Q | jury |
+|---|---|---|---|---|---|---|
+| `-I 2`, no reduction | **18.97%** | 10,710 | 3 | 401 | 0.0819 | 39.2 deplorable |
+| `-I 2`, `#knn(180)` | **0.57%** | 32,240 | 1 | 16,144 | 0.2692 | **70.0 adequate** |
+| `-I 1.4`, `#knn(180)` | 3.07% | 12,139 | 2 | 5,235 | **0.5506** | 54.6 tolerable |
+| `-I 1.4`, `#knn(240)` | 3.53% | 9,704 | 3 | 3,048 | **0.5624** | 48.9 off colour |
+
+Modularity rises **6.7-fold**. The community structure was always there; the hub
+edges were masking it. `clm info`'s area fraction — the sum of squared cluster
+sizes over N², i.e. the giant-module statistic — falls from 0.0402 to 0.0004.
+
+**The cost is real and is not hidden: singletons.** 401 genes are unassigned at
+the current setting; `#knn(180) -I 2` strands 16,144, and `-I 6` strands 36,687.
+`#knn(180) -I 1.4` is the gentler trade at 5,235. Purple's curve is kinder —
+k = 440 reaches the median-degree target of 96 for a 0.13% singleton cost — which
+is why k is chosen per study from its own survey rather than shared.
+
+**Are the smaller modules meaningful, or just rubble?** Homogeneity alone rises
+trivially as modules shrink, so each clustering is scored against a size-matched
+random partition (`37_cluster_homogeneity.r`; the metric is cogeqc's Sørensen–Dice
+over eggNOG PFAM domains, reimplemented sparse because cogeqc's own version skips
+groups above 200 genes and would refuse to score the giant module at all).
+Excess over that null, sugarcane:
+
+| clustering | modules scored | H | null | excess |
+|---|---|---|---|---|
+| shipped (`-I 2`, no knn) | 8,598 | 0.0835 | 0.0042 | +0.0793 |
+| `#knn(180) -I 1.4` | 6,106 | 0.0457 | 0.0044 | +0.0413 |
+| `#knn(180) -I 2` | 13,317 | 0.0910 | 0.0040 | **+0.0870** |
+| `#knn(180) -I 3` | 15,970 | 0.1235 | 0.0034 | **+0.1200** |
+
+The excess **rises** with inflation on the reduced graph, and at `-I 2` the
+reduced clustering both scores higher than the shipped one and scores 1.5× as
+many modules. The one cell that does worse is `-I 1.4`, the coarsest. So the
+extra granularity is not rubble — but note that the reduced clusterings score
+*fewer genes* overall, because a singleton cannot be scored, and that asymmetry
+should be read alongside the excess rather than after it.
+
+**Nothing is adopted.** `MCL_KNN_*` and `MCL_INFLATION_*` are empty, so
+`./run.sh mcl` still reproduces the partition described above exactly. Changing
+them regenerates `mcl_*_membership.tsv`, which every module-level stage reads.
+Full grid: `results/<study>/mcl_sweep_<study>.tsv`; figure
+`results/figures/figure10_clustering_choice.{png,pdf,svg}`.
+
+**A correction to the sentence above.** This section previously said that if
+purple's modules turned out to be uninformative "the fix is a stricter threshold
+for purple specifically — not a different clustering algorithm". The first half
+is half right and the second is not the issue: the fix is a degree reduction,
+which is neither a threshold change nor a different algorithm. The
+threshold evidence is recorded anyway — `mcl_threshold_survey_<study>.tsv`, from
+`mcx query --vary-correlation` — because purple's `|r| >= 0.8` is p = 6.7e-5 at
+n = 18 where sugarcane's is p = 9e-12, so the two networks were never built at
+equal stringency. That remains a separate, unmade decision.
 
 `min_module_size` was briefly run at 5 during this build. It does **not** affect
 the clustering — the raw partition (10,710 modules) and Q (0.1005) came out

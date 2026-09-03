@@ -87,7 +87,18 @@ edge tables, take about **5.5 hours**; everything through clustering about **9**
 | both layers | 2,004,577 (2.6%) | 50,179,988 (7.1%) |
 | **MI only** | **866,575 (1.1%)** | **29,615,805 (4.2%)** |
 | MCL modules | 10,309 | 9,881 |
-| modularity Q | 0.1005 | 0.1631 |
+| modularity Q (unweighted) | 0.1005 | 0.1631 |
+
+**The MCL partition has a diagnosed defect.** Its largest module holds 19% of the
+sugarcane network and 28% of purple's, and mcl's own jury synopsis — discarded to
+`/dev/null` until 2026-09-03 — grades the pruning behind the shipped sugarcane
+partition **"deplorable" (39.2/100)**. The cause is node degree, not inflation:
+purple's median degree is 859 against the <=100 that mcl's co-expression protocol
+recommends. A `#knn(180)` reduction at the same inflation takes sugarcane's
+largest module from 18.97% to **0.57%**, modularity from 0.0819 to 0.2692, and
+the jury to "adequate". Nothing is adopted yet — see
+[docs/results.md](new_clean/docs/results.md#the-giant-module-is-a-node-degree-artefact-and-mcl-had-been-saying-so)
+and figure 10.
 
 Purple's larger MI share is **not** more non-linear biology: at n = 18 the
 p-value implied by |r| = 0.8 is 6.7e-05 against 9.0e-12 at n = 48, so its matched
@@ -342,8 +353,11 @@ Spearman test at the same thresholds, same TF and GO code:
 | of those, GO-testable | 49 (**11%**) | 20 (**87%**) |
 | BP terms returned | 246 | **325** |
 
-The two partitions barely overlap — adjusted Rand index **0.0156** — so this is a
-real alternative, not a re-parameterisation. The trade is sharp: MCL finds twenty
+The two partitions barely overlap — adjusted Rand index **0.0156**, verified
+against `clue::cl_agreement` — so this is a real alternative, not a
+re-parameterisation. (The modularity figures once quoted beside this table
+compared an unweighted MCL Q with a weighted SBM one; both stages now write both,
+and the purple SBM fit referred to elsewhere never actually ran.) The trade is sharp: MCL finds twenty
 times more responsive modules, of which nine in ten cannot be tested for
 function; the SBM finds 23, of which almost all can, and they return more GO
 terms than MCL's 465 do.

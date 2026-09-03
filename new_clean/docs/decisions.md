@@ -354,10 +354,17 @@ construction, so the two medians are not measured on comparable objects.
 
 **Not decided, and deliberately waiting.** Which partition is preferable depends
 on whether the next step is to name modules or to count them — and that question
-cannot be settled on sugarcane alone. **The purple fit is running on another
-machine as of 2026-08-27**; until it lands the comparison covers one species, and
-a change that would regenerate every module-level figure should not rest on one
-species.
+cannot be settled on sugarcane alone. ~~The purple fit is running on another
+machine as of 2026-08-27~~ — **this was wrong, corrected 2026-09-03**: the purple
+fit never ran. `sbm/output/purple/` holds only two `.gt` files, nothing since
+2026-08-25, and `sbm/code/purple/sbm_3.6_saveall.py` calls `lowmem.load_gt`
+(`:915`) and `check_weighted_model_lowmem` (`:924`) without ever importing
+`lowmem` — a `NameError` on both lines. Until a purple fit lands the comparison
+covers one species, and a change that would regenerate every module-level figure
+should not rest on one species.
+
+**The modularity comparison in this entry is also superseded.** MCL's 0.1005 was
+unweighted and the SBM's 0.0081 weighted; see the 2026-09-03 entry on that.
 
 The specific thing purple will decide is whether the trade above is a property of
 the METHOD or of this network. Sugarcane's MCL partition is pathological in a
@@ -378,3 +385,114 @@ like every other stage, `SBM_DIR_purple` is already configured, and the comparis
 figure takes a study argument too — so purple needs `./run.sh sbmclust purple`,
 the module chain under `CLUSTERING=sbm`, and `./run.sh figclustering purple`.
 Nothing else has to change.
+
+---
+
+## 2026-09-03 — The giant module is a node-degree artefact, and MCL said so all along
+
+**The problem.** MCL at `-I 2` gives sugarcane one module holding 19,604 genes
+(19.0% of the network) and purple one holding 47,887 (28.0%), both with a median
+module of 3. The instinct was to tune inflation.
+
+**Inflation is not the handle, and the measurement says so.** Sweeping `-I` from
+1.4 to 6 on the unreduced sugarcane graph moves the largest module from 25.3% to
+12.6% — it never stops being a giant — while stranding 12,905 genes as singletons
+at the top end. mclfaq(7) §7.3 names the real cause: *"Preferably the network
+should not have nodes of very high degree... Such nodes tend to obscure cluster
+structure and contribute to coarse clusters."* clmprotocols(5) puts a number on
+it for co-expression graphs: *"the median node degree should be at most one
+hundred neighbours."*
+
+| | nodes | median degree | p90 | max |
+|---|---|---|---|---|
+| sugarcane | 103,336 | 52 | 6,666 | 16,019 |
+| purple | 170,736 | **859** | **33,071** | **40,960** |
+
+**MCL had been grading its own work as unusable, into `/dev/null`.**
+`05_mcl_clustering.r:67` passed `stderr = FALSE`, which discarded the jury
+pruning synopsis — mcl's own verdict on whether its resource scheme kept enough
+of each node's neighbourhood. Recovered, on the unreduced sugarcane graph:
+
+| -I | 1.4 | **2 (production)** | 3 | 4 | 6 |
+|---|---|---|---|---|---|
+| jury | 34.8 woeful | **39.2 deplorable** | 43.4 poor | 45.5 dodgy | 47.2 shabby |
+
+The clustering every module-level result in this project rests on was computed
+under pruning mcl itself calls **deplorable**, and no inflation value fixes it.
+The cause is arithmetic: the default `-scheme 7` tracks at most ~1,200 neighbours
+per node, and purple's top decile has more than 33,000.
+
+**Decision.** Apply mcl's documented remedy, a k-NN reduction (`-tf '#knn(k)'`),
+to the matrix mcl clusters. **The network is not touched** — edges, conservation,
+and every published figure are unchanged; only what mcl is handed is reduced. k
+is chosen by the protocol's own criterion, measured with `mcx query -vary-knn`:
+the largest k that still meets the median-degree target, so the reduction is the
+gentlest one that does the job.
+
+Sugarcane, same graph, same inflation, reduction the only difference:
+
+| | largest module | modularity Q | jury |
+|---|---|---|---|
+| `-I 2`, no reduction | **18.97%** | 0.0819 | 39.2 deplorable |
+| `-I 2`, `#knn(180)` | **0.57%** | 0.2692 | **70.0 adequate** |
+| `-I 1.4`, `#knn(180)` | 3.07% | **0.5506** | 54.6 tolerable |
+
+Modularity rises **6.7-fold**. The community structure was there; the hub edges
+were masking it. The cost is singletons: 401 at the current setting, 16,144 at
+`#knn(180) -I 2`.
+
+**Supporting infrastructure.** Each network is now loaded once into mcl's native
+binary format (`34_mcl_load.sh`), replacing the 36 GB text `.abc` file
+`05_mcl_clustering.r` rewrote on every run. Sugarcane: 4.67 GB and ~4 min becomes
+1.2 GB and 2.5 min, peak RSS 2.4 GB; purple's 705,571,723 edges load in 11 GB at
+22.5 GB peak. That is what makes a sweep affordable at all.
+
+`--stream-mirror` is required and is not optional: the edge table stores each
+undirected edge once, so without it `mcxload` builds a directed matrix in which
+roughly half the nodes have out-degree 0, and `#knn` — which needs both
+endpoints' neighbour lists — reduces the graph to zero edges. `34` asserts zero
+degree-0 nodes for this reason.
+
+**Judged on four criteria, not one.** `clm info` (efficiency, mass fraction, and
+**area fraction**, which is the sum of squared cluster sizes over N² and
+therefore the giant-module statistic), `clm dist` for where the partition stops
+moving, the jury grade, and an annotation-homogeneity score against a
+size-matched null.
+
+**cogeqc was considered and not used.** It is a comparative-genomics QC package —
+BUSCO, orthogroup inference, synteny — with no co-expression module functions.
+Its `calculate_H()` is the right *metric* (mean pairwise Sørensen–Dice over gene
+annotations) but its implementation cannot serve here: `max_size = 200` makes it
+return nothing for larger groups, so it would silently refuse to score exactly
+the giant modules being diagnosed, and it enumerates pairs with `combn()` in an R
+loop. `37_cluster_homogeneity.r` computes the same score from a sparse binary
+gene × domain matrix and **subsamples** large modules rather than skipping them.
+The package is installed only in `comparative_network`, `matrix2-core` and
+`matrix2-expression`, none of which this pipeline uses.
+
+**Nothing is adopted yet.** The sweep is diagnostic; `MCL_KNN_*` and
+`MCL_INFLATION_*` stay empty, so `./run.sh mcl` still reproduces the shipped
+partition exactly. Changing them regenerates `mcl_*_membership.tsv`, which every
+module-level stage reads, and that is a decision about the paper rather than
+about the pipeline.
+
+---
+
+## 2026-09-03 — Modularity was being compared between two different statistics
+
+`05_mcl_clustering.r:89` computed `igraph::modularity(g, mem)` — **unweighted**.
+`27_sbm_membership.r:125` computed `modularity(g, comm, weights = E(g)$weight)` —
+**weighted**. igraph 2.1.4 does not pick up the `weight` edge attribute when
+`weights` is left NULL (verified directly). So the comparison quoted throughout
+this project — MCL 0.1005 against SBM 0.0081, a 12-fold gap — was between two
+different quantities, while `decisions.md`, `methods.md`, `config.sh` and the
+figure-8 legend all asserted the two were measured the same way.
+
+Both stages now compute and write **both**, as `modularity_Q` (unweighted) and
+`modularity_Q_weighted`. `28_fig_clustering_compare.r` reads one column and says
+so. The corrected like-for-like comparison replaces the old one wherever it is
+quoted.
+
+The adjusted Rand index in `28_fig_clustering_compare.r:104-113` was checked at
+the same time and is **correct**: hand-rolled Hubert–Arabie, 0.0155872455 against
+`clue::cl_agreement(method = "cRand")`'s 0.0155872455, difference 0. It is kept.

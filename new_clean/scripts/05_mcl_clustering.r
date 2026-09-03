@@ -3,7 +3,8 @@
 #
 # Writes, per study:
 #   mcl_<study>_membership.tsv      gene, module_name, strength, degree
-#   mcl_<study>_module_summary.tsv  module, n_genes, modularity_Q, ...
+#   mcl_<study>_module_summary.tsv  module, n_genes, modularity_Q,
+#                                   modularity_Q_weighted, ...
 #   mcl_<study>_hub_genes.tsv       top 10 by weighted strength per module
 #   mcl_<study>_plot_data.tsv
 #   mcl_<study>_module_sizes.{pdf,png}
@@ -86,7 +87,16 @@ run_mcl <- function(g, inflation, cores) {
   if (length(orphans))
     mem[orphans] <- length(lines) + seq_along(orphans)
 
-  list(membership = mem, modularity = igraph::modularity(g, mem))
+  # BOTH modularities, always. igraph does NOT pick up the `weight` edge
+  # attribute when `weights` is left NULL (verified on igraph 2.1.4), so
+  # `modularity(g, mem)` is the UNWEIGHTED Newman Q. 27_sbm_membership.r passed
+  # `weights = E(g)$weight` and therefore reported the WEIGHTED one, and the
+  # headline "MCL 0.1005 vs SBM 0.0081" comparison was between two different
+  # statistics while four places in the docs asserted it was like-for-like.
+  # Writing both removes the possibility of comparing the wrong pair.
+  list(membership  = mem,
+       modularity  = igraph::modularity(g, mem),
+       modularity_w = igraph::modularity(g, mem, weights = E(g)$weight))
 }
 
 # =============================================================================
@@ -103,9 +113,10 @@ rm(edges); invisible(gc())
 say("nodes ", fmt_n(vcount(g)), " | edges ", fmt_n(ecount(g)))
 
 partition <- run_mcl(g, INFLATION, CORES)
-q <- partition$modularity
-say(sprintf("raw modules: %d | modularity Q: %.4f",
-            length(unique(partition$membership)), q))
+q  <- partition$modularity
+qw <- partition$modularity_w
+say(sprintf("raw modules: %d | modularity Q: %.4f (unweighted), %.4f (weighted)",
+            length(unique(partition$membership)), q, qw))
 
 # --- membership, ranked so the largest module is Module_001 ------------------
 membership_dt <- data.table(gene       = V(g)$name,
@@ -126,6 +137,7 @@ setorder(membership_dt, module_name, -strength)
 summary_dt <- membership_dt[, .N, by = module_name][order(-N)]
 setnames(summary_dt, c("module", "n_genes"))
 summary_dt[, modularity_Q    := round(q, 4)]
+summary_dt[, modularity_Q_weighted := round(qw, 4)]
 summary_dt[, inflation       := INFLATION]
 summary_dt[, min_module_size := MIN_SIZE]
 summary_dt[, shown_in_plot   := n_genes >= MIN_PLOT & module != "Unassigned"]
@@ -146,12 +158,12 @@ plot_dt[, module := factor(module, levels = module)]
 
 write_tsv(membership_dt[, .(gene, module_name, strength, degree)],
           paste0(PREFIX, "_membership.tsv"))
-write_tsv(summary_dt[, .(module, n_genes, modularity_Q, inflation,
+write_tsv(summary_dt[, .(module, n_genes, modularity_Q, modularity_Q_weighted, inflation,
                          min_module_size, shown_in_plot)],
           paste0(PREFIX, "_module_summary.tsv"))
 write_tsv(hubs_dt, paste0(PREFIX, "_hub_genes.tsv"))
 write_tsv(plot_dt[, .(module = as.character(module), n_genes,
-                      modularity_Q, inflation)],
+                      modularity_Q, modularity_Q_weighted, inflation)],
           paste0(PREFIX, "_plot_data.tsv"))
 
 p <- ggplot(plot_dt, aes(x = module, y = n_genes)) +
