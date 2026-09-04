@@ -283,6 +283,7 @@ main() {
     CLEAN_OUT_DIR="${RESULTS}/figures" \
     CLEAN_STUDIES="sugarcane purple" \
     CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLEAN_TREES="${CLEAN_TREES:-}" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/38_fig_clustering_choice.r"
     ;;
 

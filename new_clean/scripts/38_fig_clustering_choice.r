@@ -28,23 +28,60 @@ theme_f <- theme_bw(base_size = 8) +
         plot.tag = element_text(face = "bold", size = 10))
 
 grab <- function(f) if (file.exists(f)) fread(f) else NULL
-sweep <- rbindlist(lapply(STUDIES, function(s)
-  grab(file.path(RESULTS, s, sprintf("mcl_sweep_%s.tsv", s)))), fill = TRUE)
-if (!nrow(sweep)) stop("no sweep results -- run ./run.sh mclsweep <study> first", call. = FALSE)
-homog <- rbindlist(lapply(STUDIES, function(s)
-  grab(file.path(RESULTS, s, sprintf("cluster_homogeneity_%s.tsv", s)))), fill = TRUE)
 
-sweep[, knn_f := factor(knn, levels = c("none", sort(unique(suppressWarnings(
-        as.numeric(knn[knn != "none"]))))))]
-KL <- levels(sweep$knn_f)
-PAL <- setNames(c("grey25", scico(max(2, length(KL) - 1), palette = "batlow")), KL)
+# CLEAN_TREES lets one figure carry several RESULTS trees, so a network built at
+# a different correlation threshold sits beside the current one instead of in a
+# second figure nobody lines up by eye. Format: "label=path label=path".
+# Unset = just the tree this run was pointed at, i.e. the previous behaviour.
+TREES <- Sys.getenv("CLEAN_TREES")
+trees <- if (nzchar(TREES)) {
+  kv <- strsplit(strsplit(trimws(TREES), "[[:space:]]+")[[1]], "=", fixed = TRUE)
+  setNames(vapply(kv, `[`, "", 2L), vapply(kv, `[`, "", 1L))
+} else setNames(RESULTS, "0.8")
+
+read_across <- function(pat) rbindlist(lapply(names(trees), function(lbl)
+  rbindlist(lapply(STUDIES, function(s) {
+    d <- grab(file.path(trees[[lbl]], s, sprintf(pat, s)))
+    if (!is.null(d)) d[, threshold := lbl]
+    d
+  }), fill = TRUE)), fill = TRUE)
+
+sweep <- read_across("mcl_sweep_%s.tsv")
+if (!nrow(sweep)) stop("no sweep results -- run ./run.sh mclsweep <study> first", call. = FALSE)
+homog <- read_across("cluster_homogeneity_%s.tsv")
+MULTI <- length(trees) > 1L
+if (MULTI) {
+  # With more than one tree, the k-NN reduction and the network threshold are two
+  # ways of attacking the same thing -- too many edges per node -- so they belong
+  # on one axis. `regime` is that axis.
+  sweep[, regime := sprintf("|r|>=%s%s", threshold,
+                            ifelse(knn == "none", "", sprintf(" + knn%s", knn)))]
+  if (nrow(homog)) homog[, regime := sprintf("|r|>=%s%s", threshold,
+                            ifelse(knn == "none", "", sprintf(" + knn%s", knn)))]
+}
+
+if (MULTI) {
+  sweep[, knn_f := factor(regime, levels = sort(unique(regime)))]
+  if (nrow(homog)) homog[, knn_f := factor(regime, levels = levels(sweep$knn_f))]
+  KL <- levels(sweep$knn_f)
+  base_i <- grep("^\\|r\\|>=0.8$", KL)
+  PAL <- setNames(scico(length(KL), palette = "batlow"), KL)
+  if (length(base_i)) PAL[base_i] <- "grey25"     # the shipped setting stays grey
+  LEGTITLE <- "regime"
+} else {
+  sweep[, knn_f := factor(knn, levels = c("none", sort(unique(suppressWarnings(
+          as.numeric(knn[knn != "none"]))))))]
+  KL <- levels(sweep$knn_f)
+  PAL <- setNames(c("grey25", scico(max(2, length(KL) - 1), palette = "batlow")), KL)
+  LEGTITLE <- "k-NN"
+}
 
 # --- A: does the giant module survive? ---------------------------------------
 pA <- ggplot(sweep, aes(inflation, largest_pct, colour = knn_f, group = knn_f)) +
   geom_hline(yintercept = 10, linetype = "22", colour = "grey60", linewidth = 0.35) +
   geom_line(linewidth = 0.55) + geom_point(size = 1.4) +
   facet_wrap(~ study, nrow = 1, scales = "free_y") +
-  scale_colour_manual(values = PAL, name = "k-NN") +
+  scale_colour_manual(values = PAL, name = LEGTITLE) +
   labs(x = "inflation (-I)", y = "largest module, % of network",
        title = "Does the giant module survive?",
        subtitle = paste0("grey = no reduction, the pipeline's current setting. ",
@@ -61,7 +98,7 @@ mb[, metric := factor(metric, levels = c("efficiency", "mass_fraction", "area_fr
 pB <- ggplot(mb, aes(inflation, value, colour = knn_f, group = knn_f)) +
   geom_line(linewidth = 0.5) + geom_point(size = 1.1) +
   facet_grid(metric ~ study, scales = "free_y") +
-  scale_colour_manual(values = PAL, name = "k-NN") +
+  scale_colour_manual(values = PAL, name = LEGTITLE) +
   labs(x = "inflation (-I)", y = NULL,
        title = "clm info: the author's own criteria",
        subtitle = "area fraction is the giant-module statistic; lower is finer-grained") +
@@ -89,7 +126,7 @@ pC <- if (nrow(dist_rows)) {
   ggplot(dist_rows, aes(step, pct_differing, colour = knn_f, group = knn_f)) +
     geom_line(linewidth = 0.5) + geom_point(size = 1.2) +
     facet_wrap(~ study, nrow = 1) +
-    scale_colour_manual(values = PAL, name = "k-NN") +
+    scale_colour_manual(values = PAL, name = LEGTITLE) +
     scale_x_continuous(breaks = seq_len(max(dist_rows$step))) +
     labs(x = "step along the inflation ladder", y = "% of nodes that move",
          title = "clm dist: where the partition settles",
@@ -109,7 +146,7 @@ pD <- if (!is.null(homog) && nrow(homog) && "H_excess" %in% names(homog)) {
     geom_hline(yintercept = 0, colour = "grey55", linewidth = 0.35) +
     geom_line(linewidth = 0.55) + geom_point(size = 1.4) +
     facet_wrap(~ study, nrow = 1, scales = "free_y") +
-    scale_colour_manual(values = PAL, name = "k-NN") +
+    scale_colour_manual(values = PAL, name = LEGTITLE) +
     labs(x = "inflation (-I)",
          y = "PFAM homogeneity\nabove a size-matched null",
          title = "Are the smaller modules actually more coherent?",
