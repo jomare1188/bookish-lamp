@@ -12,7 +12,14 @@
 BASE="/dados04/jorge/comparative_saccharum"
 CLEAN="${BASE}/new_clean"
 SCRIPTS="${CLEAN}/scripts"
-RESULTS="${CLEAN}/results"
+# Overridable so a parameter test can be built into a PARALLEL tree without
+# touching the main analysis -- the same pattern as CLUSTERING below. Every path
+# helper at the bottom of this file is expressed through RESULTS, so setting it
+# redirects the whole pipeline:
+#   RESULTS=$PWD/results_r09 STAT_MIN=0.9 ./run.sh build purple
+# Without this the assignment was unconditional, an env override was silently
+# discarded, and a rebuild overwrote 77 GB of edge tables in place.
+RESULTS="${RESULTS:-${CLEAN}/results}"
 LOGS="${CLEAN}/logs"
 
 STUDIES="sugarcane purple"
@@ -70,19 +77,23 @@ ALPHA=0.05                # BH FDR level
 # for an intermediate file -- the networks actually analysed came from
 # general_stats.r, whose PEARSON_MIN was 0.8. STAT_MAX drops suspiciously
 # perfect correlations.
-STAT_MIN=0.8
-STAT_MAX=0.9999
+STAT_MIN="${STAT_MIN:-0.8}"
+STAT_MAX="${STAT_MAX:-0.9999}"
 
 # The MI layer is thresholded at the MI value whose per-edge false-positive rate
 # equals that of |r| = STAT_MIN at this n. Equal specificity is what licenses
 # taking the union of the two layers. See docs/thresholds.md.
-MATCH_PEARSON="${STAT_MIN}"
+# Follows STAT_MIN, so raising the network threshold re-matches the MI layer to
+# it automatically. That coupling is what licenses the union of the two layers,
+# and it is the reason a stricter network must be REBUILT rather than filtered:
+# a filtered table would carry MI p-values calibrated to the old threshold.
+MATCH_PEARSON="${MATCH_PEARSON:-${STAT_MIN}}"
 
 # Candidate cut, as a Pearson |r|. Everything at least this strong is written to
 # a shard and enters the BH correction; the final network keeps only STAT_MIN
 # and above. Keeping this looser than STAT_MIN is what makes BH exact over the
 # full rejection set rather than only over the edges finally kept.
-CAND_PEARSON=0.7
+CAND_PEARSON="${CAND_PEARSON:-0.7}"
 
 MAX_PERM=200000000        # ceiling on the auto-sized permutation null (KSG only)
 GPU_MEM_GB=5              # working set budget; the A4500 has 20 GB
@@ -153,7 +164,9 @@ MCL_TMPDIR="/dados04/jorge/tmp"
 # Working directory for native binary matrices. Loading each network ONCE with
 # mcxload replaces the 36 GB text .abc round-trip that 05_mcl_clustering.r pays
 # on every run, which is what made a parameter sweep look unaffordable.
-MCL_WORK_DIR="${MCL_TMPDIR}/mcl_work"
+# Overridable too: 34_mcl_load.sh writes <study>.mci here, so two tracks would
+# otherwise collide on one filename (purple's matrix is 11.3 GB).
+MCL_WORK_DIR="${MCL_WORK_DIR:-${MCL_TMPDIR}/mcl_work}"
 
 # k for the #knn() reduction, per study. EMPTY = no reduction, which is what the
 # pipeline has always done. Set from 35_mcl_survey.sh using the author's own

@@ -260,11 +260,30 @@ Modularity rises **6.7-fold**. The community structure was always there; the hub
 edges were masking it. `clm info`'s area fraction — the sum of squared cluster
 sizes over N², i.e. the giant-module statistic — falls from 0.0402 to 0.0004.
 
-**The cost is real and is not hidden: singletons.** 401 genes are unassigned at
-the current setting; `#knn(180) -I 2` strands 16,144, and `-I 6` strands 36,687.
-`#knn(180) -I 1.4` is the gentler trade at 5,235. Purple's curve is kinder —
-k = 440 reaches the median-degree target of 96 for a 0.13% singleton cost — which
-is why k is chosen per study from its own survey rather than shared.
+**Purple is worse to start with and improves more.** Its shipped partition draws
+the lowest jury grade in either study, and inflation does even less for it than
+for sugarcane:
+
+| purple | largest module | modules | median | singletons | Q | jury |
+|---|---|---|---|---|---|---|
+| `-I 2`, no reduction — **shipped** | **28.05%** | 24,475 | 1 | 14,594 | 0.1357 | **19.2 pathetic** |
+| `-I 6`, no reduction | 20.15% | 101,101 | 1 | 96,605 | 0.1207 | 30.1 lousy |
+| `-I 1.4`, `#knn(160)` | **4.24%** | 4,874 | **9** | **1,296** | **0.5249** | 54.2 tolerable |
+| `-I 2`, `#knn(160)` | 0.36% | 100,291 | 1 | 82,960 | 0.2801 | 71.0 adequate |
+| `-I 1.4`, `#knn(440)` | 9.31% | 2,522 | **13** | **372** | **0.5319** | 32.9 rotten |
+
+`#knn(160) -I 1.4` improves purple on **every** axis at once, including the one
+that is usually a trade: it strands **1,296** genes where the shipped partition
+strands 14,594. Median module size goes from 1 to 9, and modularity nearly
+quadruples. Note that k = 440 — the gentlest reduction meeting the median-degree
+target — gives a *worse* jury grade than k = 160, because more surviving edges
+means more pruning during the computation.
+
+**The cost is real and is not hidden: singletons.** In sugarcane, 401 genes are
+unassigned at the current setting; `#knn(180) -I 2` strands 16,144, and `-I 6`
+strands 36,687. `#knn(180) -I 1.4` is the gentler trade at 5,235. Purple's curve
+is kinder throughout, which is why k is chosen per study from its own survey
+rather than shared.
 
 **Are the smaller modules meaningful, or just rubble?** Homogeneity alone rises
 trivially as modules shrink, so each clustering is scored against a size-matched
@@ -280,10 +299,11 @@ Excess over that null, sugarcane:
 | `#knn(180) -I 2` | 13,317 | 0.0910 | 0.0040 | **+0.0870** |
 | `#knn(180) -I 3` | 15,970 | 0.1235 | 0.0034 | **+0.1200** |
 
-The excess **rises** with inflation on the reduced graph, and at `-I 2` the
-reduced clustering both scores higher than the shipped one and scores 1.5× as
-many modules. The one cell that does worse is `-I 1.4`, the coarsest. So the
-extra granularity is not rubble — but note that the reduced clusterings score
+The excess **rises** with inflation on the reduced graph, and the reduced
+clustering beats the unreduced one at **every** inflation from 2 upward — 2:
++0.087 vs +0.079; 3: +0.120 vs +0.097; 4: +0.130 vs +0.106; 6: +0.139 vs +0.115.
+The one cell that does worse is `-I 1.4`, the coarsest. So the extra granularity
+is not rubble — but note that the reduced clusterings score
 *fewer genes* overall, because a singleton cannot be scored, and that asymmetry
 should be read alongside the excess rather than after it.
 

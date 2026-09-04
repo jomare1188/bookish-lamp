@@ -75,6 +75,34 @@ die()   { echo "ERROR: $*" >&2; exit 1; }
 # Per-study value lookup, e.g. cfg DDS sugarcane -> $DDS_sugarcane
 cfg() { local v="$1_$2"; echo "${!v-}"; }
 
+# --- refuse to overwrite a network built at a DIFFERENT threshold -----------
+# STAT_MIN and RESULTS are both env-overridable so a parameter test can be built
+# into a parallel tree. The failure mode that creates is silent and expensive:
+# one forgotten RESULTS= and a 0.9 rebuild lands on top of the 0.8 network --
+# 77 GB of edge tables and ~5.5 h of GPU, with nine call sites below silently
+# picking up the new file. The threshold is recorded in the summary json that
+# sits beside every output, so this checks it rather than trusting the caller.
+#
+# FORCE=1 overrides, for the case where overwriting really is the intent.
+assert_threshold() {   # $1 = summary json, $2 = expected value, $3 = what
+  local js="$1" want="$2" what="$3" have
+  [ -f "$js" ] || return 0                      # nothing to overwrite
+  have=$(sed -n 's/.*"stat_min": *\([0-9.]*\).*/\1/p;s/.*--match-pearson \([0-9.]*\) .*/\1/p' "$js" | head -1)
+  [ -n "$have" ] && [ "$have" != "$want" ] || return 0
+  cat >&2 <<EOF
+
+REFUSING TO OVERWRITE: $(basename "$js") records ${what} = ${have}, this run has ${want}.
+  target : $(dirname "$js")
+  You are about to replace a network built at a different threshold with one
+  built at this threshold, in place. If that is a parameter test, send it to a
+  separate tree instead:
+      RESULTS=\$PWD/results_r${want//./} STAT_MIN=${want} ./run.sh ...
+  If overwriting really is the intent, re-run with FORCE=1.
+
+EOF
+  exit 1
+}
+
 check_study() {
   case " $STUDIES " in
     *" $1 "*) ;;
@@ -95,6 +123,11 @@ main() {
   # Announced on every run. A module-level stage silently using the wrong
   # clustering writes plausible-looking output to the wrong place, and the only
   # way to catch it is to be told which one is active before the work starts.
+  case "$STAGE" in
+    network|merge|build|stats|mcl|mclload|mclsurvey|mclsweep|clusterhomog)
+      echo "=== results tree: ${RESULTS}"
+      echo "=== threshold   : STAT_MIN=${STAT_MIN}  MATCH_PEARSON=${MATCH_PEARSON}  CAND_PEARSON=${CAND_PEARSON}" ;;
+  esac
   case "$STAGE" in
     eigengene|moduletrait|moduleprofile|moduleheatmap|modulesummary|modulego|figtopology|figmodules|figmodulego)
       echo "=== clustering: ${CLUSTERING}  ->  $(module_dir "${ARG:-sugarcane}")" ;;
@@ -124,6 +157,8 @@ main() {
     check_study "$ARG"
     EST="${EXTRA[0]-}"; [ -n "$EST" ] || die "usage: run.sh network <study> pearson|ksg"
     EXTRA=("${EXTRA[@]:1}")
+    [ "${FORCE:-0}" = "1" ] || assert_threshold \
+      "$(layer_out "$ARG" "$EST").summary.json" "$MATCH_PEARSON" "--match-pearson"
     mkdir -p "${RESULTS}/${ARG}/layers"
     COMMON=(--matrix "$(vst_prefix "$ARG")"
             --out    "$(layer_out "$ARG" "$EST")"
@@ -155,6 +190,9 @@ main() {
   # --- 03 merge the layers ----------------------------------------------------
   merge)
     check_study "$ARG"
+    [ "${FORCE:-0}" = "1" ] || assert_threshold \
+      "$(dirname "$(network_tsv "$ARG")")/network_${ARG}_edges.summary.json" \
+      "$STAT_MIN" "stat_min"
     N=$(sed -n 's/.*"n_samples": *\([0-9]*\).*/\1/p' "$(vst_prefix "$ARG").meta.json")
     [ -n "$N" ] || die "could not read n_samples from $(vst_prefix "$ARG").meta.json"
     "$PYTORCH" -u "${SCRIPTS}/03_merge_layers.py" \

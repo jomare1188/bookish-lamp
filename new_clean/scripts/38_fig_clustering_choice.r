@@ -111,7 +111,7 @@ pD <- if (!is.null(homog) && nrow(homog) && "H_excess" %in% names(homog)) {
     facet_wrap(~ study, nrow = 1, scales = "free_y") +
     scale_colour_manual(values = PAL, name = "k-NN") +
     labs(x = "inflation (-I)",
-         y = "PFAM homogeneity above a size-matched null",
+         y = "PFAM homogeneity\nabove a size-matched null",
          title = "Are the smaller modules actually more coherent?",
          subtitle = "zero = no better than a random partition of the same module sizes") +
     theme_f
