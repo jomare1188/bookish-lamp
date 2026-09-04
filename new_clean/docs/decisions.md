@@ -496,3 +496,87 @@ quoted.
 The adjusted Rand index in `28_fig_clustering_compare.r:104-113` was checked at
 the same time and is **correct**: hand-rolled Hubert–Arabie, 0.0155872455 against
 `clue::cl_agreement(method = "cRand")`'s 0.0155872455, difference 0. It is kept.
+
+---
+
+## 2026-09-03 — |r| >= 0.9 tested as a parallel network, not adopted
+
+**Why.** The giant module was diagnosed as a node-degree artefact and treated with
+a k-NN reduction applied after the network is built. A stricter correlation
+threshold attacks the same cause earlier — it changes what counts as an edge —
+so it is the more principled version of the same idea and worth measuring against
+the incumbent.
+
+**What was known before building anything.** `mcx query --vary-correlation` on
+the existing networks already answers most of it:
+
+| at \|r\| ~ 0.90 | sugarcane | purple |
+|---|---|---|
+| median node degree | 52 -> **3** | 859 -> **112** |
+| genes left isolated | **30.4%** | **0.3%** |
+
+The idea is right for purple — median degree lands on the <= 100 that
+`clmprotocols(5)` asks for, at a cost of 0.3% of its genes — and expensive for
+sugarcane, which at n = 48 is already at p = 9e-12 for `|r| = 0.8` and has little
+room above it.
+
+**And one consequence that runs against the intuition.** A common threshold makes
+the two studies *less* comparable, not more. The p implied by the cut moves
+9.0e-12 -> 3.3e-18 in sugarcane but only 6.7e-05 -> 3.7e-07 in purple, so the
+specificity gap widens from 7.5e6-fold to 1.1e11-fold. The threshold fixes
+purple's degree distribution; it does not fix the asymmetry between the studies,
+and raising it is not a route to doing so.
+
+**Decision: build it as a separate tree, adopt nothing.** `RESULTS=…/results_r09
+STAT_MIN=0.9 ./run.sh build <study>`. The main tree is untouched.
+
+**Why a rebuild and not a filter of the existing edge table.** For sugarcane the
+two are equivalent, and provably so: `n_perm` is capped at `MAX_PERM = 2e8` under
+both thresholds and the candidate cut is unchanged, so the KSG null is
+bit-identical and filtering `pval <= p(|r| = 0.9)` reproduces the rebuild. It was
+used as an independent prediction and the rebuild matched it to **0.013%** —
+12,778,116 edges against 12,779,788 predicted, the residual being the `%.5f`
+printing width at the boundary.
+
+**For purple it is not equivalent, and this is the reason the shortcut was
+rejected.** `n_perm` auto-sizes from the target p (`02_network_engine.py:907-911`),
+so purple's permutation null goes from **1,000,000 draws at 0.8 to 81,986,326 at
+0.9** — a different null sample, a different GPD tail fit, a different upper
+endpoint (2.4376 -> 2.2157 nats), and therefore different p-values for the same
+MI value. A filtered purple table would have carried 0.8-calibrated p-values
+under a 0.9 label. Measured after the rebuild, all as predicted.
+
+**Two traps recorded so they are not rediscovered.**
+
+- **Never filter on `stat`.** MI edges enter the 0.8 table at `r_eq ~ 0.907`, so
+  `stat >= 0.9` keeps the *entire* MI layer regardless of threshold: 797,576 of
+  sugarcane's 866,575 MI-only edges pass a `stat` filter that a real 0.9 rebuild
+  rejects. Only `pval` is on the matched scale, because `MATCH_PEARSON` follows
+  `STAT_MIN` and both layers are cut at the same target p.
+- **`03_merge_layers.py:117-124` stops a half-done job.** Feeding a 0.8-matched
+  MI layer into a `--stat-min 0.9` merge exits with an error, which is correct:
+  both layers must be rebuilt together or the union is not licensed.
+
+**A hazard fixed on the way, which is the real reason this entry exists.**
+`RESULTS`, `STAT_MIN`, `STAT_MAX`, `MATCH_PEARSON`, `CAND_PEARSON` and
+`MCL_WORK_DIR` were all unconditional assignments, and `layer_out()` /
+`network_tsv()` carry no tag or suffix. `STAT_MIN=0.9 ./run.sh build purple`
+would have been silently reset to 0.8 — and had it taken effect, it would have
+overwritten the 0.8 network **in place**: 77 GB of edge tables and ~5.5 h of GPU,
+with nine `run.sh` call sites picking up the new file without comment. All six
+now use the `${VAR:-default}` form, and `network`/`merge` read the threshold out
+of the summary json beside their target and refuse to overwrite an output built
+at a different one. `FORCE=1` overrides.
+
+**What the layers came out at.**
+
+| layer | 0.8 | 0.9 |
+|---|---:|---:|
+| sugarcane pearson | 75,333,769 | **12,778,116** |
+| purple pearson | 675,955,918 | **212,252,625** |
+| purple ksg (floor, nats) | 79,795,793 (0.98822) | **3,054,956** (1.29011) |
+
+Purple's MI layer contributes **26x fewer** edges at the stricter cut. That is the
+power argument in `thresholds.md` §3.3 showing up directly: at n = 18 the KSG
+estimator is noisy, and demanding p <= 3.66e-07 rather than 6.7e-05 removes most
+of what it had to offer.
