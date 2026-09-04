@@ -510,15 +510,28 @@ the incumbent.
 **What was known before building anything.** `mcx query --vary-correlation` on
 the existing networks already answers most of it:
 
-| at \|r\| ~ 0.90 | sugarcane | purple |
+| at \|r\| ~ 0.90, from the survey | sugarcane | purple |
 |---|---|---|
 | median node degree | 52 -> **3** | 859 -> **112** |
-| genes left isolated | **30.4%** | **0.3%** |
+| genes left isolated | 30.4% | 0.3% |
 
-The idea is right for purple — median degree lands on the <= 100 that
-`clmprotocols(5)` asks for, at a cost of 0.3% of its genes — and expensive for
-sugarcane, which at n = 48 is already at p = 9e-12 for `|r| = 0.8` and has little
-room above it.
+The degree numbers held up. **The gene-loss numbers did not, and the reason is
+the trap recorded below.** `mcx query --vary-correlation` cuts the *weight*
+scale, which is derived from `stat`, and `stat` for an MI edge is its
+`r_eq` — about 0.9 by construction at the 0.8-matched floor. So every MI edge
+survives a weight cut and keeps its nodes attached. A real rebuild re-matches the
+MI floor to the new threshold, the MI layer collapses, and the nodes it was
+holding in fall out. Measured after the rebuild:
+
+| purple, genes with at least one edge | |
+|---|---|
+| survey predicted at \|r\| ~ 0.90 | 170,212 (0.3% lost) |
+| **actual 0.9 rebuild** | **147,446 (13.6% lost)** |
+
+A 45-fold error in the predicted cost, in the optimistic direction. The survey is
+still the right tool for choosing a **k-NN** cut, where no re-matching happens;
+it is the wrong tool for predicting a threshold change, and this entry exists
+partly to say so.
 
 **And one consequence that runs against the intuition.** A common threshold makes
 the two studies *less* comparable, not more. The p implied by the cut moves

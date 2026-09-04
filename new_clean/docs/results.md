@@ -323,6 +323,90 @@ threshold evidence is recorded anyway — `mcl_threshold_survey_<study>.tsv`, fr
 n = 18 where sugarcane's is p = 9e-12, so the two networks were never built at
 equal stringency. That remains a separate, unmade decision.
 
+
+### Testing a stricter network: |r| >= 0.9
+
+The threshold above is 0.8. A stricter cut was tested as a **separate network**
+(`results_r09/`, `RESULTS=… STAT_MIN=0.9 ./run.sh build <study>`); nothing in this
+document above or below describes it, and the 0.8 tree is untouched.
+
+**What it does to the networks.** Both layers re-match to the new threshold —
+`MATCH_PEARSON` follows `STAT_MIN`, which is what keeps the union licensed — so
+the MI floor moves with the Pearson one:
+
+| | sugarcane 0.8 | sugarcane 0.9 | purple 0.8 | purple 0.9 |
+|---|---:|---:|---:|---:|
+| pearson layer | 75,333,769 | **12,778,116** | 675,955,918 | **212,252,625** |
+| ksg layer | 2,871,152 | *(building)* | 79,795,793 | **3,054,956** |
+| ksg floor (nats) | 0.98911 | *(building)* | 0.98822 | **1.29011** |
+| **merged edges** | 76,200,344 | *(building)* | 705,571,723 | **213,892,607** |
+| of which MI-only | 866,575 | *(building)* | 29,615,805 | **1,639,982** |
+| nodes with an edge | 103,336 | *(building)* | 170,736 | **147,446** |
+
+**The MI layer is what pays.** In purple it goes from 11.3% of the network
+(both + MI-only) to 1.4%, an 18-fold drop in MI-only edges. That is
+[the power argument in thresholds.md §3.3](thresholds.md) arriving in the data:
+at n = 18 the KSG estimator is noisy, and demanding p <= 3.7e-07 rather than
+6.7e-05 removes most of what it had to contribute. **If the MI layer is part of
+what the network is for, a stricter threshold is expensive in purple.**
+
+**A prediction that was wrong, and why it is worth recording.** The
+`mcx query --vary-correlation` survey predicted purple would lose 0.3% of its
+genes at |r| ~ 0.9. It lost **13.6%** (170,736 -> 147,446 nodes with an edge).
+The survey cuts the *weight* scale, which derives from `stat`, and `stat` for an
+MI edge is its r-equivalent — about 0.9 by construction at the 0.8-matched floor.
+So every MI edge survives a weight cut and holds its nodes in; a real rebuild
+re-matches the MI floor and they fall out. The survey remains the right tool for
+choosing a **k-NN** cut, where nothing re-matches. It is the wrong tool for
+predicting a threshold change.
+
+**A common threshold does not make the two studies comparable.** It makes them
+less so. The p implied by the cut moves 9.0e-12 -> 3.3e-18 in sugarcane and
+6.7e-05 -> 3.7e-07 in purple, widening the specificity gap from 7.5e6-fold to
+1.1e11-fold. Raising the threshold is not a route to equal stringency between
+n = 48 and n = 18.
+
+**And what it does to the modules — the question the test was for.** Purple:
+
+| purple | \|r\| >= 0.8 | \|r\| >= 0.9 |
+|---|---:|---:|
+| nodes in the network | 170,736 | 147,446 |
+| genes with no edge at all | 0 | **23,290** |
+| named modules | 9,881 | 16,069 |
+| largest module | 47,887 | **26,801** |
+| — as % of its own network | 28.0% | **18.2%** |
+| median module size | 3 | 3 |
+| genes in no named module | 14,594 (8.5%) | **25,304 (14.8%)** |
+| modularity Q | **0.1631** | **0.1299** |
+
+**It helps, and it is not enough.** The giant module shrinks from 28.0% to 18.2%
+of the network — real, but still a giant — while modularity goes *down*, the
+median module stays at 3, and the share of genes in no named module nearly
+doubles. The stricter threshold buys a smaller giant by discarding the genes that
+were holding it together, rather than by revealing structure.
+
+**Against the k-NN reduction on the unchanged 0.8 network, it is not close:**
+
+| purple, largest module | genes in no named module | Q |
+|---|---|---|
+| 0.8 baseline — 28.0% | 8.5% | 0.163 |
+| **0.9 rebuild — 18.2%** | **14.8%** | **0.130** |
+| **0.8 + `#knn(160)` `-I 1.4` — 4.24%** | **0.8%** | **0.525** |
+
+k-NN gives a giant module four times smaller, a modularity four times higher, and
+strands an order of magnitude fewer genes, on a network that was never rebuilt.
+**The answer to "was 0.8 too loose" is: not in the way that matters for
+clustering.** Too many edges per *node* is the problem, and a global threshold is
+a blunt instrument against it — it removes weak edges everywhere, including the
+ones that were a sparse gene's only connections, while the hubs keep enough of
+their thousands to go on dominating.
+
+> **Sugarcane's 0.9 build is still running** (its KSG layer draws 200,000,000
+> permutations, the same cap as at 0.8, so its null is bit-identical and its edge
+> set was already predicted exactly: 12,778,116 against 12,779,788 forecast). The
+> survey expects it to strand ~30% of its genes and, given the correction above,
+> probably more. This section is completed when it lands.
+
 `min_module_size` was briefly run at 5 during this build. It does **not** affect
 the clustering — the raw partition (10,710 modules) and Q (0.1005) came out
 identical either way; it only decides how small a module may be and still get a
