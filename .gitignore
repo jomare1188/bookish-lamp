@@ -48,6 +48,13 @@ china/**
 # Note the pattern: `new_clean/results/` alone would stop git descending into the
 # directory at all, and a later `!` could not reach inside it. Ignoring the
 # CONTENTS with `/*` and then re-including the one subdirectory is what works.
+# Parallel results trees from parameter tests. Same reasoning as results/ -- tens
+# of GB of regenerable network output -- but they need their own rules because the
+# pattern above is literal, not a glob over results*. results_r09/ (the |r| >= 0.9
+# test) was sitting untracked at 37 GB before this was added.
+new_clean/results_r09/
+new_clean/results_pearson/
+
 new_clean/results/*
 !new_clean/results/figures/
 new_clean/results/figures/*

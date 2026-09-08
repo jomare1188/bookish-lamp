@@ -168,6 +168,32 @@ MCL_TMPDIR="/dados04/jorge/tmp"
 # otherwise collide on one filename (purple's matrix is 11.3 GB).
 MCL_WORK_DIR="${MCL_WORK_DIR:-${MCL_TMPDIR}/mcl_work}"
 
+# --- choosing k-NN by graph model, not by hand -------------------------------
+# k was picked heuristically for the first k-NN pass. This replaces it with a
+# criterion: sweep k and keep, per network, the k whose graph is closest to a
+# Barabasi-Albert model under statGraph::graph.model.selection.
+#
+# statGraph is installed in a PROJECT-LOCAL library rather than into any conda
+# env the pipeline depends on. rARPACK is on no env here and statGraph needs it.
+CLEAN_RLIB="${CLEAN_RLIB:-${CLEAN}/rlibs}"
+RSCRIPT_STATGRAPH="${RSCRIPT_STATGRAPH:-/home/genomics/miniconda3/envs/lncadeep2/bin/Rscript}"
+
+# The k grid. 50..600 in steps of 50.
+KNN_BA_K_LIST="${KNN_BA_K_LIST:-50 100 150 200 250 300 350 400 450 500 550 600}"
+
+# How many #knn reductions run at once. Each re-reads the source matrix, but it
+# stays in page cache, so this is bounded by RAM rather than I/O.
+KNN_BA_JOBS="${KNN_BA_JOBS:-6}"
+
+# How many k values are SCORED at once. statGraph runs single-threaded -- its own
+# numCores path deadlocks across repeated calls -- so all the parallelism is here.
+KNN_BA_SELECT_JOBS="${KNN_BA_SELECT_JOBS:-12}"
+
+# Parameter grid resolution per model inside graph.model.selection. 20 points x
+# 3 models = 60 GIC evaluations per k. Measured cost of one spectral density at
+# n = 170,736 is ~5 s, so a k costs single-digit minutes.
+KNN_BA_NPARAM="${KNN_BA_NPARAM:-20}"
+
 # k for the #knn() reduction, per study. EMPTY = no reduction, which is what the
 # pipeline has always done. Set from 35_mcl_survey.sh using the author's own
 # heuristic: the k that brings median degree toward <=100 without materially

@@ -16,6 +16,11 @@
 #   ./run.sh merge     <study>               layers -> the network
 #   ./run.sh stats     <study>               node + global metrics, plots
 #   ./run.sh mcl       <study>               MCL modules
+#   ./run.sh pearsononly <study>             Pearson layer -> a Pearson-only network
+#   ./run.sh sgvalidate                      can statGraph's criterion choose k here?
+#   ./run.sh knnsweep  <study>               reduce at each k; nodes/edges/degrees
+#   ./run.sh knnselect <study> [k]           score each k against ER/WS/BA
+#   ./run.sh knncollect <study>              merge the scores, name the winning k
 #   ./run.sh mclload   <study>               network -> native MCL matrix (once)
 #   ./run.sh mclsurvey <study>               degree survey; choose the k-NN cut
 #   ./run.sh mclsweep  <study> [k-list]      inflation x k-NN grid + clm info/dist
@@ -221,6 +226,60 @@ main() {
     CLEAN_TRANSITIVITY="$COMPUTE_TRANSITIVITY" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_NET" "${SCRIPTS}/04_network_stats.r"
+    ;;
+
+  # --- choosing k by graph model (Pearson-only track) --------------------------
+  # See docs/decisions.md. These write ONLY into whatever RESULTS points at, and
+  # 40 refuses to run against a tree holding a merged network.
+  pearsononly)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_PEARSON_LAYER="${CLEAN_PEARSON_LAYER:-${CLEAN}/results/$ARG/layers/${ARG}_pearson.edgelist.tsv}" \
+    CLEAN_OUT="$(network_tsv "$ARG")" \
+    CLEAN_STAT_MIN="$STAT_MIN" \
+    CLEAN_STAT_MAX="$STAT_MAX" \
+    CLEAN_FORCE="${EXTRA[0]:-0}" \
+      bash "${SCRIPTS}/40_pearson_only_network.sh"
+    ;;
+
+  sgvalidate)
+    CLEAN_RLIB="$CLEAN_RLIB" \
+    CLEAN_OUT="${RESULTS}/statgraph_validation.tsv" \
+    CLEAN_REAL_EDGES="${CLEAN_REAL_EDGES:-}" \
+    CLEAN_A_N="${CLEAN_A_N:-1000,10000}" \
+    CLEAN_BIG_N="${CLEAN_BIG_N:-50000}" \
+      "$RSCRIPT_STATGRAPH" "${SCRIPTS}/39_statgraph_validate.r"
+    ;;
+
+  knnsweep)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLEAN_MCL_BIN_DIR="$(dirname "$MCL_BIN")" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")" \
+    CLEAN_K_LIST="$KNN_BA_K_LIST" \
+    CLEAN_JOBS="$KNN_BA_JOBS" \
+    CLEAN_CORES="$NUM_CORES" \
+      bash "${SCRIPTS}/41_knn_ba_sweep.sh"
+    ;;
+
+  knncollect)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")" \
+    CLEAN_VALIDATION="${RESULTS}/statgraph_validation.tsv" \
+      "$RSCRIPT_STATGRAPH" "${SCRIPTS}/43_knn_ba_collect.r"
+    ;;
+
+  knnselect)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_RLIB="$CLEAN_RLIB" \
+    CLEAN_GRID="$(study_dir "$ARG")/knnba_grid_${ARG}.tsv" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")" \
+    CLEAN_K="${EXTRA[0]:-}" \
+    CLEAN_NPARAM="$KNN_BA_NPARAM" \
+      "$RSCRIPT_STATGRAPH" "${SCRIPTS}/42_knn_model_selection.r"
     ;;
 
   # --- MCL toolchain: load once, survey degrees, sweep granularity -------------
