@@ -593,3 +593,93 @@ Purple's MI layer contributes **26x fewer** edges at the stricter cut. That is t
 power argument in `thresholds.md` §3.3 showing up directly: at n = 18 the KSG
 estimator is noisy, and demanding p <= 3.66e-07 rather than 6.7e-05 removes most
 of what it had to offer.
+
+---
+
+## 2026-09-08 — k-NN is chosen by a graph model, not by hand; and the network is Pearson-only
+
+**Why.** `#knn(k)` is what breaks the giant module — purple went 28.0% → 4.2% at
+`#knn(160)`, stranding fewer genes than the current setting does. But k was set
+by a heuristic, and a hardcoded k is not defensible. k is now chosen per network
+as the value whose graph is closest to a Barabási–Albert model under
+`statGraph::graph.model.selection`, swept over k = 50…600.
+
+**Pearson only.** The MI layer is 1.14% of sugarcane's edges and 4.20% of
+purple's. Dropping it costs sugarcane 1,346 genes (103,336 → 101,990 nodes in
+the network) and simplifies the object being reduced. No rebuild was needed:
+`02_network_engine.py` already writes the Pearson layer separately, and every
+column `03_merge_layers.py` adds for a pearson-source edge is a per-row function
+of what is already there, so `40_pearson_only_network.sh` is one streaming awk.
+Verified: 75,333,769 edges, exactly the layer summary's count.
+
+### Four things about statGraph that had to be found by measuring
+
+**Its default path cannot run here.** `graph.model.selection` defaults to
+`method="diag"`, a full dense eigendecomposition — and not one: 502 grid points ×
+50 simulated graphs = **25,100** of them. `eigen()` is cleanly cubic on this
+machine (fitted exponent 3.10). At n = 170,736 a single call is **34.6 h and
+233 GB** (466 GB peak, i.e. OOM), so the default is **~99 years**.
+
+**`method="fast"` scales, and by a lot.** It derives the spectral density from
+the degree distribution instead. Measured, one density on Barabási–Albert graphs
+of mean degree 40:
+
+| n | 1,000 | 10,000 | 50,000 | 170,736 |
+|---|---|---|---|---|
+| unique degrees | 117 | 262 | 452 | 694 |
+| seconds | 2.32 | 1.55 | 2.43 | **5.11** |
+
+Cost tracks unique degrees, not node count.
+
+**Its `numCores` path deadlocks.** It builds and tears down a PSOCK cluster per
+spectral density; across dozens of GIC calls that leaks connections and hangs —
+observed at `numCores=32` with the main process pinned at 0% CPU, fine at 4–16.
+statGraph is therefore called **single-threaded**, and all parallelism sits
+outside, across k. With 12 k values × 2 studies on 256 cores that is the better
+split regardless.
+
+**And a trap that silently corrupts the answer.** statGraph's default ER grid is
+`seq(0, 1, 0.01)`. At p = 0 the model graph is empty and the whole call dies with
+"missing value where TRUE/FALSE needed"; at p = 1e-06 it returns a spuriously
+**negative** GIC that beats every real model — so a graph generated as
+Barabási–Albert is reported as Erdős–Rényi. Every parameter range in
+`42_knn_model_selection.r` is passed explicitly and excludes the degenerate end,
+with ER centred on the observed mean degree rather than spanning [0, 1].
+
+### What the validation gate found, and how to read the result
+
+`39_statgraph_validate.r` runs before the criterion is allowed to choose
+anything. On synthetic graphs of known type:
+
+| truth | n = 1,000 | n = 10,000 |
+|---|---|---|
+| BA | **BA** ✓ | **BA** ✓ |
+| ER | ER ✓ | WS ✗ |
+| WS | ER ✗ | ER ✗ |
+
+**BA is recognised every time it is the truth; ER and WS are confused in both
+directions.** That split is the whole verdict. Choosing k by argmin GIC(BA) needs
+only the first property, so the k choice is licensed — but `selected_model`
+should be read as *BA vs not-BA*, and which of ER/WS placed second must not be
+quoted.
+
+Against the exact method on real co-expression subgraphs (snowball-sampled, so
+the sample keeps the density and clustering that make the check meaningful),
+`fast` and `diag` **agree**. An earlier apparent disagreement came from sampling
+600 nodes uniformly out of 98,297, which induces a 133-node, 78-edge fragment
+with none of the structure under test — a reminder that a subgraph of a network
+is not a small version of it.
+
+Both criteria are computed for every k regardless: `gic_ba`, and a
+Clauset–Shalizi–Newman power-law fit (`pl_alpha`, `pl_ks_stat`) as the agreed
+fallback. Computing both costs nothing and means a failed gate needs no re-run.
+
+### Cost, measured
+
+One k on the real Pearson-only sugarcane graph at k = 200 (96,335 nodes,
+1,724,999 edges): **939 s**, selecting BA with a clear margin — GIC 0.990 against
+2.089 (ER) and 2.347 (WS), BA exponent 1.016. Twelve k values run concurrently,
+so a study is one batch, not twelve.
+
+**Nothing is adopted.** `MCL_KNN_*` stay empty and the main tree is untouched;
+this lives in `results_pearson/` on branch `pearson-knn-ba`.

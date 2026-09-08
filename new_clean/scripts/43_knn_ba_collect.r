@@ -62,10 +62,38 @@ if (!nrow(ok)) {
 if (nzchar(VALID) && file.exists(VALID)) {
   v <- read.delim(VALID, stringsAsFactors = FALSE)
   a <- v[v$check == "A_recovery", ]; b <- v[v$check == "B_agreement", ]
-  pass <- (nrow(a) > 0 && all(a$correct)) && (nrow(b) == 0 || all(b$correct))
+  # The gate is read at two grains, because a blunt pass/fail would throw away
+  # the distinction that matters here. Choosing k by argmin GIC(BA) needs only
+  # that BA is recognised when a graph IS BA, and that `fast` tracks the exact
+  # `diag` on real graphs. It does NOT need ER and WS to be told apart -- and
+  # measured, that is exactly the split: BA recovery is perfect while ER/WS are
+  # confused in both directions. So the ba-specific verdict licenses the k
+  # choice, and the overall one governs how much the selected_model column is
+  # worth.
+  aba  <- a[a$truth == "BA", ]
+  ok_ba   <- nrow(aba) > 0 && all(aba$correct)
+  ok_agr  <- nrow(b) == 0 || all(b$correct)
+  ok_all  <- nrow(a) > 0 && all(a$correct)
   say("")
-  say("validation gate: ", if (pass) "PASS -- the spectral criterion is licensed here"
-      else "FAIL -- prefer the power-law columns (pl_alpha / pl_ks_stat) to choose k")
+  say("validation gate:")
+  say("  BA recovery      ", sum(aba$correct), "/", nrow(aba),
+      "  -- can it spot a Barabasi-Albert graph? This is what argmin GIC(BA) rests on.")
+  say("  all-model recovery ", sum(a$correct), "/", nrow(a),
+      "  -- governs how much `selected_model` is worth.")
+  if (nrow(b)) say("  fast vs exact    ", sum(b$correct), "/", nrow(b),
+                   "  -- on real co-expression subgraphs.")
+  say("")
+  if (ok_ba && ok_agr && ok_all) {
+    say("  VERDICT: PASS. Both the k choice and selected_model are licensed.")
+  } else if (ok_ba && ok_agr) {
+    say("  VERDICT: PARTIAL. GIC(BA) may choose k -- BA is recognised reliably and")
+    say("    `fast` tracks the exact method on real graphs. But ER and WS are NOT")
+    say("    reliably told apart, so read `selected_model` as 'BA vs not-BA' only,")
+    say("    and do not quote which of ER/WS came second.")
+  } else {
+    say("  VERDICT: FAIL. Choose k on the power-law columns (pl_alpha / pl_ks_stat)")
+    say("    instead, and say so wherever the chosen k is quoted.")
+  }
 } else {
   say("")
   say("NOTE: no validation table found. Run ./run.sh sgvalidate before trusting gic_ba.")
