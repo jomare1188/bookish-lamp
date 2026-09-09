@@ -220,7 +220,7 @@ MCL_INFLATION_purple=""
 # pipeline's current 2. k values are filled in per study by 35; "none" is the
 # no-reduction control and must stay in the grid so the current setting is on the
 # plot like any other cell.
-MCL_SWEEP_I="1.4 2 3 4 6"
+MCL_SWEEP_I="${MCL_SWEEP_I:-1.4 2 3 4 6}"
 
 # The unreduced control's ladder, kept separate because mcl on the full matrix is
 # ~40x the work of a k-NN-reduced one (sugarcane keeps 2.4% of its arcs at
@@ -231,8 +231,8 @@ MCL_SWEEP_I="1.4 2 3 4 6"
 # flatten the giant module?
 # Per study, because purple's unreduced matrix is 9.3x sugarcane's: a full-matrix
 # sugarcane cell is ~3 min, a purple one was 1 h 12 min in the original run.
-MCL_SWEEP_I_NONE_sugarcane="1.4 2 3 4 6"
-MCL_SWEEP_I_NONE_purple="2 6"
+MCL_SWEEP_I_NONE_sugarcane="${MCL_SWEEP_I_NONE_sugarcane:-1.4 2 3 4 6}"
+MCL_SWEEP_I_NONE_purple="${MCL_SWEEP_I_NONE_purple:-2 6}"
 MCL_SWEEP_KNN_RANGE="40/800/40"
 
 # --- clustering quality ------------------------------------------------------
