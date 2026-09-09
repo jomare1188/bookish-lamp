@@ -235,6 +235,60 @@ MCL_SWEEP_I_NONE_sugarcane="${MCL_SWEEP_I_NONE_sugarcane:-1.4 2 3 4 6}"
 MCL_SWEEP_I_NONE_purple="${MCL_SWEEP_I_NONE_purple:-2 6}"
 MCL_SWEEP_KNN_RANGE="40/800/40"
 
+# --- comparing clustering methods --------------------------------------------
+# WHY. The pipeline has always clustered at -I 2, a value nobody chose. This
+# sweeps inflation on the UNPRUNED Pearson-only graph and puts a second,
+# graph-native method next to it (Leiden), with every partition scored against
+# the SAME graph by clm info so the numbers are comparable. That last point is
+# the lesson of the k-NN post-mortem: a modularity computed on each method's own
+# graph compares nothing.
+
+# The inflation ladder. mclfaq(7) 7.2 starts at "1.4, 2 and 6"; this widens it
+# around the historical 2 so the current setting is one cell among many.
+CLUSTER_I_LIST="${CLUSTER_I_LIST:-1.2 1.4 1.7 2 2.5 3 4 6}"
+
+# Extra mcl resource arguments, appended verbatim (e.g. "-S 10000").
+#
+# THIS IS NOT A TUNING KNOB, IT IS A CONFOUND CONTROL. mcl squares the matrix
+# repeatedly and prunes each column every iteration; -scheme 7 (the default AND
+# the highest preset) keeps S = 1200 neighbours per node. Unpruned purple has
+# mean degree 7,946, so ~85% of each node's list is discarded on the fly, among
+# weights that are near-tied by construction (|r| in [0.8, 0.9999] rescaled to
+# [0.01, 1]). mcl grades this itself and says "awful" (jury 20.1); sugarcane,
+# mean degree 1,477, gets "deplorable" (39.2). Leiden prunes nothing, so a
+# comparison at the default would partly be a comparison against mcl's pruner.
+# The winning inflation is therefore re-run at higher -S to measure what the
+# pruning cost, rather than assuming it cost nothing.
+CLUSTER_MCL_RESOURCE="${CLUSTER_MCL_RESOURCE:-}"
+CLUSTER_MCL_RESOURCE_PROBE="${CLUSTER_MCL_RESOURCE_PROBE:--S 4000|-S 10000}"
+
+# Leiden CPM resolution ladder. CPM has no resolution limit -- unlike modularity,
+# which at mean degree 7,946 would merge anything below sqrt(2m) edges -- and its
+# gamma has a direct reading: a community is kept while its internal weighted
+# density exceeds gamma. Because gamma is compared against EDGE WEIGHTS, the
+# usable range depends on this network's weight distribution and cannot be
+# guessed; 47 scouts the four decades below first and this list is set from that.
+# Set from the sugarcane scout (17:16, run at 0.01/0.05/0.2/0.5): cluster count
+# rose 19,571 -> 76,387 and the largest module fell 15.73% -> 4.29% across that
+# range, still moving at the top end, so the ladder extends past 0.5 toward the
+# maximum weight of 1.0 and adds a coarser point below 0.01.
+CLUSTER_LEIDEN_GAMMA="${CLUSTER_LEIDEN_GAMMA:-0.005 0.01 0.025 0.05 0.1 0.2 0.35 0.5 0.7 0.9}"
+CLUSTER_LEIDEN_SCOUT="${CLUSTER_LEIDEN_SCOUT:-0.01 0.05 0.2 0.5}"
+CLUSTER_LEIDEN_ITER="${CLUSTER_LEIDEN_ITER:-2}"
+
+# python-igraph 1.0.0 lives in the sbm env; r_net_env has no python igraph and
+# leidenalg is installed nowhere. igraph's own C Leiden is used, not leidenalg:
+# it reads the edge list at C level, so 676M edges never become Python objects.
+CLUSTER_PYTHON="${CLUSTER_PYTHON:-/home/genomics/miniconda3/envs/sbm/bin/python}"
+
+# Wall-clock cap for the fast-greedy (CNM) hierarchical scout, sugarcane only.
+# Classical hierarchical clustering is not attempted at all: it needs a dense
+# 170,135^2 dissimilarity matrix (232 GB) built from correlations this pipeline
+# deliberately thresholded away. fast-greedy is the graph-native substitute that
+# still yields a dendrogram; if it does not finish inside the cap, that IS the
+# result and purple is not attempted.
+CLUSTER_FASTGREEDY_CAP_S="${CLUSTER_FASTGREEDY_CAP_S:-14400}"
+
 # --- clustering quality ------------------------------------------------------
 # Sorensen-Dice annotation homogeneity, the metric cogeqc::calculate_H uses for
 # orthogroups, applied to modules. cogeqc itself is NOT used: it skips groups
@@ -538,4 +592,9 @@ module_dir()  {
 }
 vst_prefix()  { echo "${RESULTS}/$1/vst/$1"; }
 layer_out()   { echo "${RESULTS}/$1/layers/$1_$2"; }
+# The Pearson/MI layers are SOURCE data, shared by every track: they are what the
+# GPU engine produced and no parallel tree recomputes them. A tree redirected with
+# RESULTS= must still read the layer that actually exists, so this helper
+# deliberately ignores RESULTS. Use it only for inputs, never for outputs.
+main_layer_out() { echo "${CLEAN}/results/$1/layers/$1_$2"; }
 network_tsv() { echo "${RESULTS}/$1/network_$1_edges.tsv"; }

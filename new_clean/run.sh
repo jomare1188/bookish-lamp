@@ -22,9 +22,13 @@
 #   ./run.sh knnselect <study> [k]           score each k against ER/WS/BA
 #   ./run.sh knncollect <study>              merge the scores, name the winning k
 #   ./run.sh scoreref  <study>               score every k's partition on ONE graph
+#   ./run.sh pearsonmci <study>              Pearson layer -> MCL matrix, direct
 #   ./run.sh mclload   <study>               network -> native MCL matrix (once)
 #   ./run.sh mclsurvey <study>               degree survey; choose the k-NN cut
 #   ./run.sh mclsweep  <study> [k-list]      inflation x k-NN grid + clm info/dist
+#   ./run.sh mclladder <study> [mcl-args]    inflation ladder, no k-NN reduction
+#   ./run.sh leidensweep <study> [scout]     Leiden CPM/modularity + Louvain
+#   ./run.sh clustercompare <study>          score every method on ONE graph
 #   ./run.sh clusterhomog <study>            annotation homogeneity of each cell
 #   ./run.sh figclusterchoice                figure 10, the granularity choice
 #   ./run.sh sbmclust  <study>               SBM fit -> the same two files
@@ -297,6 +301,18 @@ main() {
   # The giant module is a node-degree problem, not an inflation one; see
   # docs/decisions.md. These stages read the network and write only diagnostics --
   # nothing published moves until `mcl` is re-run with the chosen settings.
+  pearsonmci)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_LAYER="$(main_layer_out "$ARG" pearson).edgelist.tsv" \
+    CLEAN_LAYER_SUMMARY="$(main_layer_out "$ARG" pearson).summary.json" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLEAN_MCL_BIN_DIR="$(dirname "$MCL_BIN")" \
+    CLEAN_FORCE="${EXTRA[0]:-0}" \
+    CLEAN_CORES="$NUM_CORES" \
+      bash "${SCRIPTS}/46_pearson_mci.sh"
+    ;;
+
   mclload)
     check_study "$ARG"
     CLEAN_STUDY="$ARG" \
@@ -332,6 +348,47 @@ main() {
     CLEAN_SWEEP_K="${EXTRA[0]:-}" \
     CLEAN_CORES="$NUM_CORES" \
       bash "${SCRIPTS}/36_mcl_sweep.sh"
+    ;;
+
+  mclladder)
+    # The inflation sweep with the k-NN axis switched OFF: 36 loops "for K in
+    # none" when CLEAN_SWEEP_K is empty, so this is a pure inflation ladder on
+    # the unpruned matrix. Second argument is an mcl resource string for the
+    # pruning probe, e.g.  ./run.sh mclladder sugarcane "-S 10000"
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLEAN_MCL_BIN_DIR="$(dirname "$MCL_BIN")" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")" \
+    CLEAN_SWEEP_I_NONE="${CLEAN_SWEEP_I_NONE:-$CLUSTER_I_LIST}" \
+    CLEAN_SWEEP_K="" \
+    CLEAN_MCL_RESOURCE="${EXTRA[0]:-$CLUSTER_MCL_RESOURCE}" \
+    CLEAN_CORES="$NUM_CORES" \
+      bash "${SCRIPTS}/36_mcl_sweep.sh"
+    ;;
+
+  leidensweep)
+    # Second argument "scout" runs only the calibration gammas.
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLEAN_MCL_BIN_DIR="$(dirname "$MCL_BIN")" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")" \
+    CLEAN_LEIDEN_MODE="${EXTRA[0]:-full}" \
+    CLUSTER_LEIDEN_GAMMA="$CLUSTER_LEIDEN_GAMMA" \
+    CLUSTER_LEIDEN_SCOUT="$CLUSTER_LEIDEN_SCOUT" \
+    CLUSTER_LEIDEN_ITER="$CLUSTER_LEIDEN_ITER" \
+      "$CLUSTER_PYTHON" "${SCRIPTS}/47_leiden_sweep.py"
+    ;;
+
+  clustercompare)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLEAN_MCL_BIN_DIR="$(dirname "$MCL_BIN")" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")" \
+    CLEAN_REF="${CLEAN_REF:-}" \
+      bash "${SCRIPTS}/48_cluster_compare.sh"
     ;;
 
   clusterhomog)

@@ -151,9 +151,26 @@ read_native_cls <- function(path) {
   }))
 }
 
-cells <- list()
+# WHERE THE CLUSTERINGS COME FROM. partitions.tsv is written by 36 (mcl) and
+# appended to by 47 (Leiden, Louvain), and it names what each file IS. Reading it
+# rather than globbing is what lets a Leiden cell be scored here on exactly the
+# same footing as an mcl cell -- and it removes the filename parsing that, in the
+# k-NN collector, produced a row nobody could tell from a real one.
+# The glob is kept as a fallback so the older results trees still score.
+cells <- list(); cell_meta <- list()
 sw <- file.path(WORK, sprintf("sweep_%s", STUDY))
-if (dir.exists(sw)) {
+manifest <- file.path(sw, "partitions.tsv")
+if (file.exists(manifest)) {
+  mf <- fread(manifest, sep = "\t", header = TRUE, colClasses = "character")
+  mf <- mf[nzchar(file) & file.exists(file)]
+  for (i in seq_len(nrow(mf))) {
+    nm <- sub("^cls\\.", "", basename(mf$file[i]))
+    cells[[nm]] <- mf$file[i]
+    cell_meta[[nm]] <- list(method = mf$method[i], param = mf$param[i],
+                            resource = mf$resource[i])
+  }
+  say("read ", nrow(mf), " partitions from ", basename(manifest))
+} else if (dir.exists(sw)) {
   for (f in sort(list.files(sw, pattern = "^cls\\.k.*", full.names = TRUE))) {
     if (grepl("\\.secs$", f)) next
     nm <- sub("^cls\\.", "", basename(f))
@@ -179,7 +196,11 @@ score_one <- function(label, memb) {
   # rather than re-parsing a label format that could drift.
   kk <- sub("^k([^.]+)\\..*$", "\\1", label)
   ii <- sub("^.*\\.I([0-9]+)$", "\\1", label)
+  meta <- cell_meta[[label]]
   data.table(study = STUDY, clustering = label,
+             method   = if (!is.null(meta)) meta$method   else "mcl",
+             param    = if (!is.null(meta)) meta$param    else NA_character_,
+             resource = if (!is.null(meta)) meta$resource else NA_character_,
              knn = if (grepl("^k", label)) kk else NA_character_,
              inflation = if (grepl("\\.I[0-9]+$", label))
                            as.numeric(sub("^(.)(.*)$", "\\1.\\2", ii)) else NA_real_,

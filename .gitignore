@@ -159,3 +159,4 @@ venv/
 # LibreOffice/Excel lock files, left behind when a .tsv is opened in a GUI
 .~lock.*#
 new_clean/rlibs/
+new_clean/results_cluster/
