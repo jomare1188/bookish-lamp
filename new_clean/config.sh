@@ -187,7 +187,12 @@ KNN_BA_JOBS="${KNN_BA_JOBS:-6}"
 
 # How many k values are SCORED at once. statGraph runs single-threaded -- its own
 # numCores path deadlocks across repeated calls -- so all the parallelism is here.
-KNN_BA_SELECT_JOBS="${KNN_BA_SELECT_JOBS:-12}"
+# 6, not 12. statGraph opens a PSOCK cluster inside every spectral density even
+# when called single-threaded, so N concurrent R processes open N clusters; at 12
+# the machine ran out of ports and 3 of 16 k values died with
+# "Error in serverSocket(port = port)". The jobs are ~15-25 min each, so halving
+# the concurrency costs one extra batch and removes the failure mode.
+KNN_BA_SELECT_JOBS="${KNN_BA_SELECT_JOBS:-6}"
 
 # Parameter grid resolution per model inside graph.model.selection. 20 points x
 # 3 models = 60 GIC evaluations per k. Measured cost of one spectral density at
