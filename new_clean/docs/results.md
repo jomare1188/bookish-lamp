@@ -437,6 +437,183 @@ versus 10,309 / 401 at 2). Reverted to 2 to match the original pipeline.
 
 ---
 
+### Choosing k-NN by a graph model: the criterion runs, and it cannot choose
+
+Branch `pearson-knn-ba`. Separate results tree (`results_pearson/`, gitignored),
+separate MCL work dir. Nothing in `results/` was touched. **This analysis is
+recorded and closed** — the bulk data it produced has been deleted; the summary
+tables it rests on are in `docs/data/knn_ba/`. The work going forward uses
+**unpruned** graphs.
+
+The question: `#knn(k)` demonstrably breaks the giant module, but k was picked by
+hand, and a hardcoded k is not defensible. The proposal was to choose k per
+network as the value whose reduced graph is closest to a Barabási–Albert model
+under `statGraph::graph.model.selection` — a scale-free network being the shape a
+co-expression network is supposed to have. **The answer is that this criterion
+cannot pick k, for a reason that is a property of the statistic and not of our
+networks.**
+
+#### The network the sweep ran on: Pearson only
+
+MI edges are a small minority, so the hairball is essentially all linear and
+dropping them costs little:
+
+| | sugarcane | purple |
+|---|---|---|
+| nodes | 101,990 | 170,135 |
+| edges | 75,333,769 | 675,955,918 |
+| genes lost vs the merged network | 1,346 | 601 |
+| MI-only share of the merged network | 1.14% | 4.20% |
+
+Built by one streaming `awk` over the existing Pearson layer
+(`scripts/40_pearson_only_network.sh`), reproducing the merge's weight formula
+exactly; no re-run of the correlation engine.
+
+#### `method="fast"` is the only affordable path, and it was validated first
+
+`graph.model.selection` defaults to `method="diag"`, a full dense
+eigendecomposition per grid point. Measured scaling on this machine is cubic
+(exponent 3.10): at n = 170,736 one `eigen()` is **34.6 h** on a **233 GB**
+matrix, and a default selection wants 25,100 of them — about **99 years**.
+`method="fast"` derives the spectral density analytically from the degree
+distribution and touches no dense matrix: **2.32 s** at n = 1,000 rising only to
+**5.11 s** at n = 170,736, even as unique degrees go 117 → 694.
+
+The validation gate (`scripts/39_statgraph_validate.r`,
+`docs/data/knn_ba/statgraph_validation.tsv`) returned **PARTIAL**:
+
+- **BA recovery 2/2.** On synthetic BA graphs at n = 1,000 and n = 10,000, fast
+  named BA, with GIC(BA) ~ 0.0025 against ~0.34 for ER and WS. The one model we
+  actually score on is the one it recovers.
+- **All-model recovery 3/6.** It confuses ER with WS in both directions. That is
+  a real limitation, but ER-vs-WS is not the discrimination this analysis needs.
+- **fast vs exact on real subgraphs.** They agree on a sparse snowball-sampled
+  subgraph (mean degree 4.4) and disagree on a dense one (mean degree 30.7: fast
+  says BA, exact says WS). This is the finding that explains everything below.
+
+Two implementation traps found and worked around, both worth keeping:
+`numCores > 1` **deadlocks** (a PSOCK cluster is created per spectral density and
+leaks connections; the main process sits at 0% CPU) — so statGraph runs
+single-threaded and parallelism goes across k instead. And statGraph's default ER
+grid `seq(0, 1, 0.01)` is unusable: p = 0 crashes, and p = 1e-06 returns a
+**negative** GIC that beats every real model, which labelled a synthetic BA graph
+as ER. All grids are given explicitly with the degenerate ends excluded.
+
+#### The grids
+
+k = 50…600 in steps of 50, plus `none` as control (`scripts/41_knn_ba_sweep.sh`,
+exact counts from `mcx query` on each reduced matrix). Selected rows:
+
+**Sugarcane** (unreduced: 101,990 nodes / 75,333,769 edges)
+
+| k | nodes | edges | median deg | singletons |
+|---|---|---|---|---|
+| 50 | 85,050 | 448,140 | 6 | 16,940 |
+| 200 | 96,335 | 1,724,999 | 13 | 5,655 |
+| 400 | 100,335 | 2,991,867 | 20 | 1,655 |
+| 600 | 100,771 | 3,896,333 | 24 | 1,219 |
+
+**Purple** (unreduced: 170,135 nodes / 675,955,918 edges)
+
+| k | nodes | edges | median deg | singletons |
+|---|---|---|---|---|
+| 50 | 156,796 | 1,360,219 | 14 | 13,339 |
+| 200 | 157,590 | 4,614,459 | 47 | 12,545 |
+| 400 | 159,222 | 7,922,149 | 78 | 10,913 |
+| 600 | 162,776 | 11,358,388 | 106 | 7,359 |
+
+Full grids with GIC and power-law columns:
+`docs/data/knn_ba/knnba_selection_{sugarcane,purple}.tsv`.
+
+#### Why the criterion cannot choose k
+
+**BA was selected at every single k in both species — 16/16 sugarcane, 12/12
+purple.** Against a criterion of "closest to BA" that sounds like success. It is
+not, because GIC(BA) is **monotone in sparsity**: its minimum always sits on the
+sparsest edge of whatever grid you offer it.
+
+Sugarcane GIC(BA) climbs 0.394 (k=50) → 0.677 (k=100) → 0.990 (k=200) → 2.181
+(k=600). Purple climbs 0.0714 (k=50) → 0.153 (k=200) → 0.207 (k=400) → 0.232
+(k=600). The argmin is k=50 in both — the boundary of the grid. Extending
+sugarcane *below* the requested range settles it: k=40 gives 0.321, k=30 gives
+0.239, k=20 gives 0.154, k=10 gives **0.0714**. It keeps falling. There is no
+interior optimum to find; the criterion answers "as sparse as you will let me",
+whatever grid it is handed.
+
+The mechanism is check B above. `method="fast"` assumes a locally tree-like
+graph. As k rises the reduced graph gets denser and more clustered, the
+approximation degrades, and GIC rises — so GIC is tracking **how well the
+approximation holds**, not how BA-like the graph is. Its ordering across k is not
+a comparison of graphs.
+
+**The power-law fallback did not rescue it.** Run at every k regardless
+(`igraph::fit_power_law`, `implementation="plfit"`), the best KS statistic lands
+at k=300 in sugarcane and k=50 in purple — inconsistent across two species built
+by the same pipeline — and α wanders implausibly (purple k=150 returns
+α = 31.7, a fit failure, not an exponent).
+
+#### What k-NN does achieve, and the mistake in reading it
+
+The reduction does exactly what it was brought in to do. Giant module and MCL's
+own jury grade of the resource scheme:
+
+| | sugarcane | purple |
+|---|---|---|
+| unreduced | 19,840 (19.45%), jury 39.2 *deplorable* | 43,816 (25.75%), jury 20.1 *awful* |
+| k = 50 | 920 (0.90%), jury 95.5 *fabulous* | 1,110 (0.65%), jury 91.9 *cracking* |
+| k = 400 | 6,046 (5.93%), jury 78.9 *groovy* | 7,020 (4.13%), jury 63.1 *fairish* |
+
+**I initially reported the modularity rise (0.081 → 0.645 in sugarcane) as
+evidence that reduction improves structure. That was wrong, and the user's
+question — "how do you measure the structure to say that it peaks at k=400" —
+is what exposed it.** Each k's Q had been computed on its *own* reduced graph, so
+those numbers are not comparable to one another: a sparser graph makes any
+partition look more modular. The apparent purple "peak" at k=200 also beat k=150
+by 0.00004, which is noise, not a peak.
+
+Scored properly — every partition evaluated against **one fixed reference**, the
+unreduced Pearson network (`scripts/45_score_vs_reference.sh`, `clm info`) — the
+finding **inverts**:
+
+| | sugarcane Q_own | sugarcane Q_ref | sugarcane mass frac | purple Q_ref | purple mass frac |
+|---|---|---|---|---|---|
+| k = 50 | 0.645 | 0.014 | 0.340 | 0.012 | 0.187 |
+| k = 400 | 0.732 | 0.057 | 0.586 | 0.068 | 0.311 |
+| k = 600 | 0.720 | 0.059 | 0.606 | 0.086 | 0.362 |
+| **unreduced** | **0.081** | **0.081** | **0.687** | **0.150** | **0.634** |
+
+Against the real network the unreduced partition has the highest modularity
+**and** captures the most edge mass, in both species. k-NN buys a smaller giant
+module by discarding the edges that made it, and what it discards is signal the
+partition then fails to explain. Q_ref rises monotonically with k precisely
+because larger k throws less away.
+
+The one metric that still favours small k is PFAM annotation homogeneity above a
+size-matched null (sugarcane k50.I2 +0.1049 vs unreduced I2 +0.0779; purple
+k50.I2 +0.0254). That is expected and not decisive: a partition of many tiny
+modules scores well on homogeneity almost mechanically, and the null correction
+does not fully absorb it.
+
+#### Verdict
+
+**k-NN reduction is not adopted.** The objective criterion asked for does not
+exist in usable form — GIC(BA) under `method="fast"` measures its own
+approximation error, not BA-likeness, and the power-law fallback is inconsistent
+across species. And when the reduced clusterings are scored like-for-like against
+the real network, reduction is a net loss. The giant module is real structure in
+a dense graph, not an artefact k-NN should be tuned to erase. Subsequent work
+uses the unpruned graphs.
+
+Machinery kept and reusable: `scripts/39_statgraph_validate.r`,
+`40_pearson_only_network.sh`, `41_knn_ba_sweep.sh`, `42_knn_model_selection.r`,
+`43_knn_ba_collect.r`, `44_run_knn_ba.sh`, `45_score_vs_reference.sh`
+(`run.sh` stages `sgvalidate pearsononly knnsweep knnselect knncollect scoreref`).
+`45_score_vs_reference.sh` is the generally useful one: it scores any set of
+clusterings against one fixed graph, which is the only way to compare partitions
+of differently-pruned networks.
+
+---
+
 ## Conservation
 
 Each direction streams one network and looks its edges up in the other. **The two

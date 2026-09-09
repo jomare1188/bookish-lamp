@@ -1,0 +1,13 @@
+study	k	mode	nodes	edges	mean_degree	median_degree	singletons	edge_list
+purple	50	knn	156796	1360219	17.35	14	13339	/dados04/jorge/tmp/mcl_work_pearson/knnba_purple/purple.knn50.edges
+purple	100	knn	157244	2573885	32.74	26	12891	/dados04/jorge/tmp/mcl_work_pearson/knnba_purple/purple.knn100.edges
+purple	150	knn	157384	3657112	46.47	37	12751	/dados04/jorge/tmp/mcl_work_pearson/knnba_purple/purple.knn150.edges
+purple	200	knn	157590	4614459	58.56	47	12545	/dados04/jorge/tmp/mcl_work_pearson/knnba_purple/purple.knn200.edges
+purple	250	knn	157986	5494322	69.55	55	12149	/dados04/jorge/tmp/mcl_work_pearson/knnba_purple/purple.knn250.edges
+purple	300	knn	158128	6332294	80.09	64	12007	/dados04/jorge/tmp/mcl_work_pearson/knnba_purple/purple.knn300.edges
+purple	350	knn	158508	7139151	90.08	71	11627	/dados04/jorge/tmp/mcl_work_pearson/knnba_purple/purple.knn350.edges
+purple	400	knn	159222	7922149	99.51	78	10913	/dados04/jorge/tmp/mcl_work_pearson/knnba_purple/purple.knn400.edges
+purple	450	knn	159224	8684711	109.09	85	10911	/dados04/jorge/tmp/mcl_work_pearson/knnba_purple/purple.knn450.edges
+purple	500	knn	160603	9444315	117.61	91	9532	/dados04/jorge/tmp/mcl_work_pearson/knnba_purple/purple.knn500.edges
+purple	550	knn	162772	10462712	128.56	97	7363	/dados04/jorge/tmp/mcl_work_pearson/knnba_purple/purple.knn550.edges
+purple	600	knn	162776	11358388	139.56	106	7359	/dados04/jorge/tmp/mcl_work_pearson/knnba_purple/purple.knn600.edges

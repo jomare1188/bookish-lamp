@@ -21,6 +21,7 @@
 #   ./run.sh knnsweep  <study>               reduce at each k; nodes/edges/degrees
 #   ./run.sh knnselect <study> [k]           score each k against ER/WS/BA
 #   ./run.sh knncollect <study>              merge the scores, name the winning k
+#   ./run.sh scoreref  <study>               score every k's partition on ONE graph
 #   ./run.sh mclload   <study>               network -> native MCL matrix (once)
 #   ./run.sh mclsurvey <study>               degree survey; choose the k-NN cut
 #   ./run.sh mclsweep  <study> [k-list]      inflation x k-NN grid + clm info/dist
@@ -261,6 +262,16 @@ main() {
     CLEAN_JOBS="$KNN_BA_JOBS" \
     CLEAN_CORES="$NUM_CORES" \
       bash "${SCRIPTS}/41_knn_ba_sweep.sh"
+    ;;
+
+  scoreref)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLEAN_MCL_BIN_DIR="$(dirname "$MCL_BIN")" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")" \
+    CLEAN_REF="${CLEAN_REF:-}" \
+      bash "${SCRIPTS}/45_score_vs_reference.sh"
     ;;
 
   knncollect)

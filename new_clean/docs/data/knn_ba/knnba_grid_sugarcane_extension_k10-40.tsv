@@ -1,0 +1,5 @@
+study	k	mode	nodes	edges	mean_degree	median_degree	singletons	edge_list
+sugarcane	10	knn	66388	108689	3.27	2	35602	/dados04/jorge/tmp/mcl_work_pearson/knnba_sugarcane/sugarcane.knn10.edges
+sugarcane	20	knn	76232	202265	5.31	3	25758	/dados04/jorge/tmp/mcl_work_pearson/knnba_sugarcane/sugarcane.knn20.edges
+sugarcane	30	knn	80596	288045	7.15	4	21394	/dados04/jorge/tmp/mcl_work_pearson/knnba_sugarcane/sugarcane.knn30.edges
+sugarcane	40	knn	83258	369521	8.88	5	18732	/dados04/jorge/tmp/mcl_work_pearson/knnba_sugarcane/sugarcane.knn40.edges
