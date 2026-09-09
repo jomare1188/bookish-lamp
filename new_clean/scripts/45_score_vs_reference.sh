@@ -40,8 +40,29 @@ mapfile -t CLS < <(ls "$SW"/cls.k*.I* 2>/dev/null | grep -v '\.secs$' | sort -V)
 say "$STUDY: scoring ${#CLS[@]} partitions against $(basename "$REF")"
 say "  every partition measured on the SAME graph, so the columns are comparable"
 
+# ---------------------------------------------------------------------------
+# ONE CLUSTERING PER clm info CALL. THIS IS NOT A STYLE CHOICE.
+#
+# `clm info <graph> <cls1> <cls2> ...` is documented to accept many clusterings
+# at once, but its eff and mf depend on WHICH OTHERS are in the call. Measured on
+# sugarcane, same matrix, same cluster file:
+#
+#     cls.knone.I6 alone            -> eff=0.47281  mf=0.51576
+#     cls.knone.I6 in a batch of 8  -> eff=0.37821  mf=0.46878
+#
+# mod and af are unaffected. Scored one at a time, eff rises monotonically across
+# the whole inflation ladder and mf falls monotonically; scored in batches both
+# columns develop discontinuities that look like real structure and are not.
+# Costs one clm info invocation per partition. Pay it.
+# ---------------------------------------------------------------------------
+# The k-NN write-up in docs/results.md was produced by this script BEFORE the
+# batching defect was known, so its mass-fraction column came from a single call
+# holding ~25 partitions. Its modularity column is unaffected.
 INFO="${SW}/info_vs_reference.txt"
-"$BIN/clm" info "$REF" "${CLS[@]}" > "$INFO" 2>/dev/null
+: > "$INFO"
+for c in "${CLS[@]}"; do
+  "$BIN/clm" info "$REF" "$c" >> "$INFO" 2>/dev/null
+done
 
 TSV="${OUT_DIR}/mcl_vs_reference_${STUDY}.tsv"
 printf 'study\tk\tinflation\tn_clusters\tlargest\tsingletons\teff_ref\tmod_ref\tmass_frac_ref\tarea_frac_ref\n' > "$TSV"

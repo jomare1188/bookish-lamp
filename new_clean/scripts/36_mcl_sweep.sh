@@ -181,15 +181,35 @@ for K in none $K_LIST; do
   [ ${#CLS_LIST[@]} -gt 0 ] || { say "  no clusterings for k=$K"; continue; }
 
   # clm info reports every cell against the SAME matrix the clustering came from
-  say "  clm info"
+  # ---------------------------------------------------------------------------
+  # ONE CLUSTERING PER clm info CALL. THIS IS NOT A STYLE CHOICE.
+  #
+  # `clm info <graph> <cls1> <cls2> ...` is documented to accept many clusterings
+  # at once, but its eff and mf depend on WHICH OTHERS are in the call. Measured on
+  # sugarcane, same matrix, same cluster file:
+  #
+  #     cls.knone.I6 alone            -> eff=0.47281  mf=0.51576
+  #     cls.knone.I6 in a batch of 8  -> eff=0.37821  mf=0.46878
+  #
+  # mod and af are unaffected. Scored one at a time, eff rises monotonically across
+  # the whole inflation ladder and mf falls monotonically; scored in batches both
+  # columns develop discontinuities that look like real structure and are not.
+  # Costs one clm info invocation per partition. Pay it.
+  # ---------------------------------------------------------------------------
+  say "  clm info (one call per partition)"
   INFO="${SW}/info.k${K}.txt"
-  "$BIN/clm" info "$MAT" "${CLS_LIST[@]}" > "$INFO" 2>/dev/null
+  : > "$INFO"
+  for c in "${CLS_LIST[@]}"; do
+    "$BIN/clm" info "$MAT" "$c" >> "$INFO" 2>/dev/null
+  done
 
   for I in $THIS_I; do
     TAG="k${K}.I$(printf '%s' "$I" | tr -d '.')${RTAG}"
     CLS="${SW}/cls.${TAG}"; ERR="${SW}/mcl.${TAG}.stderr"
     [ -s "$CLS" ] || continue
-    LINE=$(grep -F "src=$CLS" "$INFO" | head -1)
+    # Exact field match: "src=<path>" is a prefix of "src=<path>0", so a plain
+    # grep for cls.knone.I4 also matches cls.knone.I40.
+    LINE=$(awk -v want="src=$CLS" '{for(i=1;i<=NF;i++) if($i==want){print;exit}}' "$INFO")
     EFF=$(sed -n 's/.*eff=\([0-9.]*\).*/\1/p' <<<"$LINE")
     MOD=$(sed -n 's/.*mod=\([0-9.-]*\).*/\1/p' <<<"$LINE")
     MF=$(sed -n  's/.*mf=\([0-9.]*\).*/\1/p'  <<<"$LINE")

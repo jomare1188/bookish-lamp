@@ -12,9 +12,10 @@
 #
 # It also puts Leiden and MCL in the same table. clm info takes any cluster file
 # against any graph, so once 47 has written Leiden's partitions in mcl's format
-# (and verify_cluster_roundtrip.py has proved that writer correct), a single
-# clm info call scores both on identical definitions of eff/mf/af/mod. No
-# per-method metric implementation, nothing to get subtly inconsistent.
+# (and verify_cluster_roundtrip.py has proved that writer correct), clm info
+# scores both on identical definitions of eff/mf/af/mod. No per-method metric
+# implementation, nothing to get subtly inconsistent. One call PER PARTITION --
+# see the note above the scoring loop, which is not optional.
 #
 # THE COLUMNS
 #   eff  efficiency -- captured edge mass balanced against cluster footprint.
@@ -70,8 +71,29 @@ done
 [ "${#KEEP[@]}" -gt 0 ] || { echo "FATAL: no partition files exist" >&2; exit 1; }
 say "scoring ${#KEEP[@]} partitions against the reference ($MISSING missing)"
 
+# ---------------------------------------------------------------------------
+# ONE CLUSTERING PER clm info CALL. THIS IS NOT A STYLE CHOICE.
+#
+# `clm info <graph> <cls1> <cls2> ...` is documented to accept many clusterings
+# at once, but its eff and mf depend on WHICH OTHERS are in the call. Measured on
+# sugarcane, same matrix, same cluster file:
+#
+#     cls.knone.I6 alone            -> eff=0.47281  mf=0.51576
+#     cls.knone.I6 in a batch of 8  -> eff=0.37821  mf=0.46878
+#
+# mod and af are unaffected. Scored one at a time, eff rises monotonically across
+# the whole inflation ladder and mf falls monotonically; scored in batches both
+# columns develop discontinuities that look like real structure and are not.
+# Costs one clm info invocation per partition. Pay it.
+# ---------------------------------------------------------------------------
 INFO="${SW}/info_all_methods.txt"
-"$BIN/clm" info "$REF" "${KEEP[@]}" > "$INFO" 2>/dev/null
+: > "$INFO"
+n=0
+for c in "${KEEP[@]}"; do
+  n=$(( n + 1 ))
+  [ $(( n % 10 )) -eq 0 ] && say "  scored $n/${#KEEP[@]}"
+  "$BIN/clm" info "$REF" "$c" >> "$INFO" 2>/dev/null
+done
 
 # --- join clm info back onto the manifest ------------------------------------
 TSV="${OUT_DIR}/cluster_methods_${STUDY}.tsv"
@@ -79,7 +101,7 @@ printf 'study\tmethod\tparam\tresource\tn_clusters\tlargest\tlargest_pct\tsingle
 
 while read -r line; do
   case "$line" in *src=*) ;; *) continue ;; esac
-  f=$(sed -n 's/.*src=\([^ ]*\).*/\1/p' <<<"$line")
+  f=$(awk '{for(i=1;i<=NF;i++) if($i ~ /^src=/){sub(/^src=/,"",$i); print $i; exit}}' <<<"$line")
 
   if [ "$f" = "$BASE" ]; then
     METHOD="baseline"; PARAM="one cluster"; RES=""; SEC="NA"
