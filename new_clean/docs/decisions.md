@@ -22,9 +22,11 @@ homogeneity above a size-matched null.
 
 * **Keep `-I 2`.** `mf`, `af` and `eff` are all monotone over MCL's usable range,
   so each picks a grid boundary and none can choose an inflation. Modularity is
-  the only criterion with an interior optimum, and it lands at `-I 1.7`
-  (sugarcane) and `-I 3`–`4` (purple). `-I 2` sits beside both. The setting was
-  never justified before; it is now.
+  the only criterion with an interior optimum. Resampled densely around the peak,
+  it lands at `-I 1.5` (sugarcane, plateau 1.4-1.7) and `-I 3.5` (purple, plateau
+  2.7-4.5) — so `-I 2` is not the optimum in either species, but it keeps **98.1%
+  of the peak in both**, which is the argument for one inflation across two
+  networks. The setting was never justified before; it is now.
 * **Never Louvain or Leiden-modularity on these graphs.** They post the highest
   modularity of anything tested and reach it by building giant modules — purple's
   optimum is **50 clusters for 170,135 genes**, the resolution limit at

@@ -708,8 +708,14 @@ falls monotonically (it picks the coarsest cell; the one-cluster baseline scores
 the finest). `eff` rises monotonically across MCL's entire usable range in both
 species and is still climbing at the last valid cell — the argmax sits on the
 grid boundary, exactly the failure that sank the Barabási–Albert criterion in the
-section above. **Only modularity has an interior optimum: `-I 1.7` in sugarcane,
-`-I 3`–`4` in purple.** The inherited `-I 2` sits next to both.
+section above. **Only modularity has an interior optimum**, and the ladder was resampled densely
+around it to make sure the peak is real rather than an artefact of a coarse grid:
+sugarcane peaks at **`-I 1.5`** (0.08212, on a broad plateau from 1.4 to 1.7,
+where the whole range varies by under 0.5%), purple at **`-I 3.5`** (0.15324, on a
+plateau from 2.7 to 4.5). So `-I 2` is **not** the optimum in either species — it
+is the value that sits between the two optima, and it keeps **98.1% of the peak in
+both**. That, rather than a peak at 2 that does not exist, is the argument for
+using one inflation across two networks. Figure 12A.
 
 The ladder cannot simply be extended to find `eff`'s peak, because mcl breaks
 first, in two ways that are silent unless stderr is kept:
@@ -780,6 +786,14 @@ at 0.021 (sugarcane) and 0.058 (purple) because inflation underflows before it
 can fragment further; the peak of the shared curve lies below that, where only
 CPM can operate.
 
+On modularity specifically the ranking is **species-dependent inside the overlap**
+and is not claimed either way: at ~19,300 clusters sugarcane's Leiden CPM is above
+MCL (0.0799 against 0.0664), while purple's MCL is above Leiden CPM throughout.
+What holds in both is that **MCL's maximum exceeds Leiden CPM's maximum** (0.0821
+against 0.0803; 0.1532 against 0.1426), reached at a coarser granularity than the
+overlap. Figure 12B plots both curves against cluster count — the only axis the
+methods share — and lets them speak.
+
 ### MCL's internal pruning is not distorting the answer
 
 mcl prunes each node's neighbour list *while computing* — `-scheme 7`, the
@@ -840,9 +854,11 @@ nine times the edges, was not attempted.
 
 ### What to use
 
-* **`-I 2` is defensible.** It sits beside the modularity optimum in both species
-  (`-I 1.7` sugarcane, `-I 3`–`4` purple), and modularity is the only criterion
-  with an interior optimum for MCL. The inherited setting survives the test.
+* **`-I 2` is defensible.** The modularity optima are `-I 1.5` (sugarcane) and
+  `-I 3.5` (purple), and `-I 2` retains **98.1% of the peak in both** — it is the
+  one setting that is near-optimal for two networks at once. Modularity is also
+  the only criterion with an interior optimum for MCL, so it is the only one that
+  can make this argument at all. The inherited setting survives the test.
 * **Do not use Louvain or Leiden-modularity here.** They win the metric they
   optimise and lose everything else, catastrophically in purple.
 * **Leiden CPM at gamma 0.1–0.2 is the option if the giant module must go.** It
