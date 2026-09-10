@@ -1,0 +1,19 @@
+method	param	resource	file	n_clusters	largest	runtime_s
+mcl	1.2	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.knone.I12			2855
+leiden_cpm	0.01		/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.leiden_cpm.0.01	5795	46594	3268.9
+mcl	1.4	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.knone.I14			2949
+leiden_cpm	0.05		/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.leiden_cpm.0.05	13166	37358	4797.3
+mcl	1.7	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.knone.I17			3396
+mcl	2	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.knone.I2			2350
+leiden_cpm	0.2		/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.leiden_cpm.0.2	36151	27644	3903.9
+mcl	2.5	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.knone.I25			2384
+mcl	3	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.knone.I3			2403
+leiden_cpm	0.5		/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.leiden_cpm.0.5	67717	17531	4327.3
+mcl	4	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.knone.I4			2431
+mcl	6	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.knone.I6			2507
+leiden_cpm	0.1		/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.leiden_cpm.0.1	21713	33203	3160.7
+leiden_cpm	0.35		/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.leiden_cpm.0.35	51459	22112	1736.2
+leiden_cpm	0.7		/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.leiden_cpm.0.7	97014	11211	955.2
+leiden_cpm	0.9		/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.leiden_cpm.0.9	138431	3942	1423.0
+leiden_mod	1.0		/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.leiden_mod.1.0	55	47184	720.6
+louvain	1.0		/dados04/jorge/tmp/mcl_work_cluster/sweep_purple/cls.louvain.1.0	50	46554	1175.5

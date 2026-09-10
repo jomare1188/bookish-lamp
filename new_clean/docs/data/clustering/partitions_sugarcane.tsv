@@ -1,0 +1,29 @@
+method	param	resource	file	n_clusters	largest	runtime_s
+leiden_cpm	0.01		/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.leiden_cpm.0.01	19571	16041	75.1
+mcl	1.2	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I12			320
+leiden_cpm	0.05		/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.leiden_cpm.0.05	31530	12490	193.9
+mcl	1.4	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I14			249
+leiden_cpm	0.2		/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.leiden_cpm.0.2	51571	8387	188.9
+mcl	1.7	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I17			231
+leiden_cpm	0.5		/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.leiden_cpm.0.5	76387	4378	195.9
+mcl	2	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I2			219
+mcl	2.5	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I25			204
+mcl	3	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I3			195
+mcl	4	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I4			186
+mcl	6	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I6			195
+mcl	8	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I8			627
+leiden_cpm	0.005		/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.leiden_cpm.0.005	17164	17534	142.6
+leiden_cpm	0.025		/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.leiden_cpm.0.025	25040	14118	180.8
+leiden_cpm	0.1		/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.leiden_cpm.0.1	40137	10604	201.5
+leiden_cpm	0.35		/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.leiden_cpm.0.35	64535	6209	131.5
+leiden_cpm	0.7		/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.leiden_cpm.0.7	90070	2152	155.1
+leiden_cpm	0.9		/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.leiden_cpm.0.9	99106	313	172.8
+leiden_mod	1.0		/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.leiden_mod.1.0	1107	43768	73.7
+louvain	1.0		/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.louvain.1.0	1084	41598	142.8
+mcl	20	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I20			1209
+mcl	9	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I9			594
+mcl	10	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I10			428
+mcl	11	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I11			385
+mcl	13	default	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I13			301
+mcl	1.7	-S 4000	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I17.S4000			448
+mcl	1.7	-S 10000	/dados04/jorge/tmp/mcl_work_cluster/sweep_sugarcane/cls.knone.I17.S10000			435

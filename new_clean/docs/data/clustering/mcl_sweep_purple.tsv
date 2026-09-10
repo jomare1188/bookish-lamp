@@ -1,0 +1,9 @@
+study	knn	knn_mode	inflation	n_clusters	largest	largest_pct	median_size	singletons	efficiency	mass_fraction	area_fraction	modularity	jury_score	jury_word	runtime_s	resource	underflow_vectors
+purple	none	none	1.2	716	65230	38.340	23	0	0.14845	0.78788	0.17725	0.13773	16.1	terrible	2855	default	0
+purple	none	none	1.4	2498	56566	33.248	11	0	0.22473	0.73636	0.13268	0.13843	17.1	terrible	2949	default	0
+purple	none	none	1.7	5055	46455	27.305	7	10	0.32813	0.68257	0.09210	0.14782	18.9	pathetic	3396	default	0
+purple	none	none	2	7722	43816	25.754	5	276	0.38585	0.65267	0.08166	0.15026	20.1	awful	2350	default	0
+purple	none	none	2.5	14589	41494	24.389	3	3378	0.45020	0.60566	0.07109	0.15116	22.2	appalling	2384	default	0
+purple	none	none	3	22545	40143	23.595	2	9383	0.46992	0.58049	0.06648	0.15294	24.1	miserable	2403	default	0
+purple	none	none	4	35561	38568	22.669	1	21218	0.48835	0.54278	0.06100	0.15294	26.8	abominable	2431	default	0
+purple	none	none	6	50417	38056	22.368	1	36132	0.49024	0.49680	0.05795	0.14569	29.8	abominable	2507	default	0

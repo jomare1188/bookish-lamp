@@ -625,6 +625,202 @@ of differently-pruned networks.
 
 ---
 
+## Choosing the clustering: inflation, and whether MCL is the right tool
+
+Branch `clustering-methods`, tree `results_cluster/`. The graph is the
+**unpruned Pearson-only network** — `|r| >= 0.8`, weights rescaled to
+`[0.01, 1]`, no k-NN reduction (sugarcane 101,990 nodes / 75,333,769 edges,
+mean degree 1,477; purple 170,135 / 675,955,918, mean degree 7,946). Built by
+streaming the Pearson layer straight into `mcxload` (`46_pearson_mci.sh`), which
+skips the 70 GB nine-column table whose only consumer was the loader; edge counts
+match the layer summaries exactly and no node has degree 0.
+
+Two questions, neither previously answered. `-I 2` was inherited, never chosen.
+And MCL was never compared against anything.
+
+### Everything is scored on one graph, by one tool, and that had to be verified
+
+Every partition — MCL's, Leiden's, Louvain's — is scored by `clm info` against
+the same unpruned matrix, so only the partition varies. Leiden's memberships are
+written in mcl's own cluster format to make this possible.
+
+That introduces one place where a silent error would invalidate everything, so it
+has its own gate (`verify_cluster_roundtrip.py`). igraph's `Read_Ncol` assigns
+vertex ids by **order of first appearance**, not by the integers in the file —
+measured: a file beginning `5 3` makes node 5 into vertex 0. Writing such a
+membership against the `.mci` node domain would put every gene in the wrong
+cluster, and `clm info` would score it happily. The gate pushes a real MCL
+partition through the Leiden writing path and requires identical statistics, and
+carries a **negative control** that drops the permutation deliberately and
+requires the numbers to move. Both species pass on all seven statistics
+(sugarcane `cls.knone.I12`, purple `cls.knone.I2`).
+
+**A defect in `clm info` itself was found on the way, and it matters beyond this
+section.** `clm info <graph> <cls1> <cls2> ...` is documented to take many
+clusterings at once, but `eff` and `mf` depend on which others share the call:
+
+| | eff | mf |
+|---|---|---|
+| `cls.knone.I6` scored alone | 0.47281 | 0.51576 |
+| the same file in a batch of 8 | 0.37821 | 0.46878 |
+
+`mod` and `af` are unaffected. The batched columns are not merely offset, they
+are **not monotone**: batched, `mf` rises from 0.469 at `-I 6` to 0.479 at
+`-I 8` and then falls to 0.410 at `-I 10`, while cluster count, largest module,
+`af` and `mod` move smoothly through the same cells — a discontinuity that reads
+as a feature of the data and is an artefact of the call. All three scorers now
+invoke `clm info` once per partition. **This also affects the k-NN section
+above**, whose mass-fraction column came from a single call holding ~25
+partitions; that section carries a correction, and its conclusion rests on
+modularity, which is unaffected.
+
+### The MCL inflation ladder
+
+**Sugarcane** (`-I 20` is excluded from every conclusion: it underflowed,
+zeroing 35,044 of 101,990 vectors, and returned a plausible-looking 34.8% giant):
+
+| -I | clusters | largest | singletons | eff | mf | af | mod | jury |
+|---|---|---|---|---|---|---|---|---|
+| 1.2 | 2,350 | 31.43% | 0 | 0.1146 | 0.8851 | 0.1233 | 0.0802 | 33.0 rotten |
+| 1.7 | 7,064 | 21.02% | 37 | 0.2768 | 0.7629 | 0.0510 | **0.0818** | 37.1 deplorable |
+| 2 | 8,795 | 19.45% | 105 | 0.3258 | 0.7200 | 0.0428 | 0.0806 | 39.2 deplorable |
+| 6 | 25,538 | 15.56% | 7,315 | 0.4728 | 0.5158 | 0.0247 | 0.0600 | 47.0 shabby |
+| 13 | 35,573 | 14.27% | 15,344 | **0.4960** | 0.4455 | 0.0206 | 0.0548 | 47.9 shabby |
+
+**Purple**:
+
+| -I | clusters | largest | singletons | eff | mf | af | mod | jury |
+|---|---|---|---|---|---|---|---|---|
+| 1.2 | 716 | 38.34% | 0 | 0.1484 | 0.7879 | 0.1773 | 0.1377 | 16.1 terrible |
+| 2 | 7,722 | 25.75% | 276 | 0.3859 | 0.6527 | 0.0817 | 0.1503 | 20.1 awful |
+| 3 | 22,545 | 23.60% | 9,383 | 0.4699 | 0.5805 | 0.0665 | **0.1529** | 24.1 miserable |
+| 4 | 35,561 | 22.67% | 21,218 | 0.4884 | 0.5428 | 0.0610 | **0.1529** | 26.8 abominable |
+| 6 | 50,417 | 22.37% | 36,132 | **0.4902** | 0.4968 | 0.0580 | 0.1457 | 29.8 abominable |
+
+**Inflation cannot break the giant module in either species.** Sugarcane goes
+31.4% -> 14.3% and purple 38.3% -> 22.4%, and the cost is 15,344 and 36,132
+singletons respectively. Purple's giant is the harder one and never drops below
+22%.
+
+**Most of the criteria cannot choose a setting, because they are monotone.** `mf`
+falls monotonically (it picks the coarsest cell; the one-cluster baseline scores
+`mf = 1.0`, which is why it is in the table). `af` falls monotonically (it picks
+the finest). `eff` rises monotonically across MCL's entire usable range in both
+species and is still climbing at the last valid cell — the argmax sits on the
+grid boundary, exactly the failure that sank the Barabási–Albert criterion in the
+section above. **Only modularity has an interior optimum: `-I 1.7` in sugarcane,
+`-I 3`–`4` in purple.** The inherited `-I 2` sits next to both.
+
+The ladder cannot simply be extended to find `eff`'s peak, because mcl breaks
+first, in two ways that are silent unless stderr is kept:
+
+* `-I` above 30 is out of range. mcl warns to stderr and **uses the default 2.0**
+  instead. Measured: `-I 40` returned `-I 2`'s partition byte-for-byte.
+* around `-I 15` and above it stops converging. `-I 15` ran 2,027 iterations with
+  mcl auto-escalating the inflation to 109 before it was killed; `-I 20`
+  completed but underflowed 34% of the graph.
+
+### Modularity maximisation is the wrong objective on these graphs
+
+Leiden with the modularity objective, and Louvain, both score far higher
+modularity than anything else tested — and reach it by building giant modules:
+
+| | clusters | largest | eff | mod | PFAM excess |
+|---|---|---|---|---|---|
+| sugarcane leiden-mod | 1,107 | 42.91% | 0.0719 | **0.1399** | +0.0471 |
+| sugarcane louvain | 1,084 | 40.79% | 0.0698 | 0.1386 | +0.0448 |
+| sugarcane best MCL | 7,064 | 21.02% | 0.2768 | 0.0818 | +0.0695 |
+| purple leiden-mod | **55** | 27.73% | 0.1384 | **0.2122** | **+0.0004** |
+| purple louvain | **50** | 27.36% | 0.1374 | 0.2121 | **+0.0002** |
+| purple best MCL | 22,545 | 23.60% | 0.4699 | 0.1529 | +0.0211 |
+
+Purple's modularity optimum is **fifty clusters for 170,135 genes**. This is the
+resolution limit doing exactly what theory says: modularity cannot resolve
+communities below ~sqrt(2m) edges, and 2m here is 1.35e9. The independent check
+settles it — those partitions carry **no PFAM signal above a size-matched random
+partition of the same shape** (+0.0002, +0.0004). They are the highest-modularity
+and the least biologically meaningful partitions in the table, simultaneously.
+
+**So the giant module was never an MCL artefact. It is what modularity
+maximisation actively wants.** Louvain and Leiden-modularity should not be used
+on these networks.
+
+### MCL and Leiden CPM trace the same curve; only the reach differs
+
+CPM has no resolution limit, and Leiden-CPM does dissolve the giant module —
+sugarcane 17.2% at gamma 0.005 down to 0.31% at gamma 0.9, purple 27.4% down to
+2.3%. It also attains the highest `eff` of any method, and — unlike MCL — its
+`eff` has a genuine **interior** optimum: gamma = 0.1 in sugarcane (0.5504),
+gamma = 0.2 in purple (0.5611).
+
+But that is not because it is the better algorithm at a given granularity. Sorted
+by area fraction the two methods **interleave on one curve**, and in sugarcane
+MCL is consistently the higher of the two where they overlap:
+
+| af | method | eff | singletons |
+|---|---|---|---|
+| 0.0205 | Leiden CPM gamma 0.025 | 0.4760 | 14,556 |
+| 0.0206 | MCL -I 13 | **0.4960** | 15,344 |
+| 0.0271 | Leiden CPM gamma 0.01 | 0.4015 | 11,495 |
+| 0.0282 | MCL -I 4 | **0.4488** | **3,239** |
+| 0.0331 | Leiden CPM gamma 0.005 | 0.3435 | 10,621 |
+| 0.0358 | MCL -I 2.5 | **0.3808** | **507** |
+
+The same holds for the biological check. At matched module count MCL wins in
+**both** species — sugarcane ~19.5k modules +0.1051 (`-I 4`) against +0.0680
+(gamma 0.01), ~31.5k +0.1187 (`-I 9`) against +0.1009 (gamma 0.05); purple ~22k
++0.0211 (`-I 3`) against +0.0166 (gamma 0.1), ~36k +0.0251 (`-I 4`) against
++0.0223 (gamma 0.2). Leiden CPM's higher raw homogeneity comes from fragmenting
+past where MCL can go, and its apparent peak there is hollow: at sugarcane gamma
+0.7 only 3,982 of 90,070 modules have enough annotation to score at all, falling
+to 1,174 at gamma 0.9, which is why the number then drops.
+
+**Leiden CPM's advantage is reach, not quality.** MCL's area fraction bottoms out
+at 0.021 (sugarcane) and 0.058 (purple) because inflation underflows before it
+can fragment further; the peak of the shared curve lies below that, where only
+CPM can operate.
+
+### MCL's internal pruning is not distorting the answer
+
+mcl prunes each node's neighbour list *while computing* — `-scheme 7`, the
+default and the highest preset, keeps 1,200 neighbours against mean degrees of
+1,477 and 7,946 — and grades its own pruning "deplorable" to "abominable"
+throughout. That confound had to be measured rather than assumed:
+
+| sugarcane `-I 1.7` | clusters | largest | eff | mod | jury |
+|---|---|---|---|---|---|
+| `-S 1200` (default) | 7,064 | 21.02% | 0.27685 | 0.08184 | 37.1 deplorable |
+| `-S 4000` | 7,106 | 20.39% | 0.27964 | 0.08239 | 56.2 acceptable |
+| `-S 10000` | 7,106 | 20.39% | 0.27964 | 0.08239 | 56.2 acceptable |
+
+`-S 4000` and `-S 10000` are **identical**: the pruning saturates, and the
+converged answer is within 0.7% of the default. The jury grade rises from
+"deplorable" to "acceptable" while the clustering barely moves — so **the jury
+grade is not a guide to whether a result is affected**, which is worth knowing
+before reading too much into purple's "abominable".
+
+### What to use
+
+* **`-I 2` is defensible.** It sits beside the modularity optimum in both species
+  (`-I 1.7` sugarcane, `-I 3`–`4` purple), and modularity is the only criterion
+  with an interior optimum for MCL. The inherited setting survives the test.
+* **Do not use Louvain or Leiden-modularity here.** They win the metric they
+  optimise and lose everything else, catastrophically in purple.
+* **Leiden CPM at gamma 0.1–0.2 is the option if the giant module must go.** It
+  is the only method that dissolves it, and it holds the highest `eff` on either
+  graph. The price is 26,539 singletons in sugarcane (26% of genes) and 19,476 in
+  purple, and slightly worse annotation coherence per module than MCL at matched
+  granularity.
+* **Raising inflation is not a way to break the giant module.** It costs genes far
+  faster than it costs the giant, and above `-I 13` mcl stops being numerically
+  trustworthy.
+
+Tables: `docs/data/clustering/`. Figure: `figure12_cluster_methods`.
+Machinery: `scripts/46`–`50`, `verify_cluster_roundtrip.py`, `run.sh` stages
+`pearsonmci mclladder leidensweep clustercompare`.
+
+---
+
 ## Conservation
 
 Each direction streams one network and looks its edges up in the other. **The two

@@ -1,0 +1,17 @@
+study	knn	knn_mode	inflation	n_clusters	largest	largest_pct	median_size	singletons	efficiency	mass_fraction	area_fraction	modularity	jury_score	jury_word	runtime_s	resource	underflow_vectors
+sugarcane	none	none	1.2	2350	32055	31.430	3	0	0.11458	0.88508	0.12333	0.08018	33.0	rotten	320	default	0
+sugarcane	none	none	1.4	4702	25206	24.714	3	1	0.19891	0.81960	0.07411	0.08170	35.0	deplorable	249	default	0
+sugarcane	none	none	1.7	7064	21436	21.018	3	37	0.27685	0.76294	0.05105	0.08184	37.1	deplorable	231	default	0
+sugarcane	none	none	2	8795	19840	19.453	3	105	0.32576	0.72001	0.04281	0.08059	39.2	deplorable	219	default	0
+sugarcane	none	none	2.5	11687	18465	18.105	3	507	0.38077	0.65954	0.03581	0.07680	41.5	bad	204	default	0
+sugarcane	none	none	3	14481	17744	17.398	3	1274	0.41891	0.61595	0.03162	0.07037	42.8	bad	195	default	0
+sugarcane	none	none	4	19123	16836	16.507	2	3239	0.44884	0.56955	0.02820	0.06641	45.0	dodgy	186	default	0
+sugarcane	none	none	6	25538	15867	15.557	2	7315	0.47281	0.51576	0.02472	0.05996	47.0	shabby	195	default	0
+sugarcane	none	none	8	30155	15275	14.977	2	10829	0.48521	0.47914	0.02276	0.05690	47.4	shabby	627	default	0
+sugarcane	none	none	9	31442	15100	14.805	2	11788	0.48766	0.47154	0.02222	0.05639	47.4	shabby	594	default	0
+sugarcane	none	none	10	32803	14898	14.607	2	12913	0.49088	0.46154	0.02160	0.05581	47.4	shabby	428	default	0
+sugarcane	none	none	11	34163	14761	14.473	2	14132	0.49370	0.45387	0.02119	0.05536	47.4	shabby	385	default	0
+sugarcane	none	none	13	35573	14555	14.271	2	15344	0.49596	0.44553	0.02058	0.05477	47.9	shabby	301	default	0
+sugarcane	none	none	20	31824	35458	34.766	2	15300	0.37924	0.55972	0.12092	0.01265	12.5	wretched	1209	default	35044
+sugarcane	none	none	1.7	7106	20798	20.392	3	51	0.27964	0.75859	0.04844	0.08239	56.2	acceptable	448	-S 4000	0
+sugarcane	none	none	1.7	7106	20798	20.392	3	51	0.27964	0.75859	0.04844	0.08239	56.2	acceptable	435	-S 10000	0

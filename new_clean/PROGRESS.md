@@ -95,7 +95,9 @@ trivial one-cluster partition scores `mf = 1.0`.
       **`eff` DOES have an interior peak for Leiden CPM: gamma = 0.1 (0.550).**
       Best modularity: leiden_mod 0.1399 and louvain 0.1386, both by building a
       41-43% giant module. Best MCL modularity: 0.0818 at -I 1.7.
-- [ ] `cluster_methods_purple.tsv`
+- [x] `cluster_methods_purple.tsv` — 19 partitions. **eff interior peak at gamma = 0.2
+      (0.5611)**, higher than any MCL cell (best 0.4902 at -I 6). leiden_mod/louvain reach
+      mod 0.2121 with only 55/50 clusters and 27% giants.
 - [x] one-cluster baseline in the table: eff 0.0106, **mf 1.0000**, af 1.0000, mod -0.0000
 
 ## H. Independent biological check (`37_cluster_homogeneity.r`)
@@ -112,7 +114,10 @@ on the graph metric *and* here.
       only 3,982 of 90,070 modules are scorable, falling to 1,174 at gamma 0.9.
       Robust result: leiden_mod (+0.0471), louvain (+0.0448) and -I 1.2 (+0.0433) are the
       three WORST, and they are exactly the three partitions with giant modules.
-- [ ] purple scored
+- [x] purple scored. **MCL beats Leiden CPM at matched granularity here too**
+      (~36k modules: +0.0251 for -I 4 vs +0.0223 for gamma 0.2; ~22k: +0.0211 vs +0.0166).
+      louvain +0.0002 and leiden_mod +0.0004 — NO annotation signal above a size-matched
+      null, while scoring the highest modularity of anything tested.
 
 ## I. Hierarchical scout — sugarcane only (`50_fastgreedy_scout.py`)
 

@@ -54,6 +54,31 @@ hom <- rbindlist(lapply(STUDIES, function(s)
 for (v in c("eff", "mf", "af", "mod", "largest_pct", "n_clusters"))
   if (v %in% names(cmp)) cmp[[v]] <- suppressWarnings(as.numeric(cmp[[v]]))
 cmp[, param_num := suppressWarnings(as.numeric(param))]
+# One table reads param as character (it holds "one cluster"), the other as
+# double, so "1.0" and 1 are different strings and leiden_mod/louvain silently
+# dropped out of the homogeneity join. Canonicalise both sides the same way.
+pkey <- function(x) { n <- suppressWarnings(as.numeric(x))
+                      ifelse(is.na(n), as.character(x), as.character(n)) }
+cmp[, param_key := pkey(param)]
+
+# Cells mcl could not compute are excluded from the figure rather than drawn as
+# if they were results: at high inflation mcl underflows (35,044 zeroed vectors
+# at -I 20 on sugarcane) and returns a plausible-looking partition that is
+# numerically meaningless. mcl_sweep_*.tsv records the count.
+sweep <- rbindlist(lapply(STUDIES, function(s)
+  grab(file.path(RESULTS, s, sprintf("mcl_sweep_%s.tsv", s)))), fill = TRUE)
+if (!is.null(sweep) && nrow(sweep) && "underflow_vectors" %in% names(sweep)) {
+  bad <- sweep[as.numeric(underflow_vectors) > 0,
+               .(study, method = "mcl", param_key = pkey(inflation))]
+  if (nrow(bad)) {
+    n0 <- nrow(cmp)
+    cmp <- cmp[!bad, on = .(study, method, param_key)]
+    cat(sprintf("excluded %d underflowed mcl cell(s) from the figure\n", n0 - nrow(cmp)))
+  }
+}
+cmp[, method_raw := method]
+cmp[, method_raw2 := factor(method,
+      levels = c("mcl", "leiden_cpm", "leiden_mod", "louvain", "fastgreedy", "baseline"))]
 cmp[, method := factor(method,
       levels = c("mcl", "leiden_cpm", "leiden_mod", "louvain", "fastgreedy", "baseline"),
       labels = c("MCL", "Leiden CPM", "Leiden modularity", "Louvain",
@@ -62,8 +87,9 @@ PAL <- c("MCL" = "#B2182B", "Leiden CPM" = "#2166AC", "Leiden modularity" = "#43
          "Louvain" = "#5AAE61", "fast-greedy" = "#8073AC",
          "baseline (1 cluster)" = "grey45")
 
-is_base <- cmp$method == "baseline (1 cluster)"
 
+setorder(cmp, study, method, param_num)
+is_base <- cmp$method == "baseline (1 cluster)"
 pA <- ggplot(cmp[!is_base], aes(af, eff, colour = method)) +
   geom_path(aes(group = interaction(study, method)), linewidth = 0.35, alpha = 0.8) +
   geom_point(size = 1.1) +
@@ -78,7 +104,9 @@ pA <- ggplot(cmp[!is_base], aes(af, eff, colour = method)) +
        subtitle = "every point scored by clm info against the SAME unpruned graph") +
   theme_f + theme(legend.position = "bottom")
 
-pB <- ggplot(cmp[!is_base & !is.na(param_num) & param_num > 0],
+ladder <- cmp[!is_base & !is.na(param_num) & param_num > 0]
+ladder <- ladder[, if (uniqueN(param_num) > 1) .SD, by = .(study, method)]
+pB <- ggplot(ladder,
              aes(param_num, largest_pct, colour = method)) +
   geom_line(aes(group = interaction(study, method)), linewidth = 0.35) +
   geom_point(size = 1) +
@@ -92,17 +120,16 @@ pB <- ggplot(cmp[!is_base & !is.na(param_num) & param_num > 0],
   theme_f
 
 pC <- if (!is.null(hom) && nrow(hom) && "H_excess" %in% names(hom)) {
-  h <- copy(hom)
-  h[, key := sub("^cls\\.", "", clustering)]
-  c2 <- copy(cmp)
-  c2[, key := paste0(as.character(method), ".", param)]
-  # Join on the manifest's own method/param when 37 recorded them; otherwise the
-  # panel degrades to whatever matched rather than inventing a mapping.
-  if ("method" %in% names(h)) {
-    h2 <- merge(h[, .(study, method, param, H_excess)],
-                cmp[, .(study, method_lab = method, param, eff)],
-                by.x = c("study", "param"), by.y = c("study", "param"),
-                allow.cartesian = TRUE)
+  # Join on METHOD AND PARAM, never param alone: "1.0" is the param of both
+  # leiden_mod and louvain, so a param-only join silently crosses them.
+  if ("method" %in% names(hom)) {
+    hj <- hom[, .(study, method = as.character(method),
+                  param_key = pkey(param), H_excess, n_modules)]
+    cj <- cmp[, .(study, method = as.character(method_raw), param_key, eff)]
+    h2 <- merge(hj, cj, by = c("study", "method", "param_key"))
+    cat(sprintf("panel C: %d of %d homogeneity rows joined\n", nrow(h2), nrow(hj)))
+    h2[, method_lab := factor(method, levels = levels(cmp$method_raw2),
+                              labels = levels(cmp$method))]
     ggplot(h2, aes(eff, H_excess, colour = method_lab)) +
       geom_point(size = 1.1) +
       facet_wrap(~ study, scales = "free") +
