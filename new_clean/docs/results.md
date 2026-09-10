@@ -813,6 +813,31 @@ how much was discarded, not whether discarding it mattered. The confound flagged
 at the start of this section is real in the grade and absent in the answer, in
 both species.
 
+### The hierarchical family
+
+Classical hierarchical clustering was not attempted, and the reason is not
+squeamishness about cost: it needs a dense `170,135 x 170,135` dissimilarity
+matrix — 232 GB, ~1.4e10 pairs, with O(n^2 log n) linkage on top — built from
+precisely the correlations this pipeline thresholded away at `|r| >= 0.8`. It
+would be answering a different question from every other row in the comparison.
+
+The graph-native member of the family that still yields a dendrogram is
+fast-greedy (Clauset–Newman–Moore), run on sugarcane only, under a 4 h cap.
+**It is not adopted, for a reason that has nothing to do with runtime.** The
+sugarcane graph has **958 connected components**, so igraph builds only 101,032
+merges for 101,990 vertices and no cut below 958 clusters exists; CNM's own
+`optimal_count` is **338**. Its preferred partition is unreachable on this graph.
+And CNM optimises modularity, which the section above shows is the wrong
+objective here regardless.
+
+On cost the evidence is mixed and is reported as such: one run built the
+dendrogram in under 2 h (and then raised on the cut, which is how the component
+floor was found), while a later run on the same graph and code exceeded the 4 h
+cap with the worker's CPU share falling from 34% to 24% under contention. So it
+is affordable on an idle machine and marginal on a busy one — but the
+component floor and the objective settle the question either way, and purple, at
+nine times the edges, was not attempted.
+
 ### What to use
 
 * **`-I 2` is defensible.** It sits beside the modularity optimum in both species

@@ -83,7 +83,7 @@ is 7,946, so ~85% is discarded on the fly; MCL grades its own pruning "awful"
       KEY RESULT: Leiden CPM dissolves the giant module (17.2% -> 0.31%), while
       Leiden-modularity (42.9%) and Louvain (40.8%) make it WORSE than MCL's 15.6%.
       The giant module is what modularity maximisation wants, not an MCL artefact.
-- [~] purple gamma scout running (load took 28 min, 35 GB resident; mean weight 0.3796)
+- [x] purple gamma scout + ladder done (8 gammas, leiden_mod, louvain)
 
 ## G. Scoring, all methods on the same graph (`48_cluster_compare.sh`)
 
@@ -127,14 +127,18 @@ graph-native stand-in, under a 4 h cap.
 
 - [x] `50_fastgreedy_scout.py` written (+ 2 fixes: disconnected-dendrogram floor, and the
       parent hanging on an empty queue when the worker dies)
-- [~] sugarcane run in progress (2h47m of a 4h cap)
+- [x] sugarcane: **cap hit at 4 h** and recorded. But an earlier run built the dendrogram
+      in under 2 h before raising on the cut, so cost is contention-dependent and mixed.
+      The decisive facts are structural: sugarcane has **958 connected components**, so no
+      cut below 958 exists while CNM's `optimal_count` is **338** — its preferred partition
+      is unreachable — and CNM optimises modularity, already ruled out. Purple not attempted.
 
 ## J. Report
 
 - [x] `49_fig_cluster_methods.r` → `figure12_cluster_methods` (3 panels; underflowed cells excluded)
 - [x] `docs/results.md`: full section written
-- [ ] `docs/decisions.md`: why inflation is now chosen, and whether Leiden is adopted
-- [ ] commit
+- [x] `docs/decisions.md`: entry written
+- [x] commit
 
 ---
 
@@ -145,6 +149,8 @@ graph-native stand-in, under a 4 h cap.
 - 2026-09-09 17:15 — correctness gate PASSED with a negative control. Leiden and MCL
   can now be compared on the same numbers.
 - 2026-09-09 17:27 — purple matrix built and verified (675,955,918 edges, exact).
+- 2026-09-10 05:15 — all runs complete. fast-greedy hit its 4 h cap; the hierarchical
+  verdict rests on the component floor (958) and the objective, not on timing.
 - 2026-09-10 00:35 — my own dedup bug: `if(!(k in ord))` where `ord` is indexed by position,
   so nothing was ever deduplicated; and the key used $16 (runtime_s) instead of $17 (resource),
   so a -S probe row silently overwrote the default row. Both fixed, tables rebuilt.

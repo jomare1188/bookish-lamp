@@ -133,7 +133,25 @@ if __name__ == "__main__":
             fh.write(msg + "\n")
         sys.exit(0)
 
-    secs, opt, floor, out = q.get()
+    # If the worker died, q is EMPTY and a bare q.get() blocks forever -- which is
+    # exactly what happened when igraph raised on the disconnected dendrogram:
+    # the traceback printed, the child exited, and the parent sat on q.get()
+    # holding the graph in memory until killed by hand. Check the exit code, and
+    # never block indefinitely on the queue.
+    if p.exitcode != 0:
+        msg = f"WORKER FAILED (exit {p.exitcode}) -- see the traceback above"
+        say(msg)
+        with open(STATUS, "w") as fh:
+            fh.write(msg + "\n")
+        sys.exit(1)
+    try:
+        secs, opt, floor, out = q.get(timeout=120)
+    except Exception:
+        msg = "WORKER produced no result within 120s of exiting"
+        say(msg)
+        with open(STATUS, "w") as fh:
+            fh.write(msg + "\n")
+        sys.exit(1)
     say(f"  finished in {secs:.0f}s; modularity-optimal cut = {opt:,} communities")
     say(f"  graph has {floor:,} connected components -- no cut below that is possible")
     if opt < floor:
