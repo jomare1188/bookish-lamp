@@ -582,8 +582,19 @@ finding **inverts**:
 | k = 600 | 0.720 | 0.059 | 0.606 | 0.086 | 0.362 |
 | **unreduced** | **0.081** | **0.081** | **0.687** | **0.150** | **0.634** |
 
+> **Correction (2026-09-09).** The mass-fraction column above is unreliable and
+> should not be quoted. `clm info` was called with all ~25 partitions in one
+> invocation, and its `eff` and `mf` depend on which other clusterings share the
+> call — measured later on the same tool: one cluster file scored alone gives
+> `eff=0.47281 mf=0.51576`, and in a batch of eight `eff=0.37821 mf=0.46878`.
+> `mod` and `af` are unaffected, so **the modularity column, which is what the
+> conclusion rests on, stands**; `Q_own` and `Q_ref` are both modularity. The
+> partitions were deleted with the k-NN bulk data, so the mass fractions cannot
+> be recomputed. `45_score_vs_reference.sh` now scores one partition per call.
+
 Against the real network the unreduced partition has the highest modularity
-**and** captures the most edge mass, in both species. k-NN buys a smaller giant
+**and** — on the modularity evidence — the partition the reduced ones fail to
+improve on, in both species. k-NN buys a smaller giant
 module by discarding the edges that made it, and what it discards is signal the
 partition then fails to explain. Q_ref rises monotonically with k precisely
 because larger k throws less away.

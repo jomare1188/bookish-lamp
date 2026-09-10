@@ -107,7 +107,7 @@ check_grid "$I_LIST_NONE"
 TSV="${OUT_DIR}/mcl_sweep_${STUDY}.tsv"
 # ADDITIVE, not truncating. This file used to be rewritten from scratch on every
 # run, so an extension grid destroyed the rows the first grid had produced.
-printf 'study\tknn\tknn_mode\tinflation\tn_clusters\tlargest\tlargest_pct\tmedian_size\tsingletons\tefficiency\tmass_fraction\tarea_fraction\tmodularity\tjury_score\tjury_word\truntime_s\tunderflow_vectors\n' > "${TSV}.new"
+printf 'study\tknn\tknn_mode\tinflation\tn_clusters\tlargest\tlargest_pct\tmedian_size\tsingletons\tefficiency\tmass_fraction\tarea_fraction\tmodularity\tjury_score\tjury_word\truntime_s\tresource\tunderflow_vectors\n' > "${TSV}.new"
 if [ -s "$TSV" ]; then
   tail -n +2 "$TSV" >> "${TSV}.new"
   say "keeping $(( $(wc -l < "$TSV") - 1 )) existing rows from $(basename "$TSV")"
@@ -233,11 +233,11 @@ for K in none $K_LIST; do
     JWORD=$(printf '%s' "$JURY" | sed -n 's/^[0-9.]* or \(.*\)$/\1/p')
     MED=$(sizes_of "$CLS" | awk '{a[NR]=$1} END{print (NR? a[int((NR+1)/2)] : 0)}')
     SEC=$(cat "${CLS}.secs" 2>/dev/null || echo NA)
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%.3f\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%.3f\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
       "$STUDY" "$K" "$MODE" "$I" "${NCL:-NA}" "${MAX:-NA}" \
       "$(awk -v m="${MAX:-0}" -v n="$N_NODES" 'BEGIN{print 100*m/n}')" \
       "${MED:-NA}" "${SGL:-NA}" "${EFF:-NA}" "${MF:-NA}" "${AF:-NA}" "${MOD:-NA}" \
-      "${JSCORE:-NA}" "${JWORD:-NA}" "$SEC" "${NDEGEN:-0}" >> "$TSV"
+      "${JSCORE:-NA}" "${JWORD:-NA}" "$SEC" "${RESOURCE:-default}" "${NDEGEN:-0}" >> "$TSV"
   done
 
   # Where does the partition stop moving? Distances between consecutive inflations.
@@ -249,7 +249,12 @@ done
 say ""
 # Keep the LAST row for each (knn, inflation): a re-run supersedes its own
 # earlier row rather than appearing twice.
-awk -F'\t' 'NR==1{print;next}{k=$2 FS $4; row[k]=$0; if(!(k in ord)) ord[++n]=k}
+# `ord` is indexed by POSITION, so `k in ord` never matches a key -- it needs its
+# own set, or every row is emitted and nothing is deduplicated.
+# The key includes the resource: a -S probe is a DIFFERENT cell at the same
+# inflation, and without it the probe silently overwrites the default row.
+awk -F'\t' 'NR==1{print;next}
+     {k=$2 FS $4 FS $17; row[k]=$0; if(!(k in seen)){seen[k]=1; ord[++n]=k}}
      END{for(i=1;i<=n;i++) print row[ord[i]]}' "$TSV" > "${TSV}.dedup" && mv "${TSV}.dedup" "$TSV"
 say "wrote $(basename "$TSV")"
 column -t "$TSV" | sed -n '1,60p'

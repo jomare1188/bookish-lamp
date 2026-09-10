@@ -52,8 +52,13 @@ Ladder `1.2 1.4 1.7 2 2.5 3 4 6`. The historical `-I 2` is one cell among eight.
 - [x] `36_mcl_sweep.sh` hardened: refuses out-of-range `-I`, refuses tag collisions
       (within a grid AND across runs via a `.inflation` sidecar), flags underflow,
       and its TSV is now additive instead of truncating. Both guards tested firing.
-- [~] sugarcane `-I 9 10 11 13 15 16` running to locate the `eff` peak
-- [~] purple ladder running — `logs/mclladder_purple.log`
+- [x] sugarcane `-I 9 10 11 13` done; `-I 15` killed (pathological: 2,027 iterations,
+      14,141 underflows, mcl auto-escalated inflation to 109)
+- [x] **`eff` is MONOTONE for MCL across the whole valid range** (0.115 at 1.2 -> 0.496 at 13,
+      still climbing) while singletons go 0 -> 15,344. Argmax on the grid boundary, so
+      `eff` cannot choose an inflation — the same failure that sank the BA criterion.
+      Only modularity has an interior peak, at **-I 1.7 (0.0818)**.
+
 
 ## E. The pruning probe — is the ladder measuring inflation or MCL's pruner?
 
@@ -61,7 +66,11 @@ MCL keeps only S=1200 neighbours per node while computing. Purple's mean degree
 is 7,946, so ~85% is discarded on the fly; MCL grades its own pruning "awful"
 (20.1). Sugarcane: mean degree 1,477, "deplorable" (39.2).
 
-- [ ] sugarcane: winning inflation re-run at `-S 4000` and `-S 10000`
+- [x] sugarcane `-I 1.7` at `-S 4000` and `-S 10000`: **identical to each other** (7,106
+      clusters, largest 20.39%, eff 0.27964, mod 0.08239, jury 56.2 *acceptable*) and within
+      0.7% of the default (7,064 / 21.02% / 0.27685 / 0.08184 / jury 37.1 *deplorable*).
+      Pruning SATURATES at S=4000 and the converged answer is the default answer.
+      **The jury grade is not a guide to whether a result is affected.**
 - [ ] purple: same  (expect 2-5 h per cell)
 - [ ] `clm dist` between the `-S 1200` and `-S 10000` partitions — reported, not buried
 
@@ -82,9 +91,12 @@ is 7,946, so ~85% is discarded on the fly; MCL grades its own pruning "awful"
 trivial one-cluster partition scores `mf = 1.0`.
 
 - [x] `48_cluster_compare.sh` written (manifest-driven, one `clm info` over all methods)
-- [ ] `cluster_methods_sugarcane.tsv`
+- [x] `cluster_methods_sugarcane.tsv` — 27 partitions, all on the unpruned graph
+      **`eff` DOES have an interior peak for Leiden CPM: gamma = 0.1 (0.550).**
+      Best modularity: leiden_mod 0.1399 and louvain 0.1386, both by building a
+      41-43% giant module. Best MCL modularity: 0.0818 at -I 1.7.
 - [ ] `cluster_methods_purple.tsv`
-- [ ] one-cluster baseline included as the row that makes the `mf` trap obvious
+- [x] one-cluster baseline in the table: eff 0.0106, **mf 1.0000**, af 1.0000, mod -0.0000
 
 ## H. Independent biological check (`37_cluster_homogeneity.r`)
 
@@ -92,7 +104,14 @@ PFAM Sørensen–Dice homogeneity above a size-matched null. A setting has to wi
 on the graph metric *and* here.
 
 - [x] `37` reads `partitions.tsv` and carries method/param/resource columns
-- [ ] sugarcane scored
+- [x] sugarcane scored (26 partitions)
+      **At MATCHED module counts MCL beats Leiden CPM on PFAM homogeneity**, not the
+      reverse: ~19.5k modules +0.1051 (MCL -I 4) vs +0.0680 (CPM 0.01); ~31.5k
+      +0.1187 (-I 9) vs +0.1009 (CPM 0.05). Leiden only scores higher by fragmenting
+      past where MCL can reach, and its apparent peak at gamma 0.7 (+0.2602) is hollow —
+      only 3,982 of 90,070 modules are scorable, falling to 1,174 at gamma 0.9.
+      Robust result: leiden_mod (+0.0471), louvain (+0.0448) and -I 1.2 (+0.0433) are the
+      three WORST, and they are exactly the three partitions with giant modules.
 - [ ] purple scored
 
 ## I. Hierarchical scout — sugarcane only (`50_fastgreedy_scout.py`)
@@ -120,6 +139,19 @@ graph-native stand-in, under a 4 h cap.
 - 2026-09-09 17:15 — correctness gate PASSED with a negative control. Leiden and MCL
   can now be compared on the same numbers.
 - 2026-09-09 17:27 — purple matrix built and verified (675,955,918 edges, exact).
+- 2026-09-10 00:35 — my own dedup bug: `if(!(k in ord))` where `ord` is indexed by position,
+  so nothing was ever deduplicated; and the key used $16 (runtime_s) instead of $17 (resource),
+  so a -S probe row silently overwrote the default row. Both fixed, tables rebuilt.
+- 2026-09-09 23:35 — CORRECTION to my own earlier reading: I said Leiden CPM beat MCL on
+  homogeneity at matched granularity. It does not; MCL wins at every matched module count.
+- 2026-09-09 20:10 — MAJOR: `clm info`'s eff and mf depend on WHICH OTHER clusterings
+  share the call (I6 alone -> eff 0.47281; I6 in a batch of 8 -> eff 0.37821). mod and af
+  are unaffected. Batched values are not monotone and look like real structure. All three
+  scorers (36, 45, 48) now call clm info once per partition. The k-NN section of
+  docs/results.md carries a correction: its mass-fraction column is affected, its
+  modularity column — which carries the conclusion — is not.
+- 2026-09-09 19:20 — I killed the purple ladder by accident: an awk pattern matched BOTH
+  running 36_mcl_sweep.sh processes. Idempotence limited the loss to ~9 min.
 - 2026-09-09 18:30 — TWO silent mcl failures caught, both now guarded: -I above 30 is
   ignored (default used instead), and -I 20 underflows 34% of the graph to zero.
 - 2026-09-09 18:10 — BUG FOUND: `36_mcl_sweep.sh` cell tags strip the decimal point, so

@@ -88,15 +88,29 @@ def worker(q):
     dend = G.community_fastgreedy(weights="weight")
     secs = time.time() - t0
     opt = dend.optimal_count
-    # The dendrogram is the whole reason to run this: report the modularity-optimal
-    # cut and two coarser ones, so "cut it elsewhere" is an option on the table
-    # rather than a hypothetical.
-    cuts = sorted({opt, max(2, opt // 4), max(2, opt // 16)}, reverse=True)[:N_CUTS]
+
+    # A DISCONNECTED graph cannot be cut below its component count. igraph builds
+    # (n_vertices - n_components) merges, and as_clustering(k) takes
+    # (n_vertices - k) steps, so any k below n_components asks for more steps than
+    # the merges matrix has and igraph raises
+    #   "Number of steps is greater than number of rows in merges matrix"
+    # Measured here: 101,990 vertices but only 101,032 merges, i.e. 958 components,
+    # and optimal_count asked for 101,652 steps. Derive the floor from the merges
+    # matrix itself rather than trusting optimal_count.
+    floor = G.vcount() - len(dend.merges)
+
+    # optimal_count is typically BELOW that floor here (measured: 338 against a
+    # floor of 958), so the modularity-optimal cut is not reachable at all and
+    # every "coarser" cut collapses onto the floor -- which is just the connected
+    # components. To get something comparable, cut instead at granularities the
+    # other methods actually reach, so the row means the same thing as an MCL or
+    # Leiden row at similar cluster count.
+    cuts = sorted({floor, G.vcount() // 4, G.vcount() // 2}, reverse=True)[:N_CUTS]
     out = []
     for n in cuts:
         memb = dend.as_clustering(n).membership
         out.append((n, memb))
-    q.put((secs, opt, out))
+    q.put((secs, opt, floor, out))
 
 
 if __name__ == "__main__":
@@ -119,8 +133,12 @@ if __name__ == "__main__":
             fh.write(msg + "\n")
         sys.exit(0)
 
-    secs, opt, out = q.get()
+    secs, opt, floor, out = q.get()
     say(f"  finished in {secs:.0f}s; modularity-optimal cut = {opt:,} communities")
+    say(f"  graph has {floor:,} connected components -- no cut below that is possible")
+    if opt < floor:
+        say(f"  NOTE: modularity-optimal cut ({opt:,}) is BELOW the component floor,")
+        say("        so CNM's own preferred partition is unreachable on this graph.")
     if not os.path.exists(MANIFEST):
         with open(MANIFEST, "w") as fh:
             fh.write("method\tparam\tresource\tfile\tn_clusters\tlargest\truntime_s\n")
