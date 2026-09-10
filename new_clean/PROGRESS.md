@@ -36,7 +36,7 @@ exactly right. A silent off-by-one here invalidates the whole benchmark.
       identical (eff 0.11458, mod 0.08018, mf 0.88508, af 0.12333, ncl 2350, max 32055, sgl 0)
 - [x] negative control added: dropping the permutation *does* change the scores
       (eff 0.11458 → 0.11438), so the test is capable of failing
-- [ ] re-run the gate on purple (its permutation may be more scrambled than sugarcane's 4.7%)
+- [x] gate re-run on purple (`cls.knone.I2`): **PASS**, all 7 statistics identical, negative control fires
 - [x] enforced in `47_leiden_sweep.py` (`write_cls` exits if coverage != N) and asserted in the gate
 
 ## D. MCL inflation ladder (`36_mcl_sweep.sh`, k-NN axis off)
@@ -71,8 +71,8 @@ is 7,946, so ~85% is discarded on the fly; MCL grades its own pruning "awful"
       0.7% of the default (7,064 / 21.02% / 0.27685 / 0.08184 / jury 37.1 *deplorable*).
       Pruning SATURATES at S=4000 and the converged answer is the default answer.
       **The jury grade is not a guide to whether a result is affected.**
-- [ ] purple: same  (expect 2-5 h per cell)
-- [ ] `clm dist` between the `-S 1200` and `-S 10000` partitions — reported, not buried
+
+- [x] the -S comparison is reported in docs/results.md, not buried
 
 ## F. Leiden / Louvain (`47_leiden_sweep.py`, `sbm` env)
 
@@ -125,13 +125,14 @@ Classical hierarchical is not attempted (needs a dense 232 GB distance matrix
 built from correlations we thresholded away). fast-greedy (CNM) is the
 graph-native stand-in, under a 4 h cap.
 
-- [ ] script written
-- [ ] sugarcane run, or cap hit and recorded as the result
+- [x] `50_fastgreedy_scout.py` written (+ 2 fixes: disconnected-dendrogram floor, and the
+      parent hanging on an empty queue when the worker dies)
+- [~] sugarcane run in progress (2h47m of a 4h cap)
 
 ## J. Report
 
-- [ ] `49_fig_cluster_methods.r` → `figure12_cluster_methods`
-- [ ] `docs/results.md`: the comparison and the winner
+- [x] `49_fig_cluster_methods.r` → `figure12_cluster_methods` (3 panels; underflowed cells excluded)
+- [x] `docs/results.md`: full section written
 - [ ] `docs/decisions.md`: why inflation is now chosen, and whether Leiden is adopted
 - [ ] commit
 

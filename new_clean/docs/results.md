@@ -794,10 +794,24 @@ throughout. That confound had to be measured rather than assumed:
 | `-S 10000` | 7,106 | 20.39% | 0.27964 | 0.08239 | 56.2 acceptable |
 
 `-S 4000` and `-S 10000` are **identical**: the pruning saturates, and the
-converged answer is within 0.7% of the default. The jury grade rises from
-"deplorable" to "acceptable" while the clustering barely moves — so **the jury
-grade is not a guide to whether a result is affected**, which is worth knowing
-before reading too much into purple's "abominable".
+converged answer is within 0.7% of the default.
+
+Purple is the case that matters, since its grades are the worst:
+
+| purple `-I 3` | clusters | largest | eff | mod | jury |
+|---|---|---|---|---|---|
+| `-S 1200` (default) | 22,545 | 23.60% | 0.46992 | 0.15294 | 24.1 miserable |
+| `-S 10000` | 22,508 | 23.52% | 0.47108 | 0.15324 | 30.8 lousy |
+
+Eight times the headroom moves **every statistic by under 0.3%**. The grade rises
+but stays poor, which it must: at mean degree 7,946 even `S = 10000` is only
+1.26x a typical neighbour list, whereas sugarcane's 1,477 is comfortably covered.
+The partition has nonetheless converged.
+
+So **the jury grade is not a guide to whether a result is affected** — it grades
+how much was discarded, not whether discarding it mattered. The confound flagged
+at the start of this section is real in the grade and absent in the answer, in
+both species.
 
 ### What to use
 

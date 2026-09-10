@@ -5,6 +5,56 @@ are dated; the date is when the decision was made, not when it was written down.
 
 ---
 
+## 2026-09-10 — `-I 2` stays, on evidence; Louvain and Leiden-modularity are ruled out
+
+**The problem.** The pipeline had always clustered at `-I 2`, a value nobody
+chose, on a graph nobody had compared against another algorithm. Two open
+questions, both fair to ask of any paper.
+
+**What was done.** Both studies' unpruned Pearson-only graphs, every partition
+scored by `clm info` against the same matrix so only the partition varies: an
+MCL inflation ladder (1.2 to 13 in sugarcane, 1.2 to 6 in purple), Leiden with
+the CPM objective over a resolution ladder, Leiden with the modularity objective,
+and Louvain. Plus an independent biological check — PFAM Sørensen–Dice
+homogeneity above a size-matched null.
+
+**The decision, and why.**
+
+* **Keep `-I 2`.** `mf`, `af` and `eff` are all monotone over MCL's usable range,
+  so each picks a grid boundary and none can choose an inflation. Modularity is
+  the only criterion with an interior optimum, and it lands at `-I 1.7`
+  (sugarcane) and `-I 3`–`4` (purple). `-I 2` sits beside both. The setting was
+  never justified before; it is now.
+* **Never Louvain or Leiden-modularity on these graphs.** They post the highest
+  modularity of anything tested and reach it by building giant modules — purple's
+  optimum is **50 clusters for 170,135 genes**, the resolution limit at
+  2m = 1.35e9. Their PFAM excess is +0.0002 and +0.0004, i.e. no annotation
+  signal at all above a random partition of the same shape. This also settles
+  what the giant module is: not an MCL artefact, but what modularity wants.
+* **Leiden CPM is the option, and only if the giant module must go.** It is the
+  only method that dissolves it, and holds the highest `eff` on either graph with
+  a genuine interior optimum (gamma 0.1 sugarcane, 0.2 purple). But sorted by
+  area fraction the two methods interleave on **one curve**, with MCL the higher
+  wherever they overlap and carrying far fewer singletons, and MCL also wins the
+  PFAM check at matched module count in both species. Leiden CPM's advantage is
+  reach, not quality: MCL's area fraction bottoms out because inflation
+  underflows before it can fragment further.
+
+**The caveat that turned out not to be one.** MCL prunes each node's neighbour
+list while computing (`-scheme 7` keeps 1,200, against mean degrees of 1,477 and
+7,946) and grades that pruning "deplorable" to "abominable". Measured rather than
+assumed: at `-S 4000` and `-S 10000` sugarcane's `-I 1.7` is identical and within
+0.7% of the default, and purple's `-I 3` at `-S 10000` moves every statistic by
+under 0.3%. The grade says how much was discarded, not whether it mattered.
+
+**Three silent tool failures were found doing this, and are now guarded**
+(see `docs/results.md`): `clm info`'s `eff` and `mf` depend on which other
+clusterings share the call; mcl ignores `-I` above 30 and uses the default
+instead; and mcl underflows at high inflation, returning plausible-looking
+partitions computed on a graph a third of which has gone to zero.
+
+---
+
 ## 2026-08-13 — Purple uses `china/run2_onlyL`, not `china/run1`
 
 **The problem.** The old pipeline was internally inconsistent about which purple

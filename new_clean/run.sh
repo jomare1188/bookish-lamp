@@ -29,6 +29,8 @@
 #   ./run.sh mclladder <study> [mcl-args]    inflation ladder, no k-NN reduction
 #   ./run.sh leidensweep <study> [scout]     Leiden CPM/modularity + Louvain
 #   ./run.sh clustercompare <study>          score every method on ONE graph
+#   ./run.sh fastgreedy <study>              CNM hierarchical scout, capped
+#   ./run.sh figclustermethods               figure 12: MCL vs Leiden vs Louvain
 #   ./run.sh clusterhomog <study>            annotation homogeneity of each cell
 #   ./run.sh figclusterchoice                figure 10, the granularity choice
 #   ./run.sh sbmclust  <study>               SBM fit -> the same two files
@@ -389,6 +391,24 @@ main() {
     CLEAN_OUT_DIR="$(study_dir "$ARG")" \
     CLEAN_REF="${CLEAN_REF:-}" \
       bash "${SCRIPTS}/48_cluster_compare.sh"
+    ;;
+
+  fastgreedy)
+    # The hierarchical family, bounded. Classical hierarchical clustering is not
+    # offered at all: it needs a dense 170,135^2 dissimilarity (232 GB) built
+    # from correlations this pipeline thresholded away.
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLUSTER_FASTGREEDY_CAP_S="$CLUSTER_FASTGREEDY_CAP_S" \
+      "$CLUSTER_PYTHON" "${SCRIPTS}/50_fastgreedy_scout.py"
+    ;;
+
+  figclustermethods)
+    CLEAN_RESULTS="$RESULTS" \
+    CLEAN_OUT_DIR="${RESULTS}/figures" \
+    CLEAN_STUDIES="sugarcane purple" \
+      "$RSCRIPT_PLOT" "${SCRIPTS}/49_fig_cluster_methods.r"
     ;;
 
   clusterhomog)
