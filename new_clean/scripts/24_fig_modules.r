@@ -14,8 +14,8 @@
 #      p ~ 6e-06 so BH never binds for sugarcane and the effect-size floor is the
 #      only active constraint; at n = 18 it is the reverse.
 #
-#   B  WHY SPEARMAN. The same eigengenes scored by Pearson and by Spearman, at
-#      identical thresholds. Purple's responsive set more than doubles, which is
+#   B  WHY SPEARMAN. The same eigengenes, the SAME blocked model, scored by
+#      Pearson and by Spearman at identical thresholds -- one variable changes. Purple's responsive set more than doubles, which is
 #      exactly where the ordinal argument predicts it -- purple is the study with
 #      three nitrogen levels, and Pearson reads 0/2/6 mM as arithmetic the design
 #      never claimed.
@@ -151,9 +151,16 @@ cmpB <- rbindlist(lapply(STUDIES, function(st) {
   pe <- as.numeric(cor(t(E), tv))
   pp <- p.adjust(2 * pt(-abs(pe * sqrt(df / (1 - pe^2 + 1e-15))), df), "BH")
   sp <- PROF[study == st]; setkey(sp, module); sp <- sp[rownames(E)]
-  data.table(study = st,
-             Pearson  = sum(pp <= PADJ_THR & abs(pe) >= R_THR),
-             Spearman = sum(sp$responsive))
+  # HOLD THE MODEL FIXED, VARY ONLY THE STATISTIC. Since 53 the responsive call
+  # is a BLOCKED partial correlation, so pairing it with the marginal Pearson
+  # computed above would change the statistic AND the model in one bar chart --
+  # and this panel's entire claim is "why Spearman". 53 writes both blocked
+  # columns, so when they are present the comparison is blocked-vs-blocked.
+  if (all(c("rho_blocked_pearson", "padj_blocked_pearson") %in% names(sp))) {
+    n_pear <- sum(sp$padj_blocked_pearson <= PADJ_THR &
+                  abs(sp$rho_blocked_pearson) >= R_THR, na.rm = TRUE)
+  } else n_pear <- sum(pp <= PADJ_THR & abs(pe) >= R_THR)
+  data.table(study = st, Pearson = n_pear, Spearman = sum(sp$responsive))
 }))
 cmpB <- melt(cmpB, id.vars = "study", variable.name = "statistic", value.name = "n")
 cmpB[, study := factor(study, levels = STUDIES)]
@@ -328,7 +335,8 @@ fmt_n(rs(S1, "responsive")), " responsive modules -- the corrected and uncorrect
 " survive BH, so ", S2, "'s uncorrected count would be ", fmt_n(rs(S2, "n_rho")),
 " and should be labelled as such wherever it is used.\n",
 "\n",
-"(B) The same eigengenes scored by Pearson and by Spearman at identical thresholds. ", S1, ": ",
+"(B) The same eigengenes under the same blocked model, scored by Pearson and by Spearman at ",
+"identical thresholds -- only the statistic changes. ", S1, ": ",
 fmt_n(cb(S1, "Pearson")), " modules against ", fmt_n(cb(S1, "Spearman")), ". ", S2, ": ",
 fmt_n(cb(S2, "Pearson")), " against ", fmt_n(cb(S2, "Spearman")), " -- MORE THAN DOUBLE, and ",
 S2, " is exactly where the ordinal argument predicts the gain, because it is the study with ",

@@ -15,12 +15,13 @@ study. In sugarcane (n = 48) an |rho| of 0.6 already implies p ~ 6e-06, so BH ne
 = 18) it is the reverse: 528 modules reach |rho| >= 0.6 and only 182 survive BH, so purple's
 uncorrected count would be 528 and should be labelled as such wherever it is used.
 
-(B) The same eigengenes scored by Pearson and by Spearman at identical thresholds. sugarcane:
-213 modules against 588. purple: 34 against 182 -- MORE THAN DOUBLE, and purple is exactly
-where the ordinal argument predicts the gain, because it is the study with three nitrogen
-levels and Pearson reads 0/2/6 mM as arithmetic the design never claimed. sugarcane's trait is
-two-level, where Spearman is the rank-biserial correlation, so the gain there is smaller and is
-mostly robustness to the outliers a PC1 can carry.
+(B) The same eigengenes under the same blocked model, scored by Pearson and by Spearman at
+identical thresholds -- only the statistic changes. sugarcane: 527 modules against 588. purple:
+110 against 182 -- MORE THAN DOUBLE, and purple is exactly where the ordinal argument predicts
+the gain, because it is the study with three nitrogen levels and Pearson reads 0/2/6 mM as
+arithmetic the design never claimed. sugarcane's trait is two-level, where Spearman is the
+rank-biserial correlation, so the gain there is smaller and is mostly robustness to the
+outliers a PC1 can carry.
 
 (C, D) Every responsive module's eigengene, one panel per species: rows are modules, columns
 are libraries, colour is the z-scored eigengene on a single scale shared by both panels and
@@ -30,8 +31,8 @@ and ordered by genotype, then leaf segment, then library, so replicates of one c
 together. Both splits label themselves, so no annotation strip is needed. A mean profile would
 show the same two shapes in four points; what these panels add is whether the SET is coherent
 -- whether every module in a block really moves the same way or whether the block is carried by
-a minority. It is coherent: the nitrogen split accounts for a median and of each eigengene's
-variance in sugarcane's two blocks, and and in purple's.
+a minority. It is coherent: the nitrogen split accounts for a median 0.33 and 0.29 of each
+eigengene's variance in sugarcane's two blocks, and 0.49 and 0.51 in purple's.
 
 The two panels are not on the same footing and should not be read as if they were. sugarcane's
 588 modules come from 48 libraries in a two-level contrast, so the blocks are simply
@@ -50,12 +51,12 @@ NOT SHOWN AS A PANEL, but the biological payoff of the module level: transcripti
 enrichment. A hypergeometric test per module against that network's own node universe (BH
 across modules), then Fisher against the non-responsive modules, puts sugarcane's responsive
 modules at 3.57% TF-enriched against 1.51% (odds ratio 2.41, p = 0.0021), and the signal sits
-in the modules that FALL with nitrogen (OR , p = ) rather than those that rise (OR , p = ). Do
-not over-read the direction split -- it is 9 enriched modules against 6 -- but the pooled
-result is solid, and it is one the previous three-statistic call had buried: split across
-pearson_only / mi_only / both it read as OR 1.96, p = 0.06, with the strongest class at 3 of 41
-modules. In purple nothing is enriched (0 of 182 responsive modules), and its TF-enrichment
-rate is an order of magnitude below sugarcane's everywhere in the network.
+in the modules that FALL with nitrogen (OR 3.28, p = 0.0003) rather than those that rise (OR
+1.45, p = 0.441). Do not over-read the direction split -- it is 9 enriched modules against 6 --
+but the pooled result is solid, and it is one the previous three-statistic call had buried:
+split across pearson_only / mi_only / both it read as OR 1.96, p = 0.06, with the strongest
+class at 3 of 41 modules. In purple nothing is enriched (0 of 182 responsive modules), and its
+TF-enrichment rate is an order of magnitude below sugarcane's everywhere in the network.
 
 NOT SHOWN, because it is two numbers rather than a panel: the responsive sets are not noise.
 Permuting the trait labels against the same eigengenes 1,000 times gives a median of 0

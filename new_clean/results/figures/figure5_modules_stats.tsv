@@ -1,13 +1,17 @@
 panel	study	quantity	value
 A	sugarcane	tested / padj<=thr / |rho|>=thr / responsive	3,627 / 1,578 / 588 / 588
 A	purple	tested / padj<=thr / |rho|>=thr / responsive	7,493 /   182 / 528 / 182
-B	sugarcane	responsive by Pearson	213
-B	purple	responsive by Pearson	 34
+B	sugarcane	responsive by Pearson	527
+B	purple	responsive by Pearson	110
 B	sugarcane	responsive by Spearman	588
 B	purple	responsive by Spearman	182
-C/D	sugarcane	median R2 on nitrogen, down modules	0.286 (n = 312)
-C/D	sugarcane	median R2 on nitrogen, up modules	0.328 (n = 276)
-C/D	purple	median R2 on nitrogen, down modules	0.509 (n = 117)
-C/D	purple	median R2 on nitrogen, up modules	0.490 (n = 65)
+C/D	sugarcane	median R2 on nitrogen, negative modules	0.286 (n = 312)
+C/D	sugarcane	median R2 on nitrogen, positive modules	0.328 (n = 276)
+C/D	purple	median R2 on nitrogen, negative modules	0.509 (n = 117)
+C/D	purple	median R2 on nitrogen, positive modules	0.490 (n = 65)
 legend	sugarcane	TF enrichment: responsive	3.57% OR 2.41 p 0.002066
+legend	sugarcane	TF enrichment: rises with N	2.17% OR 1.45 p 0.4413
+legend	sugarcane	TF enrichment: falls with N	4.81% OR 3.28 p 0.0003258
 legend	purple	TF enrichment: responsive	0.55% OR 3.36 p 0.2738
+legend	purple	TF enrichment: rises with N	0.00% OR 0.00 p 1
+legend	purple	TF enrichment: falls with N	0.85% OR 5.24 p 0.1866

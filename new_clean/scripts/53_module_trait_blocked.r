@@ -225,13 +225,15 @@ out <- data.table(
   module = modules, trait = SELECT_TRAIT, n = ncol(E),
   rho = prim$r, pval = prim$p, padj = padj_b,
   responsive = padj_b <= PADJ_THR & abs(prim$r) >= R_THR,
-  direction = ifelse(prim$r > 0, "up", "down"),
   # everything below is reported beside the primary call, not used to make it
+  direction = NA_character_,            # filled below, in 19's contract
   blocked_stat = STAT, blocked_df = prim$df,
   rho_blocked_spearman = fit_s$r, padj_blocked_spearman = p.adjust(fit_s$p, "BH"),
   rho_blocked_pearson  = fit_p$r, padj_blocked_pearson  = p.adjust(fit_p$p, "BH"),
   rho_plant = plant_rho, plant_df = plant_df)
-out[!is.finite(rho), `:=`(responsive = FALSE, direction = NA_character_)]
+out[!is.finite(rho), responsive := FALSE]
+out[, direction := fifelse(!responsive, "none",
+                  fifelse(rho > 0, "positive", "negative"))]
 
 # The marginal columns come from fit_m above -- same modules, same samples.
 out[, `:=`(rho_marginal = fit_m$r, padj_marginal = padj_m,
