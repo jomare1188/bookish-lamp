@@ -1,101 +1,83 @@
-# Module analysis on the Pearson-only graphs — progress
+# Better GO for two grass genomes — progress
 
-Branch `clustering-methods`. **Overwrites `results/`** — this is the new main
-analysis. Backup of everything displaced: `results/_pre_pearson_20260910/` (38 MB,
-81 files, verified).
+Branch `clustering-methods`. Four sources, tiered, **adopted only if they improve
+module coherence** — coverage alone is the wrong target, since the last 7× coverage
+gain produced *fewer* significant terms.
 
-Graphs: unpruned Pearson-only, `|r| >= 0.8`, weights `[0.01, 1]`, no k-NN.
-Inflation: **sugarcane 1.5**, **purple 3.5** — each species' modularity optimum
-(figure 12). The module-trait test gains the experimental design.
+Baseline to beat: GO on 56,974/101,990 sugarcane (55.9%) and 94,497/170,135 purple
+(55.5%); 442/588 and 106/182 responsive modules testable; 143 and 8 terms clearing
+cross-module BH.
 
-The previous phase's checklist is kept at `docs/PROGRESS_clustering_phase.md`.
-
-Legend: `[ ]` todo · `[~]` running · `[x]` done · `[!]` blocked/failed
+Legend: `[ ]` todo · `[~]` running · `[x]` done · `[!]` blocked
 
 ---
 
-## A. Safety
+## Stage 0 — the judge (build before adopting anything)
 
-- [x] back up `results/{mcl_*,modules/,node_metrics,module_trait_*}` + figures
-      → `results/_pre_pearson_20260910/`, 81 files, verified
-      (keeps the OLD marginal `module_trait_*.tsv` for the blocked-vs-marginal comparison)
+- [x] `55_go_coherence.r` — Sorensen-Dice above a size-matched null, on GO not PFAM
+- [~] sugarcane: current vs eggnog_auto, both normalised (running)
+- [ ] purple
 
-## B. Inputs the new analysis needs
+## Stage 1 — eggNOG re-annotation  [DONE]
 
-- [x] `52_pearson_node_metrics.sh` written
-- [x] sugarcane node metrics: 101,990 genes
-- [x] purple node metrics: 170,135 genes
+- [x] `56_run_eggnog_all.sh` (reuses saved seed_orthologs; ~8 min per study)
+- [x] verified only GOs moved: rows, eggNOG_OGs, Description, PFAMs all identical
+- [x] **`--tax_scope` matters far more than `--go_evidence`** (corrects my earlier claim):
 
-## C. The clustering contract, from the partitions already on disk
+      sugarcane   Poales + non-electronic (original)   12,903 / 168,135   7.7%
+                  Poales + go_evidence all             22,248 / 168,135  13.2%
+                  auto   + go_evidence all             81,065 / 176,001  46.1%
+      purple      auto   + go_evidence all             98,867 / 229,602  43.1%  (was 7.4%)
 
-No re-clustering: `cls.knone.I15` and `cls.knone.I35` ARE the chosen settings.
+## Stage 1b — normalise every source to most-specific terms  [DONE]
 
-- [x] `51_mcl_membership_from_cls.r` written (mirrors `27_sbm_membership.r`)
-- [x] `.inflation` guard written AND tested firing (adopting I15 as "-I 15" aborts, writes nothing)
-- [x] sugarcane: 5,653 modules, largest 23,439 (22.98%), 3 unassigned, Q=0.08212 — cross-checked
-- [x] purple: 29,624 modules, largest 39,230 (23.06%), 15,600 unassigned, Q=0.15324 — cross-checked
-- [x] every gene accounted for: 101,990 and 170,135, exactly
+- [x] `60_normalise_gene2go.r`. **eggNOG ships the full ancestor closure INCLUDING the
+      three GO roots** (69.9 terms/gene; `biological_process` on 75,696 sugarcane genes),
+      while InterPro+Pfam gives direct terms only (2.3, zero roots). Mixing them would
+      (a) let the propagated source win the Dice coherence test on shared generalities
+      and (b) make topGO double-count, since it propagates internally.
+- [x] eggNOG 69.9 -> 16.7 terms/gene (4.3M implied pairs removed); current 2.3 -> 2.1
 
-## D. Eigengenes
+## Stage 2 — full InterProScan, the 12 member DBs never run (LONG POLE)
 
-- [x] sugarcane: 3,627 eigengenes, PC1 median 80.8% of variance
-- [x] purple: 7,493 eigengenes, PC1 median 88.4%
+Local 5.78 install, 49 GB data. nf-core used 5 of 17: missing Gene3D, SUPERFAMILY,
+CDD, SMART, PRINTS, PROSITE, Pfam.
 
-## E. The blocked module-trait test
+- [x] `57_run_interproscan.sh` — chunk + queue + merge, resumable
+- [x] invocation tested: 14 member DBs run (CDD, Gene3D, SUPERFAMILY, SMART, PRINTS,
+      ProSite, Pfam ... all the missing ones). 62 seqs / 7m55s / 4.9 GB at -cpu 8
+- [~] timing test at 600 seqs to separate fixed startup from marginal cost
+- [ ] sugarcane 194,593 proteins
+- [ ] purple 241,263 proteins
+- [ ] chunking verified lossless (every sequence in exactly one chunk)
 
-```
-sugarcane   eigengene ~ genotype + segment + N     n = 48, resid df 42
-purple      eigengene ~ genotype + N               n = 18, resid df 15
-```
+## Stage 3 — curated transfer (the only non-IEA evidence)
 
-- [x] `fit_blocked` + `verify_against_lm` + `row_midranks` in `scripts/lib/common.R`
-- [x] `53_module_trait_blocked.r` written
-- [x] **verified against `lm()`**: max |dt| 4.4e-16 / 1.3e-15, max |dp| 2.2e-16 — both species
-- [x] model matrix rank-checked; unblocked Spearman reproduces `cor.test(exact=FALSE)`
-- [x] Spearman primary (midranks); blocked Pearson beside it
-- [x] marginal computed ON THESE EIGENGENES (see log — joining the old table was wrong)
-- [x] sugarcane plant control: 12 plants, df 9, agreement with blocked fit **r = +0.9486**
-- [x] within-block null, 1,000 draws: **0 permutations reached the observed count** in either species (empirical p <= 0.001)
-- [x] sugarcane: **588 responsive** of 3,627 (16.2%), null mean 0.14
-- [x] purple: **182 responsive** of 7,493 (2.4%), null mean 0.39
-- [x] **blocked is a strict superset in both**: sugarcane 251 -> 588, purple 96 -> 182, none lost
+- [ ] `58_curated_transfer.sh` — diamond vs Swiss-Prot Viridiplantae + TAIR
+- [ ] experimental evidence codes only; assert no IEA survives
+- [ ] identity/coverage sensitivity curve reported, not a single asserted cut
 
-## F. The rest of the chain
+## Stage 4 — PANNZER2
 
-- [x] moduleprofile — TF enrichment: sugarcane OR 2.41 p 0.00207; purple OR 3.36 p 0.274 (1 module)
-- [x] moduleheatmap — 40 per study
-- [x] modulesummary — 250 x 48 (sugarcane), 182 x 18 (purple)
-- [x] figmodules — figure5_modules + legend + stats
+- [ ] install SANSPANZ / SANSparallel.3
+- [ ] `59_run_pannzer.sh` (reuses the stage-2 splitter)
+- [ ] score threshold chosen on the coherence curve, not the default
 
-## G. GO — handed over, not run
+## Stage 5 — merge, tier, adopt
 
-topGO runs are the user's to launch in `topGO_env`.
-
-- [x] inputs prepared and all four checked present per study; universe is now the Pearson-only network
-- [x] exact command handed over
-
-## H. Report
-
-- [x] `results/STALE.md` written
-- [x] `docs/results.md` — new section added AND the old module section marked superseded in place
-- [x] `docs/decisions.md` — entry written
-- [x] confirmed: exactly 8 files replaced, merged edge tables untouched
-- [x] commit
+- [ ] `54_build_gene2go.sh` merges all sources with `source` + `tier`
+- [ ] coherence delta per source, beside coverage
+- [ ] adopt / reject each source on that evidence
+- [ ] re-run modulego both studies; report coverage, testable, coherence, terms
+- [ ] docs + commit
 
 ---
 
 ## Log
 
-- 2026-09-10 — backup taken; inflation confirmed as sugarcane 1.5 / purple 3.5
-  (the values in the request were swapped relative to figure 12).
-- 2026-09-10 — CAUGHT in figure 5: 53 wrote `direction` as up/down, but 19's contract is
-  positive|negative|none — panels C and D came out labelled "NA". And panel B was left
-  comparing a MARGINAL Pearson against the BLOCKED Spearman, varying statistic and model
-  at once in the panel whose claim is "why Spearman". Both fixed; the corrected panel B
-  is 527->588 (sugarcane) and 110->182 (purple), the pattern the ordinal argument predicts.
-- 2026-09-10 — CAUGHT: my first version of 53 carried the marginal rho by JOINING the
-  previous run's `module_trait_*.tsv` on `module`. Module names are positional
-  (Module_%03d, largest first), so that joined DIFFERENT GENE SETS across two
-  clusterings — old Module_001 held 19,604 genes, the new one holds 23,439. It ran
-  cleanly and reported "244 marginal calls lost". The marginal fit is now computed on
-  the same eigengenes, and blocked is a strict superset in both species.
+- 2026-09-11 — plan approved.
+- 2026-09-11 — CORRECTION to my earlier diagnosis: I said emapper's `--go_evidence`
+  default was THE cause of 7.7% GO. Measured: it explains 7.7 -> 13.2%. Widening
+  `--tax_scope` from Poales to auto is worth another 33 points (-> 46.1%).
+- 2026-09-11 — eggNOG GO is pre-propagated to the DAG roots; every source now passes
+  through 60_normalise_gene2go.r first, or neither the coherence test nor topGO is valid.
