@@ -715,7 +715,8 @@ where the whole range varies by under 0.5%), purple at **`-I 3.5`** (0.15324, on
 plateau from 2.7 to 4.5). So `-I 2` is **not** the optimum in either species — it
 is the value that sits between the two optima, and it keeps **98.1% of the peak in
 both**. That, rather than a peak at 2 that does not exist, is the argument for
-using one inflation across two networks. Figure 12A.
+using one inflation across two networks. **Figure 12**, whose legend
+(`figure12_cluster_methods_legend.txt`) is generated from the same table.
 
 The ladder cannot simply be extended to find `eff`'s peak, because mcl breaks
 first, in two ways that are silent unless stderr is kept:
@@ -791,8 +792,10 @@ and is not claimed either way: at ~19,300 clusters sugarcane's Leiden CPM is abo
 MCL (0.0799 against 0.0664), while purple's MCL is above Leiden CPM throughout.
 What holds in both is that **MCL's maximum exceeds Leiden CPM's maximum** (0.0821
 against 0.0803; 0.1532 against 0.1426), reached at a coarser granularity than the
-overlap. Figure 12B plots both curves against cluster count — the only axis the
-methods share — and lets them speak.
+overlap. The per-method numbers are in
+`docs/data/clustering/cluster_methods_{sugarcane,purple}.tsv`; the only axis on
+which the methods can be plotted together is cluster count, since inflation and
+gamma are not commensurable.
 
 ### MCL's internal pruning is not distorting the answer
 
@@ -870,7 +873,9 @@ nine times the edges, was not attempted.
   faster than it costs the giant, and above `-I 13` mcl stops being numerically
   trustworthy.
 
-Tables: `docs/data/clustering/`. Figure: `figure12_cluster_methods`.
+Tables: `docs/data/clustering/`. Figure: `figure12_cluster_methods` (one panel:
+modularity vs inflation, peak marked), with its legend in
+`figure12_cluster_methods_legend.txt`.
 Machinery: `scripts/46`–`50`, `verify_cluster_roundtrip.py`, `run.sh` stages
 `pearsonmci mclladder leidensweep clustercompare`.
 

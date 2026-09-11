@@ -1,0 +1,47 @@
+FIGURE 12. Modularity against MCL inflation, and why the pipeline clusters at
+I = 2.
+
+Newman modularity of the MCL partition, computed by `clm info` against the graph
+the partition came from, plotted against the inflation parameter for each species.
+Networks are the unpruned Pearson-only co-expression graphs (|r| >= 0.8, edge
+weights rescaled to [0.01, 1], no k-NN reduction): sugarcane 101,990 genes and
+75,333,769 edges, purple 170,135 genes and 675,955,918 edges. Each point is one
+independent `mcl` run; the ladder was sampled densely around the maximum so that
+the peak is a property of the data and not of a coarse grid. Open red circles mark
+the maximum in each species. The x axis is log10.
+
+WHY THIS CRITERION. Modularity is the only one of the four available criteria with
+an interior optimum here. Mass fraction falls monotonically with inflation and is
+therefore maximised by the coarsest partition on the grid -- the single-cluster
+partition scores 1.0. Area fraction and efficiency both rise monotonically and are
+maximised by the finest. Each of those three is maximised at a grid boundary and so
+cannot choose a value; modularity is the only criterion that can.
+
+WHAT THE PANELS SHOW.
+
+  purple. Modularity peaks at I = 3.5 (Q = 0.15324), a partition of 29,624 modules whose
+  largest holds 39,230 genes (23.1% of the network), with a median module of 1 gene
+  and 15,600 singletons. Modularity stays within 0.5% of that peak across
+  I = 3-4.5. At I = 2 the partition has 7,722 modules, largest 43,816 genes (25.8%),
+  median 5, 276 singletons, and Q = 0.15026 -- 98.1% of the peak value.
+
+  sugarcane. Modularity peaks at I = 1.5 (Q = 0.08212), a partition of 5,653 modules whose
+  largest holds 23,439 genes (23.0% of the network), with a median module of 3 genes
+  and 3 singletons. Modularity stays within 0.5% of that peak across
+  I = 1.5-1.7. At I = 2 the partition has 8,795 modules, largest 19,840 genes (19.5%),
+  median 3, 105 singletons, and Q = 0.08059 -- 98.1% of the peak value.
+
+WHY I = 2 AND NOT EACH SPECIES' OWN PEAK. The two optima do not coincide, so no
+single inflation is optimal for both. I = 2 is the value between them: it retains
+98.1% of the peak modularity in sugarcane and 98.1% in purple, and it is the setting
+at which both networks still have a usable module-size distribution. Purple's own
+modularity peak is a poor partition to adopt despite its score -- at I = 3.5 its
+median module contains 1 gene and 15,600 genes (9.2% of the network) are singletons, against
+a median of 5 genes and 276 singletons at I = 2. Buying 2.0% additional
+modularity at the cost of 15,324 further singletons is not a trade the analysis needs
+to make, and using one inflation for both species keeps the two networks
+comparable, which is the point of the study.
+
+Source: docs/data/clustering/mcl_sweep_{sugarcane,purple}.tsv. Underflowed cells
+(mcl stops converging above ~I 13; 35,044 of 101,990 vectors zeroed at I = 20) and
+the -S resource-probe cells are excluded.
