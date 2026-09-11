@@ -5,6 +5,61 @@ are dated; the date is when the decision was made, not when it was written down.
 
 ---
 
+## 2026-09-10 — the module analysis moves to per-species inflation, and the design goes into the module test
+
+**Supersedes the `-I 2` entry below for the module analysis.** That entry asked
+which single inflation to use for both networks and answered `-I 2`, on the
+grounds that it keeps 98.1% of each species' peak modularity and keeps the two
+networks comparable. The analysis now uses **each species' own optimum** —
+`-I 1.5` sugarcane, `-I 3.5` purple — on the unpruned Pearson-only graphs.
+
+**Why the change is defensible.** The two questions are not the same. A single
+inflation matters when the two partitions are being compared *to each other*, as
+the conservation and cross-species stages do. The module analysis is run *within*
+a species: eigengenes, module-trait response, module GO. There, taking each
+network's own optimum costs nothing in comparability and gains the granularity the
+criterion actually selected. `-I 2` remains the right answer for anything that
+joins the two species, and the figure-12 argument stands as written.
+
+**What it costs, stated plainly.** Purple's optimum is a finer partition with a
+long tail: 29,624 clusters of which 15,600 are singletons (9.17% of genes, now
+"Unassigned"), against 276 singletons at `-I 2`. The analysable core is unaffected
+— 7,493 modules get an eigengene and 1,063 hold ten genes or more.
+
+**The module-trait test is now blocked, and blocked is primary.**
+
+```
+sugarcane   eigengene ~ genotype + segment + N      n = 48, residual df 42
+purple      eigengene ~ genotype + N                n = 18, residual df 15
+```
+
+Genotype carries R² = 0.999 of PC1 in purple and 0.998 in sugarcane, and leaf
+segment 0.802 of PC2, so the largest variance component in either matrix had been
+in the residual of every marginal test. Spearman stays primary — the ordinal-dose
+argument is unchanged — as the blocked fit on midranks.
+
+The marginal statistic is computed on the *same* eigengenes and reported beside
+the blocked one, so the effect of the model is visible in one table. It more than
+doubles the responsive set in both species (sugarcane 251 → 588, purple 96 → 182)
+and **loses nothing**: blocked is a strict superset. A test that only loosened a
+threshold could not have that property, and a block absorbing signal rather than
+noise would have broken it.
+
+**What licenses trusting it:** the solver reproduces `lm()` to 4.4e-16; the model
+matrix is rank-checked against a block confounded with the trait; the unblocked
+Spearman path reproduces `cor.test(exact = FALSE)`; sugarcane's plant-level control
+(12 plants × 4 segments are repeated measures, not 48 replicates) agrees at
+r = +0.9486; and the permutation null runs **within block**, because free shuffling
+would break the structure the model conditions on. No permutation of 1,000 reached
+the observed count in either species.
+
+`fit_blocked` and `verify_against_lm` live in `scripts/lib/common.R` so the gene
+level (`31_gene_trait_blocked.r`, branch `blocked-gene-trait`) and the module level
+share one verified implementation; when that branch is merged, 31 should be
+switched to the shared copy.
+
+---
+
 ## 2026-09-10 — `-I 2` stays, on evidence; Louvain and Leiden-modularity are ruled out
 
 **The problem.** The pipeline had always clustered at `-I 2`, a value nobody

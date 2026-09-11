@@ -62,25 +62,24 @@ purple      eigengene ~ genotype + N               n = 18, resid df 15
 
 ## F. The rest of the chain
 
-- [ ] moduleprofile
-- [ ] moduleheatmap
-- [ ] modulesummary
-- [ ] figmodules
+- [x] moduleprofile — TF enrichment: sugarcane OR 2.41 p 0.00207; purple OR 3.36 p 0.274 (1 module)
+- [x] moduleheatmap — 40 per study
+- [x] modulesummary — 250 x 48 (sugarcane), 182 x 18 (purple)
+- [x] figmodules — figure5_modules + legend + stats
 
 ## G. GO — handed over, not run
 
 topGO runs are the user's to launch in `topGO_env`.
 
-- [ ] inputs prepared
-- [ ] exact command handed over
+- [x] inputs prepared and all four checked present per study; universe is now the Pearson-only network
+- [~] exact command handed over (below)
 
 ## H. Report
 
-- [ ] `results/STALE.md` — what no longer matches (merged edge table beside
-      Pearson-only modules: topology figure, conservation 06/13, 08, gene-level trait)
-- [ ] `docs/results.md` — the new module section
-- [ ] `docs/decisions.md` — blocking at module level
-- [ ] confirm only intended files changed (diff against the backup)
+- [x] `results/STALE.md` written
+- [x] `docs/results.md` — new section added AND the old module section marked superseded in place
+- [x] `docs/decisions.md` — entry written
+- [x] confirmed: exactly 8 files replaced, merged edge tables untouched
 - [ ] commit
 
 ---

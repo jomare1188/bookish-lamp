@@ -1240,6 +1240,17 @@ information that 18 libraries do not contain.
 
 ## Module-level nitrogen response
 
+> **Superseded on 2026-09-10 by "The module analysis, rebuilt" below.** Everything
+> in this section was computed on the **merged (Pearson + MI) network at `-I 2`**
+> with a **marginal** Spearman. The analysis now runs on the unpruned Pearson-only
+> graphs at each species' modularity optimum, with the experimental design in the
+> model. The numbers here are kept because the reasoning that produced them —
+> especially why one rank correlation and not three statistics — still stands and
+> is not repeated below. **Do not quote these counts against the new modules**, and
+> note that module names are positional, so `Module_001` is not the same gene set
+> in the two analyses. See `results/STALE.md`.
+
+
 One eigengene per MCL module (PC1 of member genes' VST, z-scored, oriented to
 mean expression), for modules with ≥ 3 genes: 6,576 sugarcane / 6,318 purple,
 covering 92% and 87% of each network's genes. Median PC1 variance explained
@@ -1586,6 +1597,106 @@ response.
 > for a gene that does exactly that.
 
 ---
+
+---
+
+## The module analysis, rebuilt: Pearson-only graphs, per-species inflation, blocked trait test
+
+Two changes land together: the clustering moves to each species' own modularity
+optimum on the unpruned Pearson-only graphs, and the module-trait test gains the
+experimental design.
+
+### The clustering, adopted rather than recomputed
+
+The inflation ladder had already written the partition at every setting, so the
+two chosen cells were adopted directly (`51_mcl_membership_from_cls.r`, following
+`27_sbm_membership.r`'s contract) instead of re-running mcl — which would in any
+case need the 9-column edge table these networks no longer have.
+
+| | sugarcane `-I 1.5` | purple `-I 3.5` |
+|---|---|---|
+| clusters | 5,653 | 29,624 |
+| named modules (≥ 2 genes) | 5,650 | 14,024 |
+| largest | 23,439 (22.98%) | 39,230 (23.06%) |
+| Unassigned | 3 | 15,600 (9.17%) |
+| modularity Q | 0.08212 | 0.15324 |
+| eigengenes (≥ 3 genes) | 3,627 | 7,493 |
+| PC1 variance, median | 80.8% | 88.4% |
+
+Cluster count and largest module were cross-checked against `mcl_sweep_<study>.tsv`
+at that inflation, and every gene is accounted for (101,990 and 170,135 exactly).
+Because an mcl cell tag strips the decimal point — `-I 1.5` and `-I 15` would share
+a file — the adopter refuses any cell whose `.inflation` sidecar disagrees with the
+value requested. That guard was tested firing.
+
+### The design goes into the module test
+
+`53_module_trait_blocked.r`. The project's own QC puts genotype at R² = 0.999 of
+PC1 in purple and 0.998 in sugarcane, and leaf segment at 0.802 of PC2 — so the
+largest variance component in either matrix had been sitting in the residual of
+every module-level nitrogen test.
+
+```
+sugarcane   eigengene ~ genotype + segment + N      n = 48, residual df 42
+purple      eigengene ~ genotype + N                n = 18, residual df 15
+```
+
+Spearman stays primary (both traits are ordinal or two-level; the argument is in
+the superseded section above and is unchanged), implemented as the blocked fit on
+midranks. Blocked Pearson is written beside it.
+
+| | sugarcane | purple |
+|---|---|---|
+| modules tested | 3,627 | 7,493 |
+| responsive, **marginal** | 251 | 96 |
+| responsive, **blocked** | **588** (16.2%) | **182** (2.4%) |
+| in both | 251 | 96 |
+| up / down | 276 / 312 | 65 / 117 |
+| null mean (1,000 within-block permutations) | 0.14 | 0.39 |
+| permutations reaching the observed count | **0 / 1,000** | **0 / 1,000** |
+
+**Blocking is a strict superset in both species — nothing the marginal test found
+is lost.** That is the result that says the blocks absorbed noise rather than
+signal, and it is the same behaviour the change produced at gene level. Neither
+count is reachable by chance.
+
+Three checks the numbers rest on, all fatal if they fail:
+
+* the vectorised solver reproduces `lm()` to **4.4e-16** (t) and **2.2e-16** (p);
+* the model matrix is rank-checked, which is what a block confounded with the
+  trait would look like, and the unblocked Spearman path reproduces
+  `cor.test(method = "spearman", exact = FALSE)`;
+* **sugarcane's 48 libraries are 12 plants × 4 leaf segments — repeated measures,
+  not 48 replicates.** Segment as a fixed block removes the segment means but not
+  the within-plant correlation, so a plant-level run (n = 12, residual df 9) is
+  computed alongside. It agrees with the blocked fit at **r = +0.9486**.
+
+The null permutes **within block**. Shuffling labels freely would break the
+structure the model conditions on and give an optimistic null.
+
+TF enrichment among responsive modules reproduces the earlier asymmetry:
+sugarcane 3.57% against 1.51% in non-responsive (OR 2.41, p = 0.00207); purple
+0.55% against 0.16% (OR 3.36, p = 0.274, one module — not significant).
+
+### One error caught, and the trap it came from
+
+The first version of 53 carried the marginal rho by joining the **previous run's**
+`module_trait_<study>.tsv` on `module`. Module names are positional — `Module_%03d`,
+largest first — so that joined different gene sets across two clusterings: old
+`Module_001` held 19,604 sugarcane genes, the new one holds 23,439. It ran cleanly
+and reported that 244 marginal calls had been "lost under the design". The marginal
+fit is now computed on the same eigengenes, and the true answer is the opposite —
+blocked is a strict superset. `results/STALE.md` records the trap.
+
+### What is stale
+
+`results/` now holds Pearson-only modules beside the **merged** network's edge
+table, because the Pearson-only edge tables were deleted (70 GB whose only consumer
+was `mcxload`; the live graph is the `.mci`). So the topology figure, both
+conservation stages, `08_conserved_cor_genes.r` and the gene-level trait results
+still describe the merged network at `-I 2` and must not be quoted against the new
+modules. Listed in `results/STALE.md`; module GO is pending its topGO run.
+
 
 ## The paper figures
 
