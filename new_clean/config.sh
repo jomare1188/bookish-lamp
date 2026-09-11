@@ -212,8 +212,24 @@ MCL_KNN_purple=""
 
 # Per-study inflation, chosen by the sweep. Falls back to MCL_INFLATION when
 # empty, so the historical setting stays in force until the sweep has run.
-MCL_INFLATION_sugarcane=""
-MCL_INFLATION_purple=""
+# Set from the modularity optimum measured per species (figure 12): modularity is
+# the only criterion with an interior optimum for MCL -- mass fraction, area
+# fraction and efficiency are each monotone over the usable range and so are
+# maximised at a grid boundary. Densely resampled around the peak, these are it.
+# They are NOT equal, and that is the finding: purple needs a much higher
+# inflation than sugarcane to reach its own optimum.
+MCL_INFLATION_sugarcane=1.5
+MCL_INFLATION_purple=3.5
+
+# The work dir holding the Pearson-only matrices and the inflation ladder's
+# partitions. `membership` adopts a cell from here rather than re-running mcl.
+CLUSTER_WORK_DIR="${CLUSTER_WORK_DIR:-/dados04/jorge/tmp/mcl_work_cluster}"
+CLUSTER_SWEEP_TREE="${CLUSTER_SWEEP_TREE:-${CLEAN}/results_cluster}"
+
+# mcl cell tags strip the decimal point, so -I 1.5 lands in "I15". The helper
+# reproduces that, and 51 refuses to adopt a cell whose .inflation sidecar
+# disagrees with the value asked for.
+cls_for() { echo "${CLUSTER_WORK_DIR}/sweep_$1/cls.knone.I$(printf '%s' "$2" | tr -d '.')"; }
 
 # The sweep grid. The inflation values are the FAQ's own starting set (7.2: "A
 # good set of values to start with is 1.4, 2 and 6") widened around the
@@ -455,6 +471,32 @@ MODULE_PADJ_THR=0.05
 # for the TRAIT association only -- the eigengenes stay exactly as correlated
 # with each other as they really are. 1,000 permutations cost seconds.
 MODULE_PERM=1000
+MODULE_SEED=1188
+
+# --- the design in the module-trait test -------------------------------------
+# The module response is now a BLOCKED partial correlation, not a marginal one.
+# The project's own QC puts genotype at R2 = 0.999 of PC1 in purple and 0.998 in
+# sugarcane, and leaf segment at 0.802 of PC2, so the largest variance component
+# in either matrix was sitting in the residual of every nitrogen test. The same
+# correction at gene level moved purple from 30 responsive genes to 2,331.
+#
+#   sugarcane   eigengene ~ genotype + segment + N     n = 48, resid df 42
+#   purple      eigengene ~ genotype + N               n = 18, resid df 15
+MODULE_BLOCK_sugarcane="genotype segment"
+MODULE_BLOCK_purple="genotype"
+
+# Spearman stays primary at module level -- purple's trait is an ordinal 0/2/6 mM
+# dose and sugarcane's is two-level, where Spearman on eigengene ranks is the
+# rank-biserial correlation. Blocked Pearson is computed and written beside it.
+MODULE_BLOCKED_STAT_sugarcane=spearman
+MODULE_BLOCKED_STAT_purple=spearman
+
+# Sugarcane's 48 libraries are 12 plants x 4 leaf segments -- repeated measures,
+# not 48 replicates. Segment as a fixed block removes the segment MEANS but not
+# the within-plant correlation, so a plant-level run (n = 12, resid df 9) is
+# computed alongside and correlated against the blocked fit. Empty = no control.
+MODULE_PLANT_FROM_sugarcane="genotype"
+MODULE_PLANT_FROM_purple=""
 
 # Heatmaps: how many responsive modules to draw, and how many genes of each.
 # The largest modules are 19,604 (sugarcane) and 47,887 (purple) genes, which no

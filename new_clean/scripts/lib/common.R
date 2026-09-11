@@ -178,3 +178,73 @@ write_tsv <- function(x, path) {
   say("wrote ", basename(path), "  (", fmt_n(nrow(x)), " rows)")
   invisible(path)
 }
+
+# =============================================================================
+# BLOCKED (DESIGN-AWARE) CORRELATION
+#
+# Shared by the gene level (31_gene_trait_blocked.r, branch blocked-gene-trait)
+# and the module level (53_module_trait_blocked.r). One implementation, one
+# verification, so the two levels cannot drift apart.
+#
+# The statistic is the t on the trait coefficient of  y ~ block + trait, which is
+# exactly the partial correlation's t-test, so  r = t / sqrt(t^2 + df)  is the
+# partial correlation of y and the trait GIVEN the blocks -- the same quantity
+# the |r| floor was always cutting on, now conditional on the design.
+#
+# Vectorised over ROWS via one QR: a per-row loop does not finish over 44,118
+# genes, and the module level has 7,493 rows.
+# =============================================================================
+
+fit_blocked <- function(Y, y, blocks) {
+  # Y: rows (genes or modules) x samples. y: numeric trait. blocks: list of factors.
+  n <- ncol(Y)
+  X <- if (length(blocks))
+         model.matrix(~ ., data = cbind(data.frame(blocks), .trait = y))
+       else model.matrix(~ y)
+  j   <- ncol(X)                                   # trait is the last column
+  qrX <- qr(X)
+  k   <- qrX$rank
+  df  <- n - k
+  if (df <= 0) stop("no residual degrees of freedom", call. = FALSE)
+  # A rank-deficient model matrix is what a block CONFOUNDED WITH THE TRAIT looks
+  # like -- e.g. a genotype that only ever appears at one nitrogen level. Fitting
+  # it anyway would silently attribute the trait effect to the block.
+  if (k < ncol(X))
+    stop("model matrix is rank-deficient (", k, " < ", ncol(X),
+         ") -- a block is confounded with the trait", call. = FALSE)
+
+  B    <- qr.coef(qrX, t(Y))                       # coefficients x rows
+  RES  <- t(Y) - X %*% B
+  s2   <- colSums(RES^2) / df
+  XtXi <- chol2inv(qr.R(qrX))
+  est  <- B[j, ]
+  se   <- sqrt(s2 * XtXi[j, j])
+  tt   <- as.numeric(est / se)
+  list(est = as.numeric(est), se = as.numeric(se), t = tt,
+       r = tt / sqrt(tt^2 + df), p = 2 * pt(-abs(tt), df = df), df = df)
+}
+
+# Refit a spread of rows with lm() and ABORT on disagreement. The vectorised
+# solver is fast because it skips every check lm() makes; this is what licenses
+# trusting it.
+verify_against_lm <- function(Y, y, blocks, fit, label, n_check = 25L) {
+  idx  <- unique(round(seq(1, nrow(Y), length.out = min(n_check, nrow(Y)))))
+  dd   <- if (length(blocks)) cbind(as.data.frame(blocks), .trait = y)
+          else data.frame(.trait = y)
+  mx_t <- 0; mx_p <- 0
+  for (i in idx) {
+    co <- summary(stats::lm(as.numeric(Y[i, ]) ~ ., data = dd))$coefficients
+    r  <- co[".trait", ]
+    mx_t <- max(mx_t, abs(r["t value"]  - fit$t[i]))
+    mx_p <- max(mx_p, abs(r["Pr(>|t|)"] - fit$p[i]))
+  }
+  say(sprintf("lm() agreement (%s) over %d rows: max |dt| = %.2e, max |dp| = %.2e",
+              label, length(idx), mx_t, mx_p))
+  if (mx_t > 1e-8 || mx_p > 1e-8)
+    stop("the vectorised solver does not reproduce lm() for ", label, call. = FALSE)
+  invisible(TRUE)
+}
+
+# Midranks, row-wise. rank()'s default ties.method = "average" is what
+# 19_module_trait_spearman.r requires: both traits are heavily tied by design.
+row_midranks <- function(Y) t(apply(Y, 1L, rank))

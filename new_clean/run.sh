@@ -16,6 +16,8 @@
 #   ./run.sh merge     <study>               layers -> the network
 #   ./run.sh stats     <study>               node + global metrics, plots
 #   ./run.sh mcl       <study>               MCL modules
+#   ./run.sh nodemetrics <study>             gene universe from the .mci
+#   ./run.sh membership  <study>             adopt the ladder partition at the chosen -I
 #   ./run.sh pearsononly <study>             Pearson layer -> a Pearson-only network
 #   ./run.sh sgvalidate                      can statGraph's criterion choose k here?
 #   ./run.sh knnsweep  <study>               reduce at each k; nodes/edges/degrees
@@ -435,6 +437,37 @@ main() {
     ;;
 
   # --- 05 clustering ----------------------------------------------------------
+  nodemetrics)
+    # Gene universe for the Pearson-only network, straight from the .mci.
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_WORK_DIR="$CLUSTER_WORK_DIR" \
+    CLEAN_MCL_BIN_DIR="$(dirname "$MCL_BIN")" \
+    CLEAN_OUT_FILE="$(study_dir "$ARG")/network_${ARG}_node_metrics.tsv" \
+    CLEAN_CORES="$NUM_CORES" \
+      bash "${SCRIPTS}/52_pearson_node_metrics.sh"
+    ;;
+
+  membership)
+    # Adopt the inflation ladder's partition at this study's chosen inflation.
+    # Replaces `./run.sh mcl <study>` for the Pearson-only networks: 05 re-runs
+    # mcl from a 9-column edge table these networks no longer have, and the
+    # partition is already on disk.
+    check_study "$ARG"
+    _I="$(cfg MCL_INFLATION "$ARG")"; _I="${_I:-$MCL_INFLATION}"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_CLS="$(cls_for "$ARG" "$_I")" \
+    CLEAN_TAB="${CLUSTER_WORK_DIR}/${ARG}.tab" \
+    CLEAN_NODE_METRICS="$(study_dir "$ARG")/network_${ARG}_node_metrics.tsv" \
+    CLEAN_SWEEP_TSV="${CLUSTER_SWEEP_TREE}/${ARG}/mcl_sweep_${ARG}.tsv" \
+    CLEAN_PREFIX="$(clus_prefix "$ARG")" \
+    CLEAN_INFLATION="$_I" \
+    CLEAN_MIN_MODULE_SIZE="$MCL_MIN_MODULE_SIZE" \
+    CLEAN_MIN_MODULE_SIZE_PLOT="$MCL_MIN_MODULE_SIZE_PLOT" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_NET" "${SCRIPTS}/51_mcl_membership_from_cls.r"
+    ;;
+
   mcl)
     check_study "$ARG"
       # mcl ships inside the same conda env as RSCRIPT_NET but that env is not
@@ -581,18 +614,27 @@ main() {
   # rank correlation, because the trait is ordinal and MI at this level was an
   # omnibus test firing on sample-driven quirks. See 19_module_trait_spearman.r.
   moduletrait)
+    # BLOCKED (53), not the marginal Spearman (19). 53 also computes the
+    # MARGINAL fit on the same eigengenes and carries it in the same table, so
+    # the effect of putting the design in the model is a comparison of two models
+    # of ONE module set -- never a join against a previous run, whose Module_NNN
+    # names are positional and refer to different genes.
     check_study "$ARG"
     CLEAN_STUDY="$ARG" \
     CLEAN_EIGENGENE_PREFIX="$(module_dir "$ARG")/modules/${ARG}_eigengenes" \
     CLEAN_META="$(cfg META "$ARG")" \
     CLEAN_TRAITS="$(cfg TRAITS "$ARG")" \
-    CLEAN_SELECT_TRAIT="$SELECT_TRAIT" \
+    CLEAN_SELECT_TRAIT="${SELECT_TRAIT:-treatment}" \
+    CLEAN_BLOCK="$(cfg MODULE_BLOCK "$ARG")" \
+    CLEAN_BLOCKED_STAT="$(cfg MODULE_BLOCKED_STAT "$ARG")" \
+    CLEAN_PLANT_FROM="$(cfg MODULE_PLANT_FROM "$ARG")" \
     CLEAN_OUT_FILE="$(module_dir "$ARG")/module_trait_${ARG}.tsv" \
     CLEAN_MODULE_R_THR="$MODULE_R_THR" \
     CLEAN_MODULE_PADJ_THR="$MODULE_PADJ_THR" \
     CLEAN_MODULE_PERM="$MODULE_PERM" \
+    CLEAN_SEED="$MODULE_SEED" \
     CLEAN_CORES="$NUM_CORES" \
-      "$RSCRIPT_NET" "${SCRIPTS}/19_module_trait_spearman.r"
+      "$RSCRIPT_NET" "${SCRIPTS}/53_module_trait_blocked.r"
     ;;
 
   moduleprofile)
