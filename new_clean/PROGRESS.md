@@ -72,7 +72,7 @@ purple      eigengene ~ genotype + N               n = 18, resid df 15
 topGO runs are the user's to launch in `topGO_env`.
 
 - [x] inputs prepared and all four checked present per study; universe is now the Pearson-only network
-- [~] exact command handed over (below)
+- [x] exact command handed over
 
 ## H. Report
 
@@ -80,7 +80,7 @@ topGO runs are the user's to launch in `topGO_env`.
 - [x] `docs/results.md` — new section added AND the old module section marked superseded in place
 - [x] `docs/decisions.md` — entry written
 - [x] confirmed: exactly 8 files replaced, merged edge tables untouched
-- [ ] commit
+- [x] commit
 
 ---
 
@@ -88,6 +88,11 @@ topGO runs are the user's to launch in `topGO_env`.
 
 - 2026-09-10 — backup taken; inflation confirmed as sugarcane 1.5 / purple 3.5
   (the values in the request were swapped relative to figure 12).
+- 2026-09-10 — CAUGHT in figure 5: 53 wrote `direction` as up/down, but 19's contract is
+  positive|negative|none — panels C and D came out labelled "NA". And panel B was left
+  comparing a MARGINAL Pearson against the BLOCKED Spearman, varying statistic and model
+  at once in the panel whose claim is "why Spearman". Both fixed; the corrected panel B
+  is 527->588 (sugarcane) and 110->182 (purple), the pattern the ordinal argument predicts.
 - 2026-09-10 — CAUGHT: my first version of 53 carried the marginal rho by JOINING the
   previous run's `module_trait_*.tsv` on `module`. Module names are positional
   (Module_%03d, largest first), so that joined DIFFERENT GENE SETS across two
