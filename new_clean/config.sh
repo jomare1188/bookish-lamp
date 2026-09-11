@@ -546,6 +546,23 @@ MODULE_GO_MIN_ANNOTATED=3
 # (copy-on-write: the graph is not duplicated per worker).
 MODULE_GO_CORES=16
 
+# --- GO from the nf-core/proteinannotator run --------------------------------
+# The eggNOG GO column is nearly empty (7.7% of proteins) because that run used
+# emapper's default --go_evidence 'non-electronic', which excludes every IEA term
+# (emapper.py:405, :615). For grass proteins almost all GO is IEA.
+#
+# 54_build_gene2go.sh derives GO instead from InterPro accessions and Pfam domains
+# via the GO Consortium's interpro2go and pfam2go. Measured network coverage:
+# sugarcane 56,974 of 101,990 genes (55.9%), purple 94,497 of 170,135 (55.5%) --
+# against 8,173 and 12,223 from eggNOG.
+PROTEIN_ANNOT_DIR="${PROTEIN_ANNOT_DIR:-/home/genomics/jorge/annotations/sugarcane_purple/merged}"
+GO_MAP_DIR="${GO_MAP_DIR:-${BASE}/annotation/go_mappings}"
+# pfam.resolved is NOT pre-filtered -- it holds hits at i_evalue 14. Loosening
+# this to 1e-3 adds only 1,424 sugarcane genes, so the strict cut costs almost
+# nothing and keeps the junk out.
+PFAM_EVALUE="${PFAM_EVALUE:-1e-5}"
+gene2go_tsv() { echo "${BASE}/annotation/$1/gene2go_$1.tsv"; }
+
 # --- paper figures -----------------------------------------------------------
 # Figures carry a panel letter and the labels the data needs to be read, and
 # nothing else -- no titles, no subtitles, no statistics printed on the panel.

@@ -107,8 +107,17 @@ parse_eggnog <- function(annotation_file) {
   as.list(gene2GO_merged)
 }
 
-say("parsing eggNOG annotation ...")
-gene2GO_all <- parse_eggnog(EMAPPER)
+say("loading GO annotation ...")
+# CLEAN_GENE2GO takes precedence when set: the derived InterPro+Pfam table, which
+# reaches ~56% of network genes against eggNOG's 7.7%. See parse_gene2go() in
+# lib/common.R for why the eggNOG column is nearly empty.
+GENE2GO <- env_opt("CLEAN_GENE2GO", "")
+if (nzchar(GENE2GO)) {
+  say("using the derived GO table: ", basename(GENE2GO))
+  gene2GO_all <- parse_gene2go(GENE2GO)
+} else {
+  gene2GO_all <- parse_eggnog(EMAPPER)
+}
 say("  genome GO-annotated genes: ", fmt_n(length(gene2GO_all)))
 
 # Universe = GO-annotated genes of THIS network, identical to 09's background and

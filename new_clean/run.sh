@@ -45,6 +45,7 @@
 #   ./run.sh moduleprofile <study>           + TF enrichment per module
 #   ./run.sh moduleheatmap <study> [mods]    heatmaps for responsive modules
 #   ./run.sh modulesummary <study>           one figure: all responsive modules
+#   ./run.sh gene2go   <study>              derive GO from InterPro + Pfam
 #   ./run.sh modulego  <study> [BP|MF|CC]    GO enrichment per responsive module
 #   ./run.sh conscor   [0|1] [selection]     conserved N response; 1 = directed test
 #   ./run.sh ushape                          U-shape contrast, genome-wide (purple)
@@ -688,6 +689,18 @@ main() {
   # topGO env, like `go` -- the module gene sets and the conserved gene set are
   # tested against the same network-node background, so the two enrichments stay
   # on one denominator.
+  gene2go)
+    # Derive GO from the protein-annotator output (InterPro + Pfam).
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_ANNOT_DIR="$PROTEIN_ANNOT_DIR" \
+    CLEAN_GO_MAP_DIR="$GO_MAP_DIR" \
+    CLEAN_OUT_FILE="$(gene2go_tsv "$ARG")" \
+    CLEAN_NODE_METRICS="$(study_dir "$ARG")/network_${ARG}_node_metrics.tsv" \
+    CLEAN_PFAM_EVALUE="$PFAM_EVALUE" \
+      bash "${SCRIPTS}/54_build_gene2go.sh"
+    ;;
+
   modulego)
     check_study "$ARG"
     CLEAN_STUDY="$ARG" \
@@ -695,6 +708,7 @@ main() {
     CLEAN_MEMBERSHIP="$(clus_prefix "$ARG")_membership.tsv" \
     CLEAN_NODE_METRICS="$(study_dir "$ARG")/network_${ARG}_node_metrics.tsv" \
     CLEAN_EMAPPER="$(cfg EMAPPER "$ARG")" \
+    CLEAN_GENE2GO="${CLEAN_GENE2GO-$(gene2go_tsv "$ARG")}" \
     CLEAN_OUT_DIR="$(module_dir "$ARG")/module_go" \
     CLEAN_ONTOLOGY="${EXTRA[0]:-$MODULE_GO_ONTOLOGY}" \
     CLEAN_GO_P="$GO_P" \

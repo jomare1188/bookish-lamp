@@ -248,3 +248,31 @@ verify_against_lm <- function(Y, y, blocks, fit, label, n_check = 25L) {
 # Midranks, row-wise. rank()'s default ties.method = "average" is what
 # 19_module_trait_spearman.r requires: both traits are heavily tied by design.
 row_midranks <- function(Y) t(apply(Y, 1L, rank))
+
+# =============================================================================
+# GENE -> GO, FROM THE DERIVED TABLE
+#
+# Returns the same shape parse_eggnog() returns -- a named list, gene -> character
+# vector of GO ids -- so it is a drop-in for it at the single point where either
+# is called.
+#
+# WHY A SECOND READER EXISTS. The eggNOG annotation carries GO for only 7.7% of
+# proteins, because that run used emapper's default --go_evidence 'non-electronic'
+# and so excluded every IEA term (emapper.py:405 and :615). 54_build_gene2go.sh
+# derives GO instead from InterPro accessions and Pfam domains via the Gene
+# Ontology Consortium's own interpro2go and pfam2go mappings, which reaches ~56%
+# of network genes in both species.
+#
+# The `source` column (ipr | pfam | both) is deliberately NOT collapsed away here:
+# a caller that wants to know whether a result rests on one route can read the
+# file directly.
+# =============================================================================
+parse_gene2go <- function(path) {
+  if (!file.exists(path)) stop("gene2go table not found: ", path, call. = FALSE)
+  d <- data.table::fread(path, sep = "\t", header = TRUE,
+                         select = c("gene", "go_id"), colClasses = "character")
+  if (!nrow(d)) stop("gene2go table is empty: ", path, call. = FALSE)
+  d <- d[grepl("^GO:", go_id)]
+  if (!nrow(d)) stop("no rows with a GO id in ", path, call. = FALSE)
+  split(d$go_id, d$gene)
+}

@@ -35,6 +35,21 @@ clustering, so joining them to anything above compares two analyses.
 | `<study>/gene_trait_*` (`07_gene_trait_cor.r`) | **marginal** gene-level test. The blocked gene-level version lives on branch `blocked-gene-trait` (`31_gene_trait_blocked.r`) and is not merged here |
 | — | **BP is current** (run 2026-09-11 on the new clustering). The CC and MF results in that directory were from 2026-08-23 and describe the OLD clustering; they have been moved to `_pre_pearson_20260910/<study>/module_go_OLD_CLUSTERING/` so one directory does not hold two analyses |
 
+## GO was re-derived on 2026-09-11
+
+`module_go/` BP is now built on GO derived from the nf-core/proteinannotator run
+(InterPro accessions + Pfam domains via the GO Consortium's interpro2go/pfam2go),
+not on the eggNOG GO column. That column carries GO for only 7.7% of proteins
+because the emapper run used the default `--go_evidence non-electronic`, which
+excludes every IEA term (`emapper.py:405`, `:615`) — and for grass proteins almost
+all GO is IEA.
+
+STALE as a result, until re-run on the derived table: **`09_go_enrichment.r` and
+`10_go_semantic.r` outputs**, which still use the 7.7% annotation and its
+background. `emapper.annotations` itself is untouched and is still the source for
+KEGG and Preferred_name. PFAM-based work (`37_cluster_homogeneity.r`) is
+unaffected — eggNOG's PFAMs column is 87.6% filled and was never the problem.
+
 ## A loss to record
 
 The backup taken on 2026-09-10 listed `mcl_*`, `modules/`, `network_*_node_metrics.tsv`,
