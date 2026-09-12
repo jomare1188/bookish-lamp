@@ -15,8 +15,19 @@ Legend: `[ ]` todo · `[~]` running · `[x]` done · `[!]` blocked
 ## Stage 0 — the judge (build before adopting anything)
 
 - [x] `55_go_coherence.r` — Sorensen-Dice above a size-matched null, on GO not PFAM
-- [~] sugarcane: current vs eggnog_auto, both normalised (running)
-- [ ] purple
+- [x] **sugarcane scored, 3 annotations on the SAME partition** (all normalised):
+
+      annotation     genes    modules    H       null     excess
+      current        54,903     2,906   0.0880   0.0260   +0.0620   <- best
+      eggnog_auto    45,923     2,602   0.2531   0.1939   +0.0592
+      union          66,725     3,209   0.1472   0.0899   +0.0572
+
+      eggNOG's raw H is 3x higher and its excess is LOWER -- the null exposes that as
+      term density (16.7 terms/gene), not shared function. Raw H would have picked it.
+      The union buys +21% coverage and +303 scorable modules but dilutes the excess.
+      **By the agreed rule eggNOG is not adopted** -- pending the InterProScan result,
+      which changes the `current` baseline.
+- [ ] purple (after InterProScan lands)
 
 ## Stage 1 — eggNOG re-annotation  [DONE]
 
@@ -46,7 +57,10 @@ CDD, SMART, PRINTS, PROSITE, Pfam.
 - [x] `57_run_interproscan.sh` — chunk + queue + merge, resumable
 - [x] invocation tested: 14 member DBs run (CDD, Gene3D, SUPERFAMILY, SMART, PRINTS,
       ProSite, Pfam ... all the missing ones). 62 seqs / 7m55s / 4.9 GB at -cpu 8
-- [~] timing test at 600 seqs to separate fixed startup from marginal cost
+- [x] cost model measured: **369 s fixed startup + 1.71 s/protein** at -cpu 8
+      (62 seqs 7m55s; 600 seqs 23m15s) -> 2,000/chunk = ~63 min, 218 chunks, ~8 h total
+- [~] sugarcane running: 98 chunks, split verified lossless (194,593 seqs), 30 concurrent
+- [ ] purple 241,263 proteins (queued behind sugarcane)
 - [ ] sugarcane 194,593 proteins
 - [ ] purple 241,263 proteins
 - [ ] chunking verified lossless (every sequence in exactly one chunk)
