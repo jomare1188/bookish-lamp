@@ -27,7 +27,22 @@ Legend: `[ ]` todo · `[~]` running · `[x]` done · `[!]` blocked
       The union buys +21% coverage and +303 scorable modules but dilutes the excess.
       **By the agreed rule eggNOG is not adopted** -- pending the InterProScan result,
       which changes the `current` baseline.
-- [ ] purple (after InterProScan lands)
+- [x] purple scored
+- [x] **FLAW IN MY OWN JUDGE FOUND AND FIXED.** Scored on each annotation's own gene
+      pool, EVERY coverage increase lowered the excess — because the null draws from
+      the annotated pool, so a sparse annotation of well-characterised genes gets a low
+      null and a big excess, while broader coverage adds generic terms that raise H and
+      the null together. The metric was partly measuring specificity and would have
+      rejected every expansion by construction. Fixed by scoring all candidates on the
+      SAME genes and modules.
+- [x] **fixed-set result, both species** (same genes, same modules):
+
+      excess over null   nfcore5db   ipsfull   eggnog   union
+      sugarcane           +0.0755    +0.0748   +0.0650  +0.0671
+      purple              +0.0377    +0.0361   +0.0316  +0.0264
+
+      InterPro-derived is equally coherent from 5 or 17 DBs (0.9% apart, within noise);
+      eggNOG is worse on identical genes and drags the union down in BOTH species.
 
 ## Stage 1 — eggNOG re-annotation  [DONE]
 
@@ -59,8 +74,9 @@ CDD, SMART, PRINTS, PROSITE, Pfam.
       ProSite, Pfam ... all the missing ones). 62 seqs / 7m55s / 4.9 GB at -cpu 8
 - [x] cost model measured: **369 s fixed startup + 1.71 s/protein** at -cpu 8
       (62 seqs 7m55s; 600 seqs 23m15s) -> 2,000/chunk = ~63 min, 218 chunks, ~8 h total
-- [~] sugarcane running: 98 chunks, split verified lossless (194,593 seqs), 30 concurrent
-- [ ] purple 241,263 proteins (queued behind sugarcane)
+- [x] sugarcane: 98/98 chunks, 181,416/194,593 proteins with a signature (93.2%)
+- [x] purple: 121/121 chunks, 233,300/241,263 (96.7%)
+- [x] all 17 member DBs ran; 1.10M and 1.41M rows carry an InterPro accession
 - [ ] sugarcane 194,593 proteins
 - [ ] purple 241,263 proteins
 - [ ] chunking verified lossless (every sequence in exactly one chunk)
@@ -79,9 +95,16 @@ CDD, SMART, PRINTS, PROSITE, Pfam.
 
 ## Stage 5 — merge, tier, adopt
 
-- [ ] `54_build_gene2go.sh` merges all sources with `source` + `tier`
-- [ ] coherence delta per source, beside coverage
-- [ ] adopt / reject each source on that evidence
+- [x] **ADOPTED: full InterProScan (ipsfull). REJECTED: eggNOG.** Same per-gene
+      coherence as before, far more reach:
+
+                    GO genes / network        testable modules   terms clearing BH
+      sugarcane   56,974 -> 64,178 (62.9%)    442 -> 479 / 588     143 -> 164
+      purple      94,497 -> 109,591 (64.4%)   106 -> 118 / 182       8 ->   9
+
+      median annotated members per responsive module: sugarcane 4 -> 5, purple 3 -> 3
+- [x] old 5-DB table kept as `gene2go_nfcore5db_<study>.tsv.bak`
+- [ ] tier column, once curated/PANNZER tiers exist
 - [ ] re-run modulego both studies; report coverage, testable, coherence, terms
 - [ ] docs + commit
 

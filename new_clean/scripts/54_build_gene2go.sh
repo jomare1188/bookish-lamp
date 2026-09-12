@@ -49,7 +49,7 @@ OUT="${CLEAN_OUT_FILE:?}"
 NODES="${CLEAN_NODE_METRICS:-}"
 EVAL="${CLEAN_PFAM_EVALUE:-1e-5}"
 
-IPS="${ANNOT}/${STUDY}.interproscan.tsv"
+IPS="${CLEAN_IPS_TSV:-${ANNOT}/${STUDY}.interproscan.tsv}"
 PFAM="${ANNOT}/${STUDY}.pfam.resolved.tsv.gz"
 say() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 

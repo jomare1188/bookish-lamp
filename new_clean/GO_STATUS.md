@@ -1,6 +1,6 @@
 # GO annotation — live status
 
-_2026-09-11 21:29:15_
+_2026-09-12 12:12:21_
 
 ## Baseline to beat (current, InterPro+Pfam)
 
@@ -24,8 +24,8 @@ _original non-electronic run: sugarcane GOs 12,903/168,135 (7.7%), purple 15,572
 
 | study | proteins | chunks done | merged | status |
 |---|---|---|---|---|
-| sugarcane | 194593 | 0 / 98 | - | prepared |
-| purple | 241263 | 0 / ? | - | not run |
+| sugarcane | 194593 | 98 / 98 | 323M | MERGED |
+| purple | 241263 | 121 / 121 | 402M | MERGED |
 
 ## Stage 3 — curated transfer (Swiss-Prot + TAIR)
 
@@ -39,11 +39,11 @@ _original non-electronic run: sugarcane GOs 12,903/168,135 (7.7%), purple 15,572
 
 ## Stage 0/5 — the judge, and the merged table
 
-- sugarcane  gene2go: 225288 pairs | coherence: scored
-- purple     gene2go: 278242 pairs | coherence: not run
+- sugarcane  gene2go: 256099 pairs | coherence: scored
+- purple     gene2go: 330621 pairs | coherence: not run
 
 ## Running now
 
-- `1565127 /usr/bin/python3 /usr/share/apport/apport -p1562371 -s6 -c0 -d1 -P1562371 -u1004 -g1004 -F -- !dados04`
+- nothing
 
 _regenerate: `./scripts/go_status.sh` · live: `watch -n 60 ./scripts/go_status.sh`_
