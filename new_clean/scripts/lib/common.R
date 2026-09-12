@@ -276,3 +276,50 @@ parse_gene2go <- function(path) {
   if (!nrow(d)) stop("no rows with a GO id in ", path, call. = FALSE)
   split(d$go_id, d$gene)
 }
+
+# =============================================================================
+# THE GENE UNIVERSE
+#
+# Every stage that tests genes has to correct over the SAME universe or its counts
+# are not comparable with the next stage's. Since the analysis moved to the
+# unpruned Pearson-only graphs that universe is the NETWORK'S NODE SET --
+# network_<study>_node_metrics.tsv, 101,990 sugarcane and 170,135 purple -- which is
+# the gene set the modules are built on.
+#
+# It replaces conserved_genes_<study>_FULL.txt, which was the genes carrying a
+# conserved edge in the MERGED (Pearson + MI) graph. That file is not wrong; it
+# describes a graph this analysis no longer uses, and correcting over its 39,226 /
+# 44,118 genes while the modules cover 101,990 / 170,135 mixes two analyses.
+#
+# Accepts a bare gene list or any TSV whose FIRST column is the gene id, so the
+# node-metrics table can be handed over as-is. A `gene` header line is dropped --
+# nothing else in these files could collide with a real gene id.
+# =============================================================================
+read_gene_universe <- function(path) {
+  if (!file.exists(path))
+    stop("gene universe not found: ", path,
+         "\n  expected the Pearson-only network's node list ",
+         "(network_<study>_node_metrics.tsv);\n  build it with  ./run.sh nodemetrics <study>",
+         call. = FALSE)
+  v <- data.table::fread(path, header = FALSE, sep = "\t", select = 1L,
+                         colClasses = "character")[[1L]]
+  v <- strip_version(setdiff(v, "gene"))
+  if (!length(v)) stop("gene universe is empty: ", path, call. = FALSE)
+  unique(v)
+}
+
+# Subset a genes x samples matrix to the universe, loudly. The 95% floor is a
+# guard against an id-convention mismatch, which would otherwise silently shrink
+# the analysis instead of failing -- every node of a thresholded correlation
+# network came from this same VST matrix, so a large shortfall is a bug, not data.
+restrict_to_universe <- function(mat, path) {
+  want <- read_gene_universe(path)
+  keep <- intersect(want, rownames(mat))
+  say("restricting to the node universe in ", basename(path))
+  say("  ", fmt_n(length(keep)), " of ", fmt_n(length(want)),
+      " network nodes are in the matrix")
+  if (length(keep) < 0.95 * length(want))
+    stop("only ", fmt_n(length(keep)), " of ", fmt_n(length(want)),
+         " nodes matched the matrix -- id conventions differ", call. = FALSE)
+  mat[keep, , drop = FALSE]
+}

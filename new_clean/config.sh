@@ -427,6 +427,63 @@ TRAIT_PADJ_THR=0.05
 TRAIT_MI_K=3
 TRAIT_MI_PERM=10000000
 
+# --- the blocked gene-level test (31_gene_trait_blocked.r) --------------------
+# 07_gene_trait_cor.r correlates expression against nitrogen with NOTHING else in
+# the model. The QC log says genotype carries R2 = 0.999 of PC1 in purple and
+# 0.998 in sugarcane, and leaf segment 0.802 of PC2 in sugarcane, so the largest
+# variance component in either matrix sits in the residual of every gene-level
+# nitrogen test. These put it in the model instead.
+#
+# THIS IS NOT A LOOSER THRESHOLD. TRAIT_PADJ_THR and TRAIT_R_THR are unchanged and
+# are the same values the marginal rule uses; only the model differs. 31 computes
+# the marginal fit on the SAME genes and reports whether any marginal call is lost.
+#
+# Deliberately separate keys from MODULE_BLOCK_*, even though the two currently
+# hold the same design: they are two different models of two different things, and
+# one day changing the module blocks should not silently change the gene test.
+TRAIT_BLOCK_sugarcane="genotype segment"
+TRAIT_BLOCK_purple="genotype"
+
+# Purple's primary statistic is Spearman because its trait is ORDINAL -- a 0/2/6
+# mM dose in a stress-control-stress design -- and Pearson reads the spacing
+# literally, i.e. it asks whether the 2->6 response is exactly twice the 0->2 one.
+# This is the argument already recorded for the module level
+# (19_module_trait_spearman.r, 53_module_trait_blocked.r). Sugarcane's trait is
+# two-level, where Pearson and Spearman are the same test up to a monotone
+# relabelling, so it keeps Pearson. Both are computed and written either way.
+TRAIT_BLOCKED_STAT_sugarcane=pearson
+TRAIT_BLOCKED_STAT_purple=spearman
+
+# PSEUDOREPLICATION CONTROL, sugarcane only. Its 48 libraries are 12 plants x 4
+# leaf segments -- repeated measures, not 48 replicates, so the marginal test's
+# df = 46 overstates the independent replication for nitrogen ~4-fold. Setting
+# this to a metadata column makes 31 also fit a plant-level model with the
+# segments averaged (n = 12), using <column>|<trait level>|<trailing _N of the
+# sample name> as the plant id. Empty = no control run.
+TRAIT_PLANT_FROM_sugarcane="genotype"
+TRAIT_PLANT_FROM_purple=""
+
+# Replicates for the ortholog-shuffle null that gives the conserved-pair count an
+# expectation (61_conserved_blocked_nodes.r). Same construction as
+# 13_conservation_null.r: permute the target column of the ortholog table, which
+# preserves each source gene's fan-out and which genes have any ortholog at all,
+# and destroys only the assignment. 1,000 is affordable because a replicate is a
+# join, not a network pass.
+TRAIT_NULL_REPS=1000
+TRAIT_NULL_SEED=1188
+
+# The non-monotone tier for purple (30_gene_trait_ushape.r). Purple has THREE
+# nitrogen levels, so a gene moved the same way by deficiency and excess is
+# invisible to every monotone test in the pipeline. A purple gene counts as
+# nitrogen-correlated if it is a monotone hit OR a quadratic-contrast hit, each
+# family BH-corrected within itself over the same genes.
+#
+# Sugarcane has TWO levels and cannot express curvature at all, so this applies to
+# purple only and the asymmetry is declared rather than hidden: the pair test
+# becomes "purple non-monotone whose ortholog is sugarcane-monotone", never "both
+# species share a non-monotone response".
+TRAIT_USHAPE_TIER=1
+
 # R_THR is the H1 readouts' own effect-size cut when they call a gene
 # "nitrogen-responsive". PADJ_THR is NOT readout-only despite where it sits: the
 # module stages take it as their significance threshold too (`moduletrait
@@ -657,3 +714,8 @@ layer_out()   { echo "${RESULTS}/$1/layers/$1_$2"; }
 # deliberately ignores RESULTS. Use it only for inputs, never for outputs.
 main_layer_out() { echo "${CLEAN}/results/$1/layers/$1_$2"; }
 network_tsv() { echo "${RESULTS}/$1/network_$1_edges.tsv"; }
+# THE GENE UNIVERSE for every gene-level test: the node set of the unpruned
+# Pearson-only network, which is the gene set the modules are built on (101,990
+# sugarcane / 170,135 purple). 52_pearson_node_metrics.sh writes it. Its first
+# column is the gene id, which is all the readers take.
+node_list()   { echo "${RESULTS}/$1/network_$1_node_metrics.tsv"; }

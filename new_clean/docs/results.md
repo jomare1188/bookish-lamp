@@ -1698,6 +1698,133 @@ still describe the merged network at `-I 2` and must not be quoted against the n
 modules. Listed in `results/STALE.md`; module GO is pending its topGO run.
 
 
+## The gene analysis, rebuilt: blocked nitrogen correlation on the Pearson-only nodes
+
+The module level moved to the Pearson-only graphs with the design in the model; the
+gene level had not moved with it, and `results/STALE.md` said so. It has now, with
+three changes that land together.
+
+### One gene universe, and it is the network's
+
+Every gene-level test now corrects over the **node set of the unpruned Pearson-only
+network** — 101,990 sugarcane and 170,135 purple genes, the same sets the modules are
+built on (`node_list()` in `config.sh`, `restrict_to_universe()` in `lib/common.R`).
+It replaces `conserved_genes_<study>_FULL.txt`, the genes carrying a conserved edge in
+the **merged** graph, which is what the first blocked run corrected over: 39,226 and
+44,118 genes. The BH denominator therefore rose 2.6× and 3.9×, so **the counts below
+are not comparable with the ones that table used to hold** (4,137 / 2,331).
+
+The two universes are asymmetric and that is a property of the data, not a choice:
+purple's network holds 99.6% of its VST genes, sugarcane's only 59.7%.
+
+### The design goes into the gene test
+
+`31_gene_trait_blocked.r` (brought forward from branch `blocked-gene-trait`, commit
+`052fcd6`, and refactored onto `lib/common.R`'s shared solver so the gene and module
+levels cannot drift apart):
+
+    sugarcane   expr ~ genotype + segment + N            n = 48, resid df 42, Pearson
+    purple      expr ~ genotype + N       on midranks    n = 18, resid df 15, Spearman
+
+Purple is Spearman because its trait is an **ordinal 0/2/6 mM dose** and Pearson reads
+that spacing literally — the argument already accepted at module level, and recorded
+in `Open items` as never having been applied at gene level. It is now. Sugarcane's
+trait is two-level, where Spearman on midranks is the same test up to a monotone
+relabelling, so it keeps Pearson; both statistics are computed and written either way.
+
+| | sugarcane | purple |
+|---|---|---|
+| genes tested | 101,990 | 170,135 |
+| responsive, **blocked** | **8,737** | **3,854** |
+| responsive, marginal, *same genes* | 3,238 | 882 |
+| \|r\| at the BH boundary | 0.366 | 0.720 |
+| plant-level control | resid df 9, agrees at **r = +0.9761** | n/a |
+
+Blocking is a **strict superset** of the marginal rule in both species — no marginal
+call is lost, so the block is removing noise rather than absorbing signal. The
+marginal column is computed **in the same run on the same rows**, never read from
+`07`'s table, which corrects over a different universe; joining the two would
+attribute a change of denominator to the change of model. That is the mistake
+`53_module_trait_blocked.r` made at module level and it is not repeated here.
+
+The diagnostic that motivated the whole stage, p-value histogram by decile:
+
+    purple  marginal   14.7  8.9 13.3  8.2 11.2  7.2  8.4  8.4  7.2 12.5
+            blocked    24.7 10.8 12.8  9.0  8.6  6.3  6.3  5.4  5.8 10.2
+
+The **rising last decile is the symptom** — a mixture of a uniform null and real
+signal cannot rise. Blocking removes most of it (12.5% → 10.2%) but **not all**: the
+blocked histogram is still not monotone, so something remains unmodelled in purple at
+n = 18. Worth stating rather than declaring the problem solved. Sugarcane's falls from
+6.6% to 4.1%.
+
+### The non-monotone tier: included, and it contributes one gene
+
+Purple has three nitrogen levels, so a gene moved the same way by deficiency and
+excess is invisible to every monotone test. `30_gene_trait_ushape.r` (the blocked
+quadratic contrast, `expr ~ genotype + nlev`, resid df 14) now runs on the **same**
+gene universe, so its BH and the monotone test's are over identical genes and the two
+selections can legitimately be unioned — `61` asserts that.
+
+Over 170,135 genes it selects **1** gene at padj ≤ 0.05 (a peak at the control).
+Raw p ≤ 0.05 gives 17,507 against 8,507 expected, a 2.06× aggregate excess, so
+non-monotone signal is *present* and the design cannot resolve which genes carry it.
+That one gene's ortholog is not sugarcane-responsive, so the tier contributes **0**
+conserved pairs. This is the same shape as the module-level answer, and it closes the
+open item that said the U-shape had never been measured genome-wide at gene level.
+
+`Soffic.09G0001580-9H`, the anecdote, lands at raw p = 0.0037, padj = 0.484, rank 890
+of 170,135 (0.52nd percentile) — a strong trough, nowhere near surviving correction.
+
+### The conserved nitrogen response, at node level
+
+`61_conserved_blocked_nodes.r`. `08_conserved_cor_genes.r` is left alone as the record
+of the merged network under the marginal `pearson|mi|union` rules; it has an edge level
+this rebuild has no inputs for, since conserved-edge tables describe the merged graph.
+
+The universe is ortholog pairs whose **both** sides are nodes of their own network:
+275,047 unrestricted pairs → **114,681** over 43,390 orthogroups.
+
+| | genome-wide | directed (discover in sugarcane) |
+|---|---|---|
+| responsive sugarcane / purple | 8,737 / 3,855 | 8,737 / 492 of 8,725 candidates |
+| conserved correlated **pairs** | **392** over 270 orthogroups | **616** over 419 |
+| null (ortholog shuffle) | 314.3 ± 16.5, **fold 1.25**, p 0.000999 | 573.8 ± 13.8, fold 1.07, p 0.002 |
+| sugarcane **genes** in both | **326** | 502 |
+| null | 301.9 ± 15.8, **fold 1.08**, p **0.071** | 536.3 ± 13.3, fold **0.94**, p 0.995 |
+| sign concordance, pairs | 244/392 = 62.2%, p 1.4e-06 | 373/616 = 60.6%, p 1.8e-07 |
+| sign concordance, **orthogroups** | 160/269 = 59.5%, p **0.0022** | 241/418 = 57.7%, p **0.0020** |
+
+**What this establishes, and what it does not.** The *gene* count does not beat its own
+null — 1.08× at p = 0.071 genome-wide, and 0.94× (below the null) under the directed
+design. The excess in the *pair* count is therefore mostly ortholog multiplicity, not
+more conserved genes: `OG0001395` alone contributes 6 pairs from 3 sugarcane × 2 purple
+genes. **Counting pairs and calling them findings would overstate the result** and the
+pair row must never be quoted without the gene row beside it.
+
+What does hold up is **direction**. Of the concordant pairs 94 are up in both species
+and 150 down in both, and the agreement survives the pseudoreplication correction: one
+vote per orthogroup, majority sign, ties abstaining — 59.5% of 269 at p = 0.0022, and
+57.7% of 418 under the directed design. Weaker than the pair-level p of 1e-06 as it
+should be, and significant in both designs. The pair-level binomial is reported beside
+it, not instead of it.
+
+### Four causes of "not conserved", kept apart
+
+Collapsing them would make a coverage gap look like biological absence. Of sugarcane's
+8,737 responsive genes:
+
+| status | n |
+|---|---|
+| `ortholog_not_correlated` | 5,558 |
+| `no_ortholog` | **2,775** (31.8% — could never have been called conserved) |
+| `conserved_correlated` | 326 |
+| `ortholog_not_a_node` | 78 |
+
+`ortholog_not_a_node` is new, and it exists because the universe is now the network
+rather than the transcriptome: a gene can have a perfectly good ortholog that is simply
+not in the other species' graph. Purple: 1,736 / 1,217 / 311 / 591.
+
 ## The paper figures
 
 Seven figures, each generated by one script and each carrying a **generated
@@ -1851,18 +1978,30 @@ side turns back up.
   purple MI layer recovers a conservation ratio above 1.
 - Local transitivity was never computed (`COMPUTE_TRANSITIVITY=0`). It is only a
   reported column, but the TF and MYB61 tables carry NA for it.
-- **A U-shape test is run nowhere except the two readouts.** Purple's design is
-  stress-control-stress, so a gene induced by both nitrogen deficiency and excess
-  is invisible to every Spearman test in the pipeline. At module level the cost
-  was measured and is one module; at gene level it has not been measured at all,
-  and `Soffic.09G0001580-9H` is a concrete example of what would be missed.
-- **The gene level is still Pearson + MI; only the module level moved to
-  Spearman.** The ordinal-trait argument that motivated the module change applies
-  just as much to purple's 0/2/6 mM gradient at the gene level, and the module
-  result suggests it would matter there too — Spearman found 45 purple modules
-  Pearson missed. Re-running the gene selection on Spearman would, however,
-  invalidate the conserved-response, edge-level and GO results that depend on it,
-  so it is a deliberate open item rather than an oversight.
+- ~~**A U-shape test is run nowhere except the two readouts.**~~ **CLOSED.** It now
+  runs genome-wide at gene level on the network universe, as a second test family
+  unioned with the monotone one. The cost is measured in both places and is almost
+  nothing: **one module** and **one gene**, and that gene's ortholog is not
+  sugarcane-responsive, so it adds no conserved pair. `Soffic.09G0001580-9H` sits at
+  padj 0.484, the 0.52nd percentile — a real trough the design cannot resolve. The
+  aggregate excess (17,507 raw hits against 8,507 expected, 2.06x) says the signal
+  exists and n = 18 cannot localise it.
+- ~~**The gene level is still Pearson + MI; only the module level moved to
+  Spearman.**~~ **CLOSED.** The gene level is now blocked, Spearman for purple, on the
+  Pearson-only network's node universe, and it did matter: 3,854 responsive purple
+  genes against 882 under the marginal rule, a strict superset. The
+  conserved-response answer was rebuilt with it (`61_conserved_blocked_nodes.r`,
+  node level). What it did NOT rebuild is the **edge level** — that needs
+  conserved-edge tables, which still describe the merged graph — so `conscor`'s edge
+  numbers remain the merged-network result and are marked stale.
+- **Purple's blocked p-value histogram is still not flat.** Blocking took the last
+  decile from 11.8% (old universe) / 12.5% (new) down to 10.2%, but the shape dips to
+  5.4% and then rises again. Genotype plus nitrogen does not account for everything at
+  n = 18, and any purple gene-level claim should be read with that in mind.
+- **The conserved GENE count does not beat chance.** 1.08x at p = 0.071 genome-wide,
+  0.94x under the directed design. Only the *pair* count does (1.25x), and that is
+  ortholog multiplicity. The conservation claim rests on **direction** (59.5% of
+  orthogroups, p 0.0022), not on how many genes respond in both species.
 - **Purple's 79 responsive modules are not 79 independent findings.** Its
   permutation null reaches 244 in the worst of 1,000 shuffles because the network
   is one dense component. Any per-module claim from purple needs the module

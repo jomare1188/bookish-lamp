@@ -46,6 +46,7 @@ STUDY      <- env_opt("CLEAN_STUDY", "purple")
 VST_PREFIX <- env_req("CLEAN_VST_PREFIX")
 META_FILE  <- env_req("CLEAN_META")
 OUT_FILE   <- env_req("CLEAN_OUT_FILE")
+GENE_FILTER <- env_opt("CLEAN_GENE_FILTER")
 TRAIT      <- env_opt("CLEAN_SELECT_TRAIT", "treatment")
 LEVELS     <- strsplit(env_opt("CLEAN_USHAPE_LEVELS", "0N,2N,6N"), ",")[[1]]
 BLOCK      <- env_opt("CLEAN_USHAPE_BLOCK", "genotype")
@@ -94,6 +95,18 @@ contrast_matrix <- function(Y, lev, block = NULL, cvec) {
 say("reading VST from ", basename(VST_PREFIX), ".f32")
 vst <- read_vst(VST_PREFIX)
 say("  ", fmt_n(nrow(vst)), " genes x ", ncol(vst), " samples")
+
+# THE QUADRATIC FAMILY MUST SHARE THE MONOTONE FAMILY'S DENOMINATOR. This test and
+# 31_gene_trait_blocked.r are two test families whose selections get UNIONED into
+# one "nitrogen-correlated" set, so each is BH-corrected within itself and then the
+# two are combined -- which is only legitimate if both corrected over the SAME
+# genes. Without this filter it corrects over all 170,740 VST genes while 31
+# corrects over the 170,135 network nodes, and the union would mix two denominators.
+# 61_conserved_blocked_nodes.r asserts the two gene sets are identical.
+if (nzchar(GENE_FILTER)) {
+  vst <- restrict_to_universe(vst, GENE_FILTER)
+  say("genes to test: ", fmt_n(nrow(vst)))
+}
 
 meta <- fread(META_FILE, header = TRUE)
 setnames(meta, tolower(names(meta)))
@@ -186,13 +199,14 @@ n_raw <- out[u_pval <= 0.05, .N]
 n_exp <- 0.05 * nrow(out)
 foc   <- if (nzchar(FOCUS) && FOCUS %chin% out$gene) out[gene == FOCUS] else NULL
 summ <- data.table(
-  metric = c("genes_tested", "residual_df_blocked",
+  metric = c("gene_universe", "genes_tested", "residual_df_blocked",
              "padj_le_0.05", "padj_le_0.05_trough", "padj_le_0.05_peak",
              "raw_p_le_0.05_UNCORRECTED", "raw_p_le_0.05_expected_by_chance",
              "raw_p_le_0.05_fold_over_chance", "excess_genes_over_chance",
              "focus_gene", "focus_rank", "focus_percentile",
              "focus_pval", "focus_padj", "focus_direction"),
-  value = c(nrow(out), res$df,
+  value = c(if (nzchar(GENE_FILTER)) basename(GENE_FILTER) else "all VST genes",
+            nrow(out), res$df,
             out[u_padj <= 0.05, .N],
             out[u_padj <= 0.05 & direction == "trough_at_control", .N],
             out[u_padj <= 0.05 & direction == "peak_at_control", .N],

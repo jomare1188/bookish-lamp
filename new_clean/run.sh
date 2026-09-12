@@ -48,7 +48,9 @@
 #   ./run.sh gene2go   <study>              derive GO from InterPro + Pfam
 #   ./run.sh modulego  <study> [BP|MF|CC]    GO enrichment per responsive module
 #   ./run.sh conscor   [0|1] [selection]     conserved N response; 1 = directed test
-#   ./run.sh ushape                          U-shape contrast, genome-wide (purple)
+#   ./run.sh ushape    [study]               U-shape contrast, genome-wide (purple)
+#   ./run.sh traitblocked <study>            gene-trait with the design in the model
+#   ./run.sh consblocked  [0|1]              conserved N response at NODE level, blocked
 #   ./run.sh go        BP|MF|CC              GO enrichment
 #   ./run.sh gosem                           GO semantic clustering
 #   ./run.sh tfs       <study>               TFs in the network (step 04 only)
@@ -580,8 +582,62 @@ main() {
     CLEAN_VST_PREFIX="$(vst_prefix "$S")" \
     CLEAN_META="$(cfg META "$S")" \
     CLEAN_OUT_FILE="${RESULTS}/${S}/gene_trait_ushape_${S}.tsv" \
+    CLEAN_GENE_FILTER="$(node_list "$S")" \
     CLEAN_SELECT_TRAIT="$SELECT_TRAIT" \
       "$RSCRIPT_NET" "${SCRIPTS}/30_gene_trait_ushape.r"
+    ;;
+
+  # The gene-level test with the design in the model -- genotype (and, in
+  # sugarcane, leaf segment) as blocks instead of unmodelled residual variance.
+  # Same FDR level and same |r| floor as the marginal rule; only the model changes,
+  # and 31 computes the marginal fit on the same genes so the two are comparable.
+  #
+  # The universe is the PEARSON-ONLY NETWORK'S NODE SET, the gene set the modules
+  # are built on -- not the merged graph's conserved-edge set the first version of
+  # this stage used. Feeds `./run.sh consblocked`.
+  traitblocked)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_VST_PREFIX="$(vst_prefix "$ARG")" \
+    CLEAN_META="$(cfg META "$ARG")" \
+    CLEAN_TRAITS="$(cfg TRAITS "$ARG")" \
+    CLEAN_OUT_FILE="${RESULTS}/${ARG}/gene_trait_blocked_${ARG}.tsv" \
+    CLEAN_GENE_FILTER="$(node_list "$ARG")" \
+    CLEAN_SELECT_TRAIT="$SELECT_TRAIT" \
+    CLEAN_BLOCK="$(cfg TRAIT_BLOCK "$ARG")" \
+    CLEAN_BLOCKED_STAT="$(cfg TRAIT_BLOCKED_STAT "$ARG")" \
+    CLEAN_PLANT_FROM="$(cfg TRAIT_PLANT_FROM "$ARG")" \
+    CLEAN_TRAIT_R_THR="$TRAIT_R_THR" \
+    CLEAN_TRAIT_PADJ_THR="$TRAIT_PADJ_THR" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_NET" "${SCRIPTS}/31_gene_trait_blocked.r"
+    ;;
+
+  # Which ortholog genes are nitrogen-correlated in BOTH species -- NODE level,
+  # blocked rule only, on the Pearson-only networks. ARG=1 runs the DIRECTED
+  # variant (discover in sugarcane, re-correct purple over the candidate orthologs).
+  #
+  # It does NOT supersede `conscor`, which is the record of the merged network under
+  # the marginal pearson|mi|union rules and still carries the edge level. This has
+  # no edge level: that would need the conserved-edge tables, which describe the
+  # merged graph.
+  consblocked)
+    case "${ARG:-0}" in 0|1) ;; *) die "usage: run.sh consblocked [0|1]" ;; esac
+    CLEAN_RESULTS="$RESULTS" \
+    CLEAN_OUT_DIR="${RESULTS}/conservation" \
+    CLEAN_ORTHOGROUPS="$ORTHOGROUPS" \
+    CLEAN_NODES_SUGARCANE="$(node_list sugarcane)" \
+    CLEAN_NODES_PURPLE="$(node_list purple)" \
+    CLEAN_SELECT_TRAIT="$SELECT_TRAIT" \
+    CLEAN_DIRECTED="${ARG:-0}" \
+    CLEAN_DISCOVERY="$TRAIT_DISCOVERY" \
+    CLEAN_USHAPE_TIER="$TRAIT_USHAPE_TIER" \
+    CLEAN_TRAIT_R_THR="$TRAIT_R_THR" \
+    CLEAN_TRAIT_PADJ_THR="$TRAIT_PADJ_THR" \
+    CLEAN_NULL_REPS="$TRAIT_NULL_REPS" \
+    CLEAN_SEED="$TRAIT_NULL_SEED" \
+    CLEAN_CORES="$NUM_CORES" \
+      "$RSCRIPT_NET" "${SCRIPTS}/61_conserved_blocked_nodes.r"
     ;;
 
   conscor)

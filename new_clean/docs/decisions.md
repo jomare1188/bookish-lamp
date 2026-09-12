@@ -790,3 +790,74 @@ so a study is one batch, not twelve.
 
 **Nothing is adopted.** `MCL_KNN_*` stay empty and the main tree is untouched;
 this lives in `results_pearson/` on branch `pearson-knn-ba`.
+
+
+## 2026-09-12 — The gene level moves to the network's node universe, blocked only, nodes only
+
+Four decisions, taken together so the gene level describes the same graph the module
+level does.
+
+**The gene universe is the Pearson-only network's node set** — 101,990 sugarcane and
+170,135 purple — read from `network_<study>_node_metrics.tsv` via `node_list()` and
+`restrict_to_universe()`. The alternatives were every VST gene (170,790 / 170,740) and
+the old `conserved_genes_<study>_FULL.txt` (39,226 / 44,118). The old one was rejected
+because it is the genes carrying a conserved edge in the **merged** graph, which this
+analysis no longer uses; the whole VST matrix was rejected because it tests genes the
+network analysis never sees. The consequence is explicit: the BH denominator rose 2.6x
+and 3.9x, so the responsive counts are **not** comparable with the ones the previous
+blocked table held, and the write-up says so rather than presenting 8,737 as an
+improvement on 4,137.
+
+The universes are asymmetric — purple's network holds 99.6% of its VST genes,
+sugarcane's 59.7% — and that asymmetry is a property of the data at |r| >= 0.8, not a
+choice. It is why a fourth status (`ortholog_not_a_node`) had to be added: a gene can
+have a perfectly good ortholog that is not in the other species' graph.
+
+**Purple's primary gene statistic is blocked Spearman on midranks.** Its trait is an
+ordinal 0/2/6 mM dose and Pearson reads that spacing literally. This is the argument
+already accepted at module level (`19`, `53`) and recorded in `Open items` as never
+having been applied at gene level; it is applied now. Sugarcane keeps Pearson because
+a two-level trait makes the two the same test up to a monotone relabelling. Both are
+computed and written in either case, so the choice is visible in the table.
+
+**The non-monotone tier is included for purple, as a second test family.** Each family
+is BH-corrected within itself over the *same* genes and the selections are unioned;
+`61` aborts if the two gene sets differ, because a union across two denominators is
+not a union. It contributes **one** gene, whose ortholog is not sugarcane-responsive,
+so it adds no conserved pair. Including it anyway was the right call: the question
+"how much does the monotone-only rule cost in a three-level design" now has a measured
+answer at gene level instead of an untested assumption, and the answer is ~nothing that
+survives FDR against a 2.06x aggregate excess that does not localise.
+
+Sugarcane's two-level design cannot express curvature at all, so the tier is purple-only
+and the asymmetry is declared: an admitted pair says "purple responds non-monotonically
+and its sugarcane ortholog responds monotonically", never "both species share a
+non-monotone response". That question is unanswerable with these two designs.
+
+**Node level only.** The edge level would need `conserved_edges_*_FULL.tsv`, which
+describes the merged graph. `08_conserved_cor_genes.r` is left untouched as the record
+of that analysis rather than being edited into something half-rebuilt, and `61` is a
+new script beside it.
+
+### Two reporting rules that came out of the numbers
+
+**The pair count is never quoted without the gene count.** 392 conserved pairs beat
+their ortholog-shuffle null 1.25x (p 0.000999), but the 326 *genes* behind them beat it
+only 1.08x (p 0.071), and under the directed design 0.94x — below the null. Orthology is
+many-to-many (`OG0001395`: 6 pairs from 3 x 2 genes), so most of the pair excess is
+multiplicity. Reporting the significant row alone would be a real overstatement of a
+result that does not hold at gene level.
+
+**Sign concordance is tested at orthogroup level, not only over pairs.** The pair-level
+binomial treats 392 non-independent trials as independent — the same pseudoreplication
+sugarcane's plant-level control exists to answer at gene level. One vote per orthogroup,
+majority sign, ties abstaining: 59.5% of 269 at p 0.0022 genome-wide, 57.7% of 418 at
+p 0.0020 directed, against 62.2% / p 1.4e-06 over pairs. The claim survives the
+correction, weakened as it should be, and both are reported.
+
+### One thing blocking did not fix
+
+Purple's blocked p-value histogram still is not flat: the last decile falls from 12.5%
+to 10.2% but the shape dips to 5.4% and rises again. Genotype and nitrogen do not
+account for everything at n = 18. The script warns above 11% and this sits below it, so
+the warning does not fire — which is exactly why it is written down here instead.
