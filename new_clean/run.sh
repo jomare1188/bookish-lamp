@@ -888,6 +888,7 @@ main() {
     CLEAN_META_PURPLE="$META_purple" \
     CLEAN_M20_FOCUS="$M20_FOCUS_GENE" \
     CLEAN_M20_ANCHOR="$M20_FOCUS_ANCHOR" \
+    CLEAN_TF_PURPLE="${RESULTS}/readouts/get_tfs/purple/TF_in_network.tsv" \
     CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_MODULE20}_module20" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/26_fig_module20.r"
