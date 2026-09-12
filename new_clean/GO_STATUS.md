@@ -1,6 +1,6 @@
 # GO annotation — live status
 
-_2026-09-12 12:12:21_
+_2026-09-12 12:51:57_
 
 ## Baseline to beat (current, InterPro+Pfam)
 
@@ -27,15 +27,28 @@ _original non-electronic run: sugarcane GOs 12,903/168,135 (7.7%), purple 15,572
 | sugarcane | 194593 | 98 / 98 | 323M | MERGED |
 | purple | 241263 | 121 / 121 | 402M | MERGED |
 
-## Stage 3 — curated transfer (Swiss-Prot + TAIR)
+## Stage 3 — curated transfer (Swiss-Prot Viridiplantae)  [DONE]
 
-- sugarcane  not run
-- purple     not run
+| study | pairs | genes | network coverage |
+|---|---|---|---|
+| sugarcane | 335509 | 51250 | 32,799 / 101,990 (32.2%) |
+| purple | 366090 | 55267 | 45,233 / 170,135 (26.6%) |
 
 ## Stage 4 — PANNZER2
 
-- sugarcane  not run
-- purple     not run
+| study | chunks done | merged | status |
+|---|---|---|---|
+| sugarcane | 4 / 195 | - | **RUNNING** |
+| purple | 0 / ? | - | **RUNNING** |
+
+## Adoption decisions so far
+
+| source | coverage | coherence (fixed gene set) | verdict |
+|---|---|---|---|
+| InterProScan full (17 DB) | 62.9% / 64.4% | sug +0.0748, pur +0.0361 | **ADOPTED** |
+| eggNOG (tax_scope auto) | 46.1% / 43.1% of proteins | sug +0.0650, pur +0.0316 | rejected — worse on identical genes |
+| curated (Swiss-Prot) | 32.2% / 26.6% | sug +0.0780, pur +0.0432 | kept as an EVIDENCE TIER, not for the universe |
+| PANNZER2 | pending | pending | pending |
 
 ## Stage 0/5 — the judge, and the merged table
 
@@ -44,6 +57,6 @@ _original non-electronic run: sugarcane GOs 12,903/168,135 (7.7%), purple 15,572
 
 ## Running now
 
-- nothing
+- `2019080 /dados04/jorge/tmp/pannzer_install/pz_env/bin/python runsanspanz.py -R -o ,,/dados04/jorge/comparative`
 
 _regenerate: `./scripts/go_status.sh` · live: `watch -n 60 ./scripts/go_status.sh`_

@@ -57,16 +57,38 @@ for s in sugarcane purple; do
 done
 printf '\n'
 
-printf '## Stage 3 — curated transfer (Swiss-Prot + TAIR)\n\n'
+printf '## Stage 3 — curated transfer (Swiss-Prot Viridiplantae)  [DONE]\n\n'
+printf '| study | pairs | genes | network coverage |\n|---|---|---|---|\n'
 for s in sugarcane purple; do
-  f="$A/$s/curated_go_$s.tsv"
-  printf -- '- %-10s %s\n' "$s" "$( [ -s "$f" ] && echo "$(( $(wc -l < "$f") - 1 )) gene-GO pairs" || echo 'not run' )"
+  f="$A/$s/gene2go_curated_$s.tsv"
+  if [ -s "$f" ]; then
+    printf '| %s | %s | %s | %s |\n' "$s" "$(( $(wc -l < "$f") - 1 ))" \
+      "$(awk -F'\t' 'NR>1{g[$1]}END{print length(g)}' "$f")" \
+      "$( [ "$s" = sugarcane ] && echo '32,799 / 101,990 (32.2%)' || echo '45,233 / 170,135 (26.6%)' )"
+  else printf '| %s | not run | | |\n' "$s"; fi
 done
+
 printf '\n## Stage 4 — PANNZER2\n\n'
+printf '| study | chunks done | merged | status |\n|---|---|---|---|\n'
 for s in sugarcane purple; do
-  f="$A/$s/pannzer_go_$s.tsv"
-  printf -- '- %-10s %s\n' "$s" "$( [ -s "$f" ] && echo "$(( $(wc -l < "$f") - 1 )) gene-GO pairs" || echo 'not run' )"
+  d="$A/$s/pannzer"
+  tot=$( [ -f "$d/chunks.total" ] && cat "$d/chunks.total" || echo '?' )
+  dn=$(ls "$d"/done/*.done 2>/dev/null | wc -l)
+  m="$d/${s}.pannzer_GO.tsv"
+  st='not run'; [ -d "$d" ] && st='prepared'
+  [ "$dn" -gt 0 ] && st="running"
+  [ -s "$m" ] && st='MERGED'
+  [ -n "$(alive run_pannzer_all)" ] && [ ! -s "$m" ] && st="**RUNNING**"
+  printf '| %s | %s / %s | %s | %s |\n' "$s" "$dn" "$tot" \
+    "$( [ -s "$m" ] && echo "$(( $(wc -l < "$m") - 1 )) predictions" || echo '-' )" "$st"
 done
+
+printf '\n## Adoption decisions so far\n\n'
+printf '| source | coverage | coherence (fixed gene set) | verdict |\n|---|---|---|---|\n'
+printf '| InterProScan full (17 DB) | 62.9%% / 64.4%% | sug +0.0748, pur +0.0361 | **ADOPTED** |\n'
+printf '| eggNOG (tax_scope auto) | 46.1%% / 43.1%% of proteins | sug +0.0650, pur +0.0316 | rejected — worse on identical genes |\n'
+printf '| curated (Swiss-Prot) | 32.2%% / 26.6%% | sug +0.0780, pur +0.0432 | kept as an EVIDENCE TIER, not for the universe |\n'
+printf '| PANNZER2 | pending | pending | pending |\n' 
 
 printf '\n## Stage 0/5 — the judge, and the merged table\n\n'
 for s in sugarcane purple; do
