@@ -28,8 +28,8 @@ clustering, so joining them to anything above compares two analyses.
 | file / stage | what it still describes |
 |---|---|
 | `<study>/network_<study>_edges.tsv` | the MERGED network. The Pearson-only edge tables were deleted (70 GB whose only consumer was `mcxload`); the `.mci` in `/dados04/jorge/tmp/mcl_work_cluster/` is the live Pearson-only graph |
-| `<study>/network_<study>_global_metrics.tsv`, degree/strength plots | merged network |
-| `figures/figure*_topology*` (`22_fig_topology.r`) | merged network |
+| — | `network_<study>_global_metrics.tsv` is **current** (recomputed 2026-09-12 from the Pearson-only matrix: 958 and 43 components). The per-study degree/strength plots are still from the merged build |
+| — | **figure 3 is current**: rebuilt 2026-09-12 on the Pearson-only graphs and the new clustering, with panels B (mean weight vs degree) and C (edge composition by layer) removed |
 | `conservation_*` (`06_conservation_join.r`, `13_conservation_null.r`) | merged networks, both directions |
 | `conserved_*` (`08_conserved_cor_genes.r`) | merged networks + the marginal gene-trait rule |
 | `<study>/gene_trait_*` (`07_gene_trait_cor.r`) | **marginal** gene-level test. The blocked gene-level version lives on branch `blocked-gene-trait` (`31_gene_trait_blocked.r`) and is not merged here |

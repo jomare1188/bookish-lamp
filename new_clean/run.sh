@@ -755,8 +755,6 @@ main() {
     CLEAN_GLOBAL_PURPLE="$(study_dir purple)/network_purple_global_metrics.tsv" \
     CLEAN_MCL_SUGARCANE="$(clus_prefix sugarcane)_module_summary.tsv" \
     CLEAN_MCL_PURPLE="$(clus_prefix purple)_module_summary.tsv" \
-    CLEAN_LAYERS_SUGARCANE="$(study_dir sugarcane)/network_sugarcane_edges.summary.json" \
-    CLEAN_LAYERS_PURPLE="$(study_dir purple)/network_purple_edges.summary.json" \
     CLEAN_TOPO_GRID="$TOPO_GRID" \
     CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_TOPOLOGY}_topology" \
     CLEAN_CORES="$NUM_CORES" \
