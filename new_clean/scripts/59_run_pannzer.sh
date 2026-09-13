@@ -37,7 +37,7 @@ PAR="${CLEAN_PZ_PARALLEL:-4}"
 
 say() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 [ -s "$FASTA" ] || { echo "FATAL: no proteome at $FASTA" >&2; exit 1; }
-mkdir -p "$OUTDIR"/{chunks,go,done,logs}
+mkdir -p "$OUTDIR"/{chunks,go,go_partial,done,logs}
 
 N_IN=$(grep -c '^>' "$FASTA")
 if [ ! -f "$OUTDIR/chunks.total" ]; then
@@ -51,28 +51,66 @@ if [ ! -f "$OUTDIR/chunks.total" ]; then
 fi
 TOTAL=$(cat "$OUTDIR/chunks.total")
 
+# A FAILED CHUNK LEAVES A PARTIAL FILE, AND IT MUST NOT LOOK LIKE OUTPUT. Measured
+# on the 2026-09-12 sugarcane run: 21 of 195 chunks died on a ConnectTimeout to
+# Helsinki, and every one had already written thousands of real lines before the
+# connection dropped -- c_00008 held 14,017 lines, c_00073 1.5 MB of half-written
+# records. `go/` therefore held 195 files of which only 174 were complete, with
+# nothing in the filename to tell them apart. The merge below is gated on the done
+# count so it could not have consumed them, but anything merging `go/*.GO.out` by
+# hand would have, silently. Partials are moved to go_partial/ instead.
 run_one() {
   local f="$1" b; b=$(basename "$f" .fa)
   [ -f "$OUTDIR/done/$b.done" ] && return 0
   # runsanspanz writes relative to CWD, so each chunk gets its own directory.
   local w="$OUTDIR/logs/$b.work"; mkdir -p "$w"
   if ( cd "$PZDIR" && "$PY" runsanspanz.py -R -o ",,$OUTDIR/go/$b.GO.out," \
-         -s "$SPECIES" < "$f" > "$w/run.log" 2>&1 ); then
-    [ -s "$OUTDIR/go/$b.GO.out" ] && touch "$OUTDIR/done/$b.done"
+         -s "$SPECIES" < "$f" > "$w/run.log" 2>&1 ) \
+     && [ -s "$OUTDIR/go/$b.GO.out" ]; then
+    touch "$OUTDIR/done/$b.done"
   else
+    [ -f "$OUTDIR/go/$b.GO.out" ] &&
+      mv -f "$OUTDIR/go/$b.GO.out" "$OUTDIR/go_partial/$b.GO.out.$(date +%s)"
     echo "CHUNK FAILED: $b" >&2
   fi
 }
 export -f run_one; export OUTDIR PZDIR PY SPECIES
 
-say "running $PAR concurrent streams (done: $(ls "$OUTDIR"/done/*.done 2>/dev/null | wc -l)/$TOTAL)"
-ls "$OUTDIR"/chunks/*.fa | xargs -P "$PAR" -I{} bash -c 'run_one "$@"' _ {}
+# RETRY, BECAUSE THE FAILURE MODE IS TRANSIENT AND MEASURED. Every one of those 21
+# failures was the same ConnectTimeout to a public academic service, and the server
+# answered normally again hours later -- so a chunk that failed is not a chunk that
+# cannot succeed. One pass with no retry turned a transient network blip into a
+# 10.8%-of-the-proteome hole that needed a human to notice. Passes are bounded and
+# back off, so a service that is genuinely down still ends the run rather than
+# being hammered.
+PASSES="${CLEAN_PZ_PASSES:-4}"
+BACKOFF="${CLEAN_PZ_BACKOFF:-300}"
+for pass in $(seq 1 "$PASSES"); do
+  DONE=$(ls "$OUTDIR"/done/*.done 2>/dev/null | wc -l)
+  [ "$DONE" = "$TOTAL" ] && break
+  if [ "$pass" -gt 1 ]; then
+    say "pass $pass/$PASSES: $(( TOTAL - DONE )) chunk(s) still missing, waiting ${BACKOFF}s"
+    sleep "$BACKOFF"
+  fi
+  say "pass $pass/$PASSES, $PAR concurrent streams (done: $DONE/$TOTAL)"
+  ls "$OUTDIR"/chunks/*.fa | xargs -P "$PAR" -I{} bash -c 'run_one "$@"' _ {}
+done
 
 DONE=$(ls "$OUTDIR"/done/*.done 2>/dev/null | wc -l)
 say "chunks finished: $DONE / $TOTAL"
-[ "$DONE" = "$TOTAL" ] || { say "NOT merging -- re-run to resume"; exit 1; }
+if [ "$DONE" != "$TOTAL" ]; then
+  say "NOT merging -- $(( TOTAL - DONE )) chunk(s) failed every pass. Re-run to resume;"
+  say "partial output from the failures is in go_partial/ and is NOT merged."
+  exit 1
+fi
 
 MERGED="$OUTDIR/${STUDY}.pannzer_GO.tsv"
+# Belt and braces: every file about to be merged must have a done marker.
+for f in "$OUTDIR"/go/*.GO.out; do
+  b=$(basename "$f" .GO.out)
+  [ -f "$OUTDIR/done/$b.done" ] ||
+    { echo "FATAL: $b has output but no done marker -- refusing to merge a partial" >&2; exit 1; }
+done
 head -1 "$(ls "$OUTDIR"/go/*.GO.out | head -1)" > "$MERGED"
 for f in "$OUTDIR"/go/*.GO.out; do tail -n +2 "$f"; done >> "$MERGED"
 say "merged: $(( $(wc -l < "$MERGED") - 1 )) predictions over $(tail -n +2 "$MERGED" | cut -f1 | sort -u | wc -l) proteins"
