@@ -1,6 +1,6 @@
 # GO annotation — live status
 
-_2026-09-12 12:51:57_
+_2026-09-13 20:12:03_
 
 ## Baseline to beat (current, InterPro+Pfam)
 
@@ -34,12 +34,14 @@ _original non-electronic run: sugarcane GOs 12,903/168,135 (7.7%), purple 15,572
 | sugarcane | 335509 | 51250 | 32,799 / 101,990 (32.2%) |
 | purple | 366090 | 55267 | 45,233 / 170,135 (26.6%) |
 
-## Stage 4 — PANNZER2
+## Stage 4 — PANNZER2  [NOT ADOPTED]
 
 | study | chunks done | merged | status |
 |---|---|---|---|
-| sugarcane | 4 / 195 | - | **RUNNING** |
-| purple | 0 / ? | - | **RUNNING** |
+| sugarcane | 174 / 195 | none | 21 chunks died on ConnectTimeout to Helsinki |
+| purple | 242 / 242 | 5,223,314 predictions / 170,151 proteins | complete |
+
+_Output deleted 2026-09-13 (6.1 GB). Runner kept: `59_run_pannzer.sh`, hardened in b283178._
 
 ## Adoption decisions so far
 
@@ -47,8 +49,8 @@ _original non-electronic run: sugarcane GOs 12,903/168,135 (7.7%), purple 15,572
 |---|---|---|---|
 | InterProScan full (17 DB) | 62.9% / 64.4% | sug +0.0748, pur +0.0361 | **ADOPTED** |
 | eggNOG (tax_scope auto) | 46.1% / 43.1% of proteins | sug +0.0650, pur +0.0316 | rejected — worse on identical genes |
-| curated (Swiss-Prot) | 32.2% / 26.6% | sug +0.0780, pur +0.0432 | kept as an EVIDENCE TIER, not for the universe |
-| PANNZER2 | pending | pending | pending |
+| curated (Swiss-Prot) | 32.2% / 26.6% | sug +0.0780, pur +0.0432 | not merged — see annotation/README.md |
+| PANNZER2 | sugarcane incomplete | not scored | **dropped** — out by decision, and never finished |
 
 ## Stage 0/5 — the judge, and the merged table
 
@@ -57,6 +59,6 @@ _original non-electronic run: sugarcane GOs 12,903/168,135 (7.7%), purple 15,572
 
 ## Running now
 
-- `2019080 /dados04/jorge/tmp/pannzer_install/pz_env/bin/python runsanspanz.py -R -o ,,/dados04/jorge/comparative`
+- nothing
 
 _regenerate: `./scripts/go_status.sh` · live: `watch -n 60 ./scripts/go_status.sh`_

@@ -1825,6 +1825,100 @@ Collapsing them would make a coverage gap look like biological absence. Of sugar
 rather than the transcriptome: a gene can have a perfectly good ortholog that is simply
 not in the other species' graph. Purple: 1,736 / 1,217 / 311 / 591.
 
+## The module enrichment analysis, on one annotation
+
+GO is now derived from **one source**: a full local InterProScan 5.78 over all 17
+member databases, mapped to GO through the GO Consortium's pinned `interpro2go` and
+`pfam2go`, then normalised to most-specific terms (`60_normalise_gene2go.r`). Four
+sources were built and scored; three are not used. That is a result, not a shortcut,
+and the reason is measured.
+
+### Why one source and not four
+
+The judge is `55_go_coherence.r`: Sørensen–Dice annotation homogeneity above a
+size-matched null, asking whether co-expressed genes share function more than chance.
+Scored on a **fixed gene set** — identical genes, identical modules — so the only
+thing varying is the annotation:
+
+| annotation | genes scored | terms | H | H null | **excess** |
+|---|---|---|---|---|---|
+| nfcore5db (InterPro, 5 DBs) | 34,056 | 2,005 | 0.0978 | 0.0223 | **+0.0755** |
+| **ipsfull (InterPro, 17 DBs)** | 34,056 | 2,114 | 0.1009 | 0.0261 | **+0.0748** |
+| union (everything merged) | 34,056 | 7,936 | 0.2560 | 0.1889 | +0.0671 |
+| eggnog_auto | 34,056 | 7,719 | 0.2617 | 0.1967 | +0.0650 |
+
+Purple orders identically: ipsfull +0.0361, eggNOG +0.0316, union +0.0264.
+
+**Merging sources measurably lowers coherence, in both species.** The union scores
+below either InterPro table on its own, so a tiered or merged annotation would buy
+negative signal at the cost of a `source` and `tier` column on every pair and a
+provenance caveat on every result. There is no merged table for that reason.
+
+Two things in that table are worth not misreading. First, **eggNOG's raw H is 2.6×
+ipsfull's and its excess is lower** — without the size-matched null it would have
+looked like the best annotation by a wide margin. What the raw H measures is term
+density (16.7 terms/gene after normalisation, against 2.1), not shared function.
+Second, **the two InterPro tables are tied**: 0.9% apart, inside the noise. ipsfull
+was adopted for **reach**, not coherence — on the same genes it is no more coherent,
+but it annotates 7,204 more sugarcane and 15,094 more purple network genes, and that
+is what turns into testable modules.
+
+| | GO on network genes | | testable responsive modules | | terms clearing cross-module BH | |
+|---|---|---|---|---|---|---|
+| | 5 DBs | **17 DBs** | 5 DBs | **17 DBs** | 5 DBs | **17 DBs** |
+| sugarcane | 56,974 (55.9%) | **64,178 (62.9%)** | 442 | **479** | 143 | **164** |
+| purple | 94,497 (55.5%) | **109,591 (64.4%)** | 106 | **118** | 8 | **9** |
+
+Coverage is quoted per **network node set**, never per proteome — the two differ
+(194,593 sugarcane proteins against 101,990 network nodes) and mixing them is how
+these numbers got muddled earlier in this work.
+
+The gain from 8.0%/7.2% (the original eggNOG GO column) to 62.9%/64.4% is the whole
+arc of this stage. It is worth stating what it did **not** buy: the first large jump
+raised testable modules 4.6× and yet *fewer* terms cleared correction, because the
+test family grew from 229,140 to 996,268 module × term pairs and the old 8%
+background was biased toward well-studied genes, which had inflated apparent
+enrichment. Coverage and significance do not move together, and this section reports
+both every time.
+
+### Three ontologies, on the adopted annotation
+
+`./run.sh modulego <study> [BP|MF|CC]`, one topGO run per ontology per species
+against the same network-node background, all on the same 588 and 182 responsive
+modules from the blocked test:
+
+| | ontology | modules with ≥ 1 term | terms written | **clearing cross-module BH** |
+|---|---|---|---|---|
+| **sugarcane** | BP | 425 of 479 | 1,233 | **164** |
+| | MF | 457 of 479 | 1,766 | **272** |
+| | CC | 175 of 479 | 312 | **22** |
+| **purple** | BP | 109 of 118 | 291 | **9** |
+| | MF | 110 of 118 | 375 | **17** |
+| | CC | 44 of 118 | 70 | **1** |
+
+The annotation gate is identical across ontologies by construction — 479 and 118
+testable modules — because it counts genes with *any* GO, not genes with a term in
+that ontology.
+
+**MF outperforms BP**, and by a lot: 272 terms clearing FDR against 164 in sugarcane,
+17 against 9 in purple. That is the expected shape for a domain-derived annotation —
+InterPro signatures name what a protein *does* far more sharply than what process it
+participates in — and it is worth knowing that the ontology this project reports as
+primary is not the one with the most power. BP stays primary because the question is
+about a nitrogen *response*, and figure 6 draws BP for that reason; MF and CC are
+reported beside it, not promoted.
+
+**CC is weak in both species and near-empty in purple** (one term). Nothing should be
+built on it.
+
+### The honest negative, again
+
+Purple clears cross-module BH on **9 BP terms across 118 testable modules**. More
+annotation did not fix that: it went 14 → 8 → 9 across three successive annotations
+while purple's coverage went 7.2% → 55.5% → 64.4%. Sugarcane's 164 is not the whole
+picture and quoting it alone would misrepresent the comparison. The constraint in
+purple is n = 18 and a network that is one dense component, not the annotation.
+
 ## The paper figures
 
 Seven figures, each generated by one script and each carrying a **generated

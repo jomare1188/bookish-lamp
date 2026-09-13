@@ -861,3 +861,58 @@ Purple's blocked p-value histogram still is not flat: the last decile falls from
 to 10.2% but the shape dips to 5.4% and rises again. Genotype and nitrogen do not
 account for everything at n = 18. The script warns above 11% and this sits below it, so
 the warning does not fire — which is exactly why it is written down here instead.
+
+
+## 2026-09-13 — One GO source, no merge, no tier; and PANNZER is out
+
+The plan this closes was four annotation sources, tiered by evidence and merged, each
+adopted only if it improved module coherence. Three were built and scored. The
+decision is to ship **one**: full InterProScan 5.78, all 17 member databases, through
+the pinned interpro2go/pfam2go and normalised to most-specific terms.
+
+**The merge was rejected by its own judge, which is why this is a result and not a
+simplification.** On a fixed gene set -- identical genes, identical modules, so only
+the annotation varies -- the union of InterPro and eggNOG scores +0.0671 in sugarcane
+against +0.0748 for InterPro alone, and +0.0264 against +0.0361 in purple. Merging
+lowers coherence in both species. A tiered table would therefore have cost a `source`
+and `tier` column on every pair, a provenance caveat on every downstream result, and
+bought negative signal. The user's instinct that merging was "unnecessary complexity"
+is what the measurement says too.
+
+**Two things the numbers say that the headline does not.** eggNOG's raw homogeneity is
+2.6x InterPro's while its excess over the null is LOWER -- without a size-matched null
+it would have been adopted on sight, and what its raw H measures is term density (16.7
+terms per gene after normalisation, against 2.1), not shared function. And the 5-DB
+and 17-DB InterPro tables are TIED on coherence, 0.9% apart and inside the noise: the
+17-DB scan was adopted for REACH, not because it is the more coherent annotation. It
+annotates 7,204 more sugarcane and 15,094 more purple network genes, which is what
+turns into 37 more testable sugarcane modules and 21 more terms clearing BH. The
+write-up says this rather than "InterPro full is the best annotation", which the data
+does not support.
+
+**MF and CC are now run on the adopted table**, and MF turns out to be the stronger
+ontology: 272 terms clear cross-module BH against BP's 164 in sugarcane, 17 against 9
+in purple. That is the expected shape for a domain-derived annotation -- an InterPro
+signature names what a protein does far more sharply than what process it is in. BP
+stays primary anyway, because the question is about a nitrogen response and that is a
+process; the choice is now made knowing it costs power, instead of by default. CC is
+weak in both species and near-empty in purple (one term) and nothing should rest on it.
+
+**PANNZER2 is out**, by decision, and its 6.1 GB of output was deleted. It was also
+never finished: purple completed (242/242 chunks, 5.2M predictions over 170,151
+proteins) but sugarcane stopped at 174 of 195, with 21 chunks killed by ConnectTimeout
+to the public SANS service at Helsinki. The runner and the commit that hardened it
+(b283178 -- quarantine partial chunks, bounded retry passes) stay in the repo, so
+re-running is hours rather than reconstruction, but it depends on a service that is
+not ours. It was never scored against the coherence judge and no claim is made about
+whether it would have helped.
+
+The other three tables are kept and suffixed `.notused`, with `annotation/README.md`
+recording which table is live and one line per source saying why it is not. They are
+the measurement that justifies the single-source decision, and deleting them would
+leave the decision unsupported.
+
+**What this pass does NOT touch.** `09_go_enrichment.r` and `10_go_semantic.r` still
+run on the original 7.7% eggNOG GO column and its background. They are conserved-set
+and semantic-clustering stages, not module stages, and re-running them is a separate
+piece of work; they stay marked stale.

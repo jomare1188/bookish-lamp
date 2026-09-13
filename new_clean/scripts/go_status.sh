@@ -60,7 +60,11 @@ printf '\n'
 printf '## Stage 3 — curated transfer (Swiss-Prot Viridiplantae)  [DONE]\n\n'
 printf '| study | pairs | genes | network coverage |\n|---|---|---|---|\n'
 for s in sugarcane purple; do
+  # The non-adopted tables were suffixed .notused on 2026-09-13 so nothing can read
+  # one by accident (annotation/README.md). Resolve either name: reporting "not run"
+  # for a source that WAS run and then rejected would misrepresent the decision.
   f="$A/$s/gene2go_curated_$s.tsv"
+  [ -s "$f" ] || f="$A/$s/gene2go_curated_$s.tsv.notused"
   if [ -s "$f" ]; then
     printf '| %s | %s | %s | %s |\n' "$s" "$(( $(wc -l < "$f") - 1 ))" \
       "$(awk -F'\t' 'NR>1{g[$1]}END{print length(g)}' "$f")" \
@@ -68,27 +72,21 @@ for s in sugarcane purple; do
   else printf '| %s | not run | | |\n' "$s"; fi
 done
 
-printf '\n## Stage 4 — PANNZER2\n\n'
+printf '\n## Stage 4 — PANNZER2  [NOT ADOPTED]\n\n'
+# The output tree was DELETED on 2026-09-13, so there is nothing left to poll and the
+# live probe that used to be here would report "not run" for a source that was in fact
+# run and then dropped. These are the final counts, recorded before deletion.
 printf '| study | chunks done | merged | status |\n|---|---|---|---|\n'
-for s in sugarcane purple; do
-  d="$A/$s/pannzer"
-  tot=$( [ -f "$d/chunks.total" ] && cat "$d/chunks.total" || echo '?' )
-  dn=$(ls "$d"/done/*.done 2>/dev/null | wc -l)
-  m="$d/${s}.pannzer_GO.tsv"
-  st='not run'; [ -d "$d" ] && st='prepared'
-  [ "$dn" -gt 0 ] && st="running"
-  [ -s "$m" ] && st='MERGED'
-  [ -n "$(alive run_pannzer_all)" ] && [ ! -s "$m" ] && st="**RUNNING**"
-  printf '| %s | %s / %s | %s | %s |\n' "$s" "$dn" "$tot" \
-    "$( [ -s "$m" ] && echo "$(( $(wc -l < "$m") - 1 )) predictions" || echo '-' )" "$st"
-done
+printf '| sugarcane | 174 / 195 | none | 21 chunks died on ConnectTimeout to Helsinki |\n'
+printf '| purple | 242 / 242 | 5,223,314 predictions / 170,151 proteins | complete |\n'
+printf '\n_Output deleted 2026-09-13 (6.1 GB). Runner kept: `59_run_pannzer.sh`, hardened in b283178._\n'
 
 printf '\n## Adoption decisions so far\n\n'
 printf '| source | coverage | coherence (fixed gene set) | verdict |\n|---|---|---|---|\n'
 printf '| InterProScan full (17 DB) | 62.9%% / 64.4%% | sug +0.0748, pur +0.0361 | **ADOPTED** |\n'
 printf '| eggNOG (tax_scope auto) | 46.1%% / 43.1%% of proteins | sug +0.0650, pur +0.0316 | rejected — worse on identical genes |\n'
-printf '| curated (Swiss-Prot) | 32.2%% / 26.6%% | sug +0.0780, pur +0.0432 | kept as an EVIDENCE TIER, not for the universe |\n'
-printf '| PANNZER2 | pending | pending | pending |\n' 
+printf '| curated (Swiss-Prot) | 32.2%% / 26.6%% | sug +0.0780, pur +0.0432 | not merged — see annotation/README.md |\n'
+printf '| PANNZER2 | sugarcane incomplete | not scored | **dropped** — out by decision, and never finished |\n'
 
 printf '\n## Stage 0/5 — the judge, and the merged table\n\n'
 for s in sugarcane purple; do

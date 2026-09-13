@@ -20,6 +20,8 @@ Everything displaced is in `_pre_pearson_20260910/`.
 | `<study>/gene_trait_blocked_<study>.tsv` | **blocked** gene-level nitrogen test on the Pearson-only node universe (101,990 / 170,135), marginal fit carried beside it on the same genes |
 | `purple/gene_trait_ushape_purple.tsv` | the blocked quadratic contrast, on the same universe so the two test families share a denominator |
 | `conservation/conserved_correlated_*_blocked_nodes*.tsv` | the conserved nitrogen response at **node** level, blocked rule, with the ortholog-shuffle null |
+| `<study>/module_go/` | **BP, MF and CC**, all run 2026-09-13 on the adopted single-source annotation (full InterProScan, 17 DBs) over the blocked responsive modules |
+| `figures/figure6_module_go.*` | rebuilt 2026-09-13; panel A's gate numbers read 588/479/425 and 182/118/109 straight from the current tables |
 | `<study>/module_profile_<study>.tsv`, `heatmaps/`, `module_summary_<study>.*` | |
 | `figures/figure5_modules.*` | |
 
@@ -38,22 +40,27 @@ clustering, so joining them to anything above compares two analyses.
 | `<study>/gene_trait_correlations_<study>.tsv`, `selected_genes_*` (`07_gene_trait_cor.r`) | the **marginal** gene-level test, over the merged graph's conserved-edge gene set. Superseded at gene level by `gene_trait_blocked_<study>.tsv`, which carries the marginal fit as a column on the current universe |
 | `<study>/gene_trait_mi_<study>.tsv` (`12_gene_trait_mi.py`) | the MI statistic. There is no MI layer in the current networks, so nothing selects on it any more |
 | `conserved_*` **edge level** (`08_conserved_cor_genes.r`) | merged networks + the marginal rule. `61_conserved_blocked_nodes.r` replaces its NODE level only — the edge level needs `conserved_edges_*_FULL.tsv`, which describes the merged graph, and has not been rebuilt |
-| — | **BP is current** (run 2026-09-11 on the new clustering). The CC and MF results in that directory were from 2026-08-23 and describe the OLD clustering; they have been moved to `_pre_pearson_20260910/<study>/module_go_OLD_CLUSTERING/` so one directory does not hold two analyses |
 
-## GO was re-derived on 2026-09-11
+## GO: one source, adopted 2026-09-12, closed 2026-09-13
 
-`module_go/` BP is now built on GO derived from the nf-core/proteinannotator run
-(InterPro accessions + Pfam domains via the GO Consortium's interpro2go/pfam2go),
-not on the eggNOG GO column. That column carries GO for only 7.7% of proteins
-because the emapper run used the default `--go_evidence non-electronic`, which
-excludes every IEA term (`emapper.py:405`, `:615`) — and for grass proteins almost
-all GO is IEA.
+`module_go/` is built on GO derived from a **full local InterProScan 5.78 over all 17
+member databases**, via the GO Consortium's pinned interpro2go/pfam2go and normalised
+to most-specific terms. `annotation/<study>/gene2go_<study>.tsv` is the only table any
+stage reads; every other source was scored and rejected, and their tables now carry a
+`.notused` suffix. `annotation/README.md` records which is live and why the others are
+not. PANNZER2's output was deleted (6.1 GB, and its sugarcane half never finished).
 
-STALE as a result, until re-run on the derived table: **`09_go_enrichment.r` and
-`10_go_semantic.r` outputs**, which still use the 7.7% annotation and its
-background. `emapper.annotations` itself is untouched and is still the source for
-KEGG and Preferred_name. PFAM-based work (`37_cluster_homogeneity.r`) is
-unaffected — eggNOG's PFAMs column is 87.6% filled and was never the problem.
+Network coverage 62.9% (sugarcane) and 64.4% (purple), up from 8.0% / 7.2% under the
+original eggNOG GO column — that column used emapper's default `--go_evidence
+non-electronic`, which excludes every IEA term, and for grass proteins almost all GO
+is IEA.
+
+STILL STALE, and untouched by that work: **`09_go_enrichment.r` and `10_go_semantic.r`
+outputs**, which run on the old 7.7% annotation and its background. They are
+conserved-set and semantic stages, not module stages. `emapper.annotations` itself is
+untouched and is still the source for KEGG and Preferred_name; only its GO column was
+rejected. PFAM-based work (`37_cluster_homogeneity.r`) is unaffected — eggNOG's PFAMs
+column is 87.6% filled and was never the problem.
 
 ## A loss to record
 

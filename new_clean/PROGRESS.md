@@ -8,7 +8,13 @@ Baseline to beat: GO on 56,974/101,990 sugarcane (55.9%) and 94,497/170,135 purp
 (55.5%); 442/588 and 106/182 responsive modules testable; 143 and 8 terms clearing
 cross-module BH.
 
-Legend: `[ ]` todo · `[~]` running · `[x]` done · `[!]` blocked
+**CLOSED 2026-09-13. Outcome: ONE source, full InterProScan (17 DBs). No merge, no
+tier.** The union scored BELOW either InterPro table alone on identical genes, in both
+species, so merging was rejected by the judge this plan was built around rather than
+skipped. eggNOG rejected; curated kept but not merged; PANNZER dropped and its output
+deleted. See `annotation/README.md` and `docs/decisions.md` (2026-09-13).
+
+Legend: `[ ]` todo · `[~]` running · `[x]` done · `[!]` blocked · `[-]` not adopted
 
 ---
 
@@ -81,17 +87,24 @@ CDD, SMART, PRINTS, PROSITE, Pfam.
 - [ ] purple 241,263 proteins
 - [ ] chunking verified lossless (every sequence in exactly one chunk)
 
-## Stage 3 — curated transfer (the only non-IEA evidence)
+## Stage 3 — curated transfer (the only non-IEA evidence)  [RUN, NOT MERGED]
 
-- [ ] `58_curated_transfer.sh` — diamond vs Swiss-Prot Viridiplantae + TAIR
-- [ ] experimental evidence codes only; assert no IEA survives
-- [ ] identity/coverage sensitivity curve reported, not a single asserted cut
+- [x] `58_curated_transfer.sh` — diamond vs Swiss-Prot Viridiplantae + TAIR
+- [x] experimental evidence codes only; no IEA survives
+- [x] identity/coverage sensitivity curve reported, not a single asserted cut
+- [-] **not merged.** Scores well per gene (+0.0780 / +0.0432) but reaches only
+      32.2% / 26.6% of network genes and overlaps the adopted pairs by 6.5% / 5.4%.
+      Merging it in would mean a tiered table, which the union result argues against.
 
-## Stage 4 — PANNZER2
+## Stage 4 — PANNZER2  [DROPPED]
 
-- [ ] install SANSPANZ / SANSparallel.3
-- [ ] `59_run_pannzer.sh` (reuses the stage-2 splitter)
-- [ ] score threshold chosen on the coherence curve, not the default
+- [x] installed SANSPANZ / SANSparallel.3 (two upstream Python-3 bugs patched)
+- [x] `59_run_pannzer.sh` (reuses the stage-2 splitter), hardened in `b283178`
+- [-] **never finished:** purple 242/242 chunks (5,223,314 predictions over 170,151
+      proteins); sugarcane stopped at 174/195, 21 chunks killed by `ConnectTimeout`
+      to the public SANS service at Helsinki
+- [-] **dropped by decision** before it was ever scored. Output deleted 2026-09-13
+      (6.1 GB). No claim is made about whether it would have helped.
 
 ## Stage 5 — merge, tier, adopt
 
@@ -104,9 +117,25 @@ CDD, SMART, PRINTS, PROSITE, Pfam.
 
       median annotated members per responsive module: sugarcane 4 -> 5, purple 3 -> 3
 - [x] old 5-DB table kept as `gene2go_nfcore5db_<study>.tsv.bak`
-- [ ] tier column, once curated/PANNZER tiers exist
-- [ ] re-run modulego both studies; report coverage, testable, coherence, terms
-- [ ] docs + commit
+- [-] **tier column: NOT BUILT.** The union of InterPro and eggNOG scores +0.0671
+      (sugarcane) and +0.0264 (purple) against +0.0748 / +0.0361 for InterPro alone --
+      merging LOWERS coherence in both species, so a tiered table would have cost a
+      `source`/`tier` column on every pair and a caveat on every result to buy
+      negative signal.
+- [x] modulego re-run, both studies, **all three ontologies** on the adopted table:
+
+                    responsive  testable   BP terms    MF terms    CC terms
+                                           (clear BH)  (clear BH)  (clear BH)
+      sugarcane        588        479         164         272          22
+      purple           182        118           9          17           1
+
+      MF is the stronger ontology in both species -- expected for a domain-derived
+      annotation, which names what a protein DOES more sharply than what process it
+      is in. BP stays primary (the question is a response) and is what figure 6 draws.
+- [x] figure 6 rebuilt -- it was from 2026-08-23 and predated BOTH the Pearson-only
+      rebuild and the ipsfull adoption
+- [x] non-adopted tables suffixed `.notused`; `annotation/README.md` written
+- [x] docs + commit
 
 ---
 
