@@ -214,18 +214,27 @@ network nodes. topGO reports anything below 1e-30 AS 1e-30, so a term at the rig
 censored rather than exactly that significant, and two points there coincide because both are
 at the floor -- not because the two species agree to that precision.
 
-(C) Conservation against edge STRENGTH, in rank-based weight deciles so each bin holds a tenth
-of the edges. Left, the conserved fraction; right, the fold over that decile's own null. Both
-rise MONOTONICALLY across all ten deciles in both directions: sugarcane from 9.72% to 11.30%
-(fold 1.5713 to 1.8478) and purple from 1.17% to 2.16% (fold 1.389 to 2.297). THE FOLD IS DRAWN
-BECAUSE THE RATE ALONE WOULD NOT SETTLE IT: a rate rising with strength is also what you would
-see if strong edges simply joined better-annotated, better-orthologued genes, and only the fold
-rising rules that out. Axes are free -- the two directions differ ~7x in rate for the reason
-panel A gives, and rate and fold are different units. Weight is the per-study rescaling of |r|
-to [0.01, 1], so a decile does NOT stand for the same |r| in both species; the boundaries are
-in the summary table. What this does not settle is WHY: stronger selective constraint on tight
-co-expression and a noisier weakest decile near the |r| >= 0.8 threshold predict the same
-shape.
+(C) THE STRONGER THE CO-EXPRESSION, THE LIKELIER THE EDGE EXISTS IN THE OTHER SPECIES -- in
+both directions, and not because of orthology. Edges are split into ten rank-based weight
+deciles, so each bin holds a tenth of that network's edges, D1 the weakest and D10 the
+strongest. LEFT: the share of edges in each decile that have a conserved partner, sugarcane
+from 9.72% to 11.30% and purple from 1.17% to 2.16%. The axis is LOGARITHMIC for the reason
+panel A gives -- the two directions differ ~7x in absolute rate, and on a linear axis purple
+would lie flat on the floor -- and a log axis has the further advantage that SLOPES READ AS
+RELATIVE CHANGE, which is the comparison that means anything here: purple's conservation rises
+84% across the deciles against sugarcane's 16%, so the effect is the larger one in purple even
+though its absolute rate is far lower. RIGHT: the same deciles as a fold over each decile's OWN
+permutation null; the dashed line at 1 is where orthology alone would put the curve. Unlike the
+rates, folds ARE directly comparable between directions, because dividing by each direction's
+own null is exactly the normalisation that removes the density difference -- which is why this
+half is one axis and not two. It rises from 1.5713 to 1.8478 (sugarcane) and 1.389 to 2.297
+(purple), monotonically in both. THE RIGHT HALF IS WHAT MAKES THE LEFT HALF MEAN SOMETHING: a
+conservation rate rising with edge strength is also what you would see if strongly co-expressed
+genes simply had more or better orthologs, and only the fold rising rules that out. Weight is
+the per-study rescaling of |r| to [0.01, 1], so a decile does NOT stand for the same |r| in
+both species; the boundaries are in the summary table. What this does not settle is WHY --
+stronger selective constraint on tight co-expression, and a noisier weakest decile sitting
+nearest the |r| >= 0.8 threshold, predict the same shape.
 
 (D) The funnel, per species, log scale. Sugarcane: 101,990 network nodes -> 37,867 on at least
 one conserved edge -> 8,737 nitrogen-responsive under the blocked test -> 326 whose ortholog is

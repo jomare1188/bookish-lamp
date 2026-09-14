@@ -222,49 +222,64 @@ print(DEC[, .(dir_lab, decile, edges = fmt_n(edges),
               pct = round(100 * conserved_fraction, 3), fold = fold_over_null)],
       row.names = FALSE)
 
-decL <- melt(DEC[, .(dir_lab, decile, `conserved edges` = conserved_fraction,
-                     `fold over null` = fold_over_null)],
+# WHAT THIS PANEL HAS TO SAY, in one sentence: the stronger the co-expression, the
+# likelier the edge is to exist in the other species too -- in both species, and not
+# because of orthology.
+#
+# It is TWO sub-panels and not four. The earlier version split by direction as well
+# as by measure, which buried the message in a 2x2 grid of bare numeric axes:
+#   * THE FOLD NEEDS NO SPLIT AT ALL. It is already divided by each direction's own
+#     null, which is precisely the normalisation that makes the two directions
+#     comparable. Splitting it implied they could not be compared, which is the
+#     opposite of true.
+#   * THE RATE GOES ON A LOG AXIS instead of being split. Sugarcane runs at ~10% and
+#     purple at ~1.5% -- the 7x panel A exists to explain -- and on a linear shared
+#     axis purple flattens to the floor. On a log axis both fit AND their slopes are
+#     directly readable as RELATIVE change, which is the comparison that means
+#     something: purple rises 84% across the deciles against sugarcane's 16%.
+#
+# The dashed line at fold = 1 is where orthology alone would put the curve.
+decL <- melt(DEC[, .(dir_lab, decile, rate = conserved_fraction,
+                     fold = fold_over_null)],
              id.vars = c("dir_lab", "decile"), variable.name = "measure",
              value.name = "v")
 
-# FREE Y IN EVERY CELL, which needs facet_grid and not facet_wrap(~ measure).
-# Faceting on measure alone puts both directions on one axis, and since sugarcane
-# runs at ~10% and purple at ~1.5% -- the 7x panel A exists to explain -- purple's
-# curve collapses onto the floor and reads as flat. It is not flat: it rises 84%
-# relative, from 1.17% to 2.16%, which is the larger effect of the two. One cell
-# per direction per measure is what makes both visible.
-pC <- ggplot(decL, aes(decile, v, colour = dir_lab)) +
-  geom_line(linewidth = 0.5) +
-  geom_point(size = 1.1) +
-  # facet_WRAP on both variables, not facet_grid: grid's scales = "free_y" frees
-  # the axis per ROW, so the two directions still share one, and purple's rate
-  # (1.17-2.16%) collapses against sugarcane's 12.5% ceiling -- the exact problem
-  # this panel is here to avoid. wrap gives every cell its own axis.
-  facet_wrap(~ measure + dir_lab, nrow = 2, scales = "free_y") +
-  scale_colour_manual(values = PAL_DIR, guide = "none") +
-  # Bare decile numbers: "D1 weakest" and "D10 strongest" are wide enough that the
-  # right label of one column and the left label of the next print on top of each
-  # other. The direction of the axis goes in its title instead.
-  scale_x_continuous(breaks = c(1, 5, 10), labels = c("D1", "D5", "D10")) +
-  # The rate cells want percent and the fold cells want a bare ratio, and one
-  # scale cannot do both -- so the rate is carried as a percentage POINT value
-  # and the axis label says so, rather than printing "0.09" at a reader.
-  scale_y_continuous(expand = expansion(mult = c(0.12, 0.12)),
-                     # if/else, NOT ifelse: the condition is length 1, and
-                     # ifelse() would return a single label for a vector of breaks
-                     # ("`breaks` and `labels` have different lengths").
-                     labels = function(x) {
-                       if (all(is.na(x)) || max(x, na.rm = TRUE) < 0.5)
-                         sprintf("%.1f%%", 100 * x)
-                       else sprintf("%.2f", x)
-                     }) +
-  labs(x = "edge weight decile,  weakest → strongest", y = NULL) +
-  theme_f +
-  theme(axis.text.x = element_text(size = 6.0),
-        axis.text.y = element_text(size = 5.8),
-        axis.title.x = element_text(size = 6.4),
-        strip.text = element_text(size = 6.0, lineheight = 1.05),
-        panel.spacing = unit(1.6, "mm"))
+x_dec <- list(
+  scale_x_continuous(breaks = c(1, 4, 7, 10),
+                     labels = c("D1\nweakest", "D4", "D7", "D10\nstrongest"),
+                     expand = expansion(mult = 0.06)),
+  labs(x = "edge weight decile"))
+
+pC_rate <- ggplot(decL[measure == "rate"], aes(decile, v, colour = dir_lab)) +
+  geom_line(linewidth = 0.5) + geom_point(size = 1.2) +
+  scale_colour_manual(values = PAL_DIR, name = NULL) +
+  scale_y_log10(labels = function(x) sprintf("%g%%", 100 * x),
+                breaks = c(0.0125, 0.025, 0.05, 0.10),
+                expand = expansion(mult = c(0.10, 0.10))) +
+  x_dec +
+  labs(y = "edges with a conserved\npartner  (log scale)") +
+  theme_f
+
+pC_fold <- ggplot(decL[measure == "fold"], aes(decile, v, colour = dir_lab)) +
+  geom_hline(yintercept = 1, linetype = "22", linewidth = 0.35, colour = "grey45") +
+  geom_line(linewidth = 0.5) + geom_point(size = 1.2) +
+  scale_colour_manual(values = PAL_DIR, name = NULL) +
+  scale_y_continuous(breaks = c(1.0, 1.5, 2.0),
+                     limits = c(0.93, max(DEC$fold_over_null) * 1.06),
+                     expand = expansion(mult = 0)) +
+  x_dec +
+  labs(y = "fold over permutation null\n(1 = orthology alone)") +
+  theme_f
+
+pC <- (pC_rate | pC_fold) +
+  plot_layout(guides = "collect") &
+  theme(axis.title.y = element_text(size = 6.3, lineheight = 1.05),
+        axis.title.x = element_text(size = 6.5),
+        axis.text.x = element_text(size = 5.7, lineheight = 1.0),
+        axis.text.y = element_text(size = 6.0),
+        legend.position = "bottom",
+        legend.box.margin = margin(-7, 0, 0, 0),
+        legend.text = element_text(size = 6.4))
 
 # =============================================================================
 # D — the funnel
@@ -318,7 +333,7 @@ pD <- ggplot(funD, aes(stage, n, fill = species)) +
 # =============================================================================
 # The GO panel needs the taller row: its labels are full GO term names wrapped
 # to two or three lines, and at equal row heights they collide.
-fig <- (pA | pB) / (pC | pD) +
+fig <- (pA | pB) / (wrap_elements(full = pC) | pD) +
   plot_layout(heights = c(1.25, 1)) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 12))
@@ -389,20 +404,32 @@ fmt_n(gc_(GO_ONT, "Unique_purple")), " only in purple; the top ", nrow(top), " a
 "exactly that significant, and two points there coincide because both are at the floor -- not ",
 "because the two species agree to that precision.\n",
 "\n",
-"(C) Conservation against edge STRENGTH, in rank-based weight deciles so each bin holds a tenth of ",
-"the edges. Left, the conserved fraction; right, the fold over that decile's own null. Both rise ",
-"MONOTONICALLY across all ten deciles in both directions: sugarcane from ",
-pc(dc(D1, 1, "conserved_fraction")), " to ", pc(dc(D1, 10, "conserved_fraction")), " (fold ",
-dc(D1, 1, "fold_over_null"), " to ", dc(D1, 10, "fold_over_null"), ") and purple from ",
-pc(dc(D2, 1, "conserved_fraction")), " to ", pc(dc(D2, 10, "conserved_fraction")), " (fold ",
-dc(D2, 1, "fold_over_null"), " to ", dc(D2, 10, "fold_over_null"),
-"). THE FOLD IS DRAWN BECAUSE THE RATE ALONE WOULD NOT SETTLE IT: a rate rising with strength is ",
-"also what you would see if strong edges simply joined better-annotated, better-orthologued genes, ",
-"and only the fold rising rules that out. Axes are free -- the two directions differ ~7x in rate ",
-"for the reason panel A gives, and rate and fold are different units. Weight is the per-study ",
-"rescaling of |r| to [0.01, 1], so a decile does NOT stand for the same |r| in both species; the ",
-"boundaries are in the summary table. What this does not settle is WHY: stronger selective ",
-"constraint on tight co-expression and a noisier weakest decile near the |r| >= 0.8 threshold ",
+"(C) THE STRONGER THE CO-EXPRESSION, THE LIKELIER THE EDGE EXISTS IN THE OTHER SPECIES -- in ",
+"both directions, and not because of orthology. Edges are split into ten rank-based weight ",
+"deciles, so each bin holds a tenth of that network's edges, D1 the weakest and D10 the ",
+"strongest. LEFT: the share of edges in each decile that have a conserved partner, ",
+"sugarcane from ", pc(dc(D1, 1, "conserved_fraction")), " to ", pc(dc(D1, 10, "conserved_fraction")),
+" and purple from ", pc(dc(D2, 1, "conserved_fraction")), " to ",
+pc(dc(D2, 10, "conserved_fraction")), ". The axis is LOGARITHMIC for the reason panel A gives -- ",
+"the two directions differ ~7x in absolute rate, and on a linear axis purple would lie flat on ",
+"the floor -- and a log axis has the further advantage that SLOPES READ AS RELATIVE CHANGE, which ",
+"is the comparison that means anything here: purple's conservation rises ",
+sprintf("%.0f%%", 100 * (dc(D2, 10, "conserved_fraction") / dc(D2, 1, "conserved_fraction") - 1)),
+" across the deciles against sugarcane's ",
+sprintf("%.0f%%", 100 * (dc(D1, 10, "conserved_fraction") / dc(D1, 1, "conserved_fraction") - 1)),
+", so the effect is the larger one in purple even though its absolute rate is far lower. ",
+"RIGHT: the same deciles as a fold over each decile's OWN permutation null; the dashed line at 1 ",
+"is where orthology alone would put the curve. Unlike the rates, folds ARE directly comparable ",
+"between directions, because dividing by each direction's own null is exactly the normalisation ",
+"that removes the density difference -- which is why this half is one axis and not two. It rises ",
+"from ", dc(D1, 1, "fold_over_null"), " to ", dc(D1, 10, "fold_over_null"), " (sugarcane) and ",
+dc(D2, 1, "fold_over_null"), " to ", dc(D2, 10, "fold_over_null"), " (purple), monotonically in ",
+"both. THE RIGHT HALF IS WHAT MAKES THE LEFT HALF MEAN SOMETHING: a conservation rate rising ",
+"with edge strength is also what you would see if strongly co-expressed genes simply had more or ",
+"better orthologs, and only the fold rising rules that out. Weight is the per-study rescaling of ",
+"|r| to [0.01, 1], so a decile does NOT stand for the same |r| in both species; the boundaries ",
+"are in the summary table. What this does not settle is WHY -- stronger selective constraint on ",
+"tight co-expression, and a noisier weakest decile sitting nearest the |r| >= 0.8 threshold, ",
 "predict the same shape.\n",
 "\n",
 "(D) The funnel, per species, log scale. Sugarcane: ", fmt_n(fn("sugarcane")[1]),
