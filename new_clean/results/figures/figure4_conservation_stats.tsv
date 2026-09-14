@@ -28,6 +28,9 @@ C	sugarcane → purple	decile 10 (w 0.593501-max): rate / fold	0.11295 / 1.85
 B	both	BP terms: sugarcane / purple / shared	165 / 207 / 111 (Jaccard 0.425)
 B	both	MF terms: sugarcane / purple / shared	197 / 236 / 119 (Jaccard 0.379)
 B	both	CC terms: sugarcane / purple / shared	52 / 58 / 31 (Jaccard 0.392)
+B	both	BP terms: sugarcane / purple / shared	111 / 94 / 61 (Jaccard 0.424)
+B	both	MF terms: sugarcane / purple / shared	108 / 84 / 56 (Jaccard 0.412)
+B	both	CC terms: sugarcane / purple / shared	23 / 36 / 13 (Jaccard 0.283)
 D	sugarcane	nodes in the network	101,990
 D	sugarcane	on a conserved edge	 37,867
 D	sugarcane	nitrogen- responsive	  8,737

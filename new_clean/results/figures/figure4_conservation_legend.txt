@@ -18,39 +18,47 @@ node-level analysis uses), which is a stricter null than the merged-network vers
 replaces: that one drew from all 275,047 pairs including genes that could never have matched,
 and reported a correspondingly larger fold.
 
-(B) What the conserved genes are for: one topGO enrichment (BP, weight01) per species over the
-genes on at least one conserved edge, against that network's own GO-annotated nodes as the
-background, so the test asks what is special about the conserved genes RELATIVE TO THEIR OWN
-NETWORK rather than to the genome. Points are the two species' p-values for the same term,
-joined by a line; terms are ranked by the WORSE of the two, so these are terms both species
-agree on rather than terms one species drives. 111 BP terms are enriched in both conserved sets
-(Jaccard 0.425), against 54 enriched only in sugarcane and 96 only in purple; the top 12 are
-drawn. GO comes from the adopted full-InterProScan annotation, which reaches 62.9% and 64.4% of
-network nodes. topGO reports anything below 1e-30 AS 1e-30, so a term at the right edge is
-censored rather than exactly that significant, and two points there coincide because both are
-at the floor -- not because the two species agree to that precision.
+(B) WHAT TRANSFERS IS HOUSEKEEPING; WHAT DOES NOT IS REGULATION. One topGO enrichment (BP,
+weight01) per species over the genes ON at least one conserved edge (top) and over the EXACT
+COMPLEMENT -- network nodes with no conserved edge (bottom). The two sets partition the node
+set (sugarcane 37,867 + 64,123 = 101,990) and are tested against the SAME background, that
+network's own GO-annotated nodes, so this is one gene set split two ways rather than two
+unrelated tests. Points are the two species' p-values for the same term, joined by a line;
+within each set terms are ranked by the WORSE of the two and the top 6 are drawn, so these are
+terms BOTH species agree on rather than terms one species drives. Each set gets its own term
+list because the finding IS that the lists differ -- conserved edges are enriched for
+translation, protein folding and transport, photosynthesis and splicing, the core cellular
+machinery; the complement is enriched for regulation of transcription, auxin and ethylene
+signalling, ubiquitination and the cell cycle, i.e. the regulatory layer. 111 BP terms are
+shared by both species in the conserved set (Jaccard 0.425) and 61 in the complement (Jaccard
+0.424). NOTE WHAT THE COMPLEMENT NECESSARILY CONTAINS: a gene with no ortholog at all cannot
+have a conserved edge, so it is in the bottom set by construction -- 2,775 sugarcane genes and
+1,217 purple ones among the nitrogen-responsive alone. The regulatory signal is therefore
+partly a statement about which gene families have clean one-to-one orthology across these two
+genomes, not only about which are conserved in co-expression. GO comes from the adopted
+full-InterProScan annotation, which reaches 62.9% and 64.4% of network nodes. topGO reports
+anything below 1e-30 AS 1e-30, so a term at the right edge is censored rather than exactly that
+significant, and two points there coincide because both are at the floor -- not because the two
+species agree to that precision.
 
 (C) THE STRONGER THE CO-EXPRESSION, THE LIKELIER THE EDGE EXISTS IN THE OTHER SPECIES -- in
-both directions, and not because of orthology. Edges are split into ten rank-based weight
-deciles, so each bin holds a tenth of that network's edges, D1 the weakest and D10 the
-strongest. LEFT: the share of edges in each decile that have a conserved partner, sugarcane
-from 9.72% to 11.30% and purple from 1.17% to 2.16%. The axis is LOGARITHMIC for the reason
-panel A gives -- the two directions differ ~7x in absolute rate, and on a linear axis purple
-would lie flat on the floor -- and a log axis has the further advantage that SLOPES READ AS
-RELATIVE CHANGE, which is the comparison that means anything here: purple's conservation rises
-84% across the deciles against sugarcane's 16%, so the effect is the larger one in purple even
-though its absolute rate is far lower. RIGHT: the same deciles as a fold over each decile's OWN
-permutation null; the dashed line at 1 is where orthology alone would put the curve. Unlike the
-rates, folds ARE directly comparable between directions, because dividing by each direction's
-own null is exactly the normalisation that removes the density difference -- which is why this
-half is one axis and not two. It rises from 1.5713 to 1.8478 (sugarcane) and 1.389 to 2.297
-(purple), monotonically in both. THE RIGHT HALF IS WHAT MAKES THE LEFT HALF MEAN SOMETHING: a
-conservation rate rising with edge strength is also what you would see if strongly co-expressed
-genes simply had more or better orthologs, and only the fold rising rules that out. Weight is
-the per-study rescaling of |r| to [0.01, 1], so a decile does NOT stand for the same |r| in
-both species; the boundaries are in the summary table. What this does not settle is WHY --
-stronger selective constraint on tight co-expression, and a noisier weakest decile sitting
-nearest the |r| >= 0.8 threshold, predict the same shape.
+both directions. Edges are split into ten rank-based weight deciles, so each bin holds a tenth
+of that network's edges, D1 the weakest and D10 the strongest, and the panel plots the share of
+each decile that has a conserved partner: sugarcane from 9.72% to 11.30% and purple from 1.17%
+to 2.16%, monotonically in both. THE AXIS IS LOGARITHMIC and that is not only to fit both
+curves on it: the two directions differ ~7x in absolute rate for the reason panel A gives, so a
+linear axis lays purple flat on the floor, and on a log axis slopes read as RELATIVE change,
+which is the comparison that means anything here. Read that way the result inverts -- purple's
+conservation rises 84% across the deciles against sugarcane's 16%, so the effect is the LARGER
+one in purple despite its far lower absolute rate. A RISING RATE ALONE WOULD NOT SETTLE THIS,
+because it is also what you would see if strongly co-expressed genes simply had more or better
+orthologs. What rules that out is the fold over each decile's own permutation null, which rises
+with it: 1.5713 to 1.8478 in sugarcane and 1.389 to 2.297 in purple, never below 1. Those folds
+are in figure4_conservation_stats.tsv and in the summary tables rather than on the panel, which
+makes one point. Weight is the per-study rescaling of |r| to [0.01, 1], so a decile does NOT
+stand for the same |r| in both species; the boundaries are in the summary table. What this does
+not settle is WHY -- stronger selective constraint on tight co-expression, and a noisier
+weakest decile sitting nearest the |r| >= 0.8 threshold, predict the same shape.
 
 (D) The funnel, per species, log scale. Sugarcane: 101,990 network nodes -> 37,867 on at least
 one conserved edge -> 8,737 nitrogen-responsive under the blocked test -> 326 whose ortholog is

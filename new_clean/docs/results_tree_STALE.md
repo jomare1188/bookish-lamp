@@ -24,7 +24,8 @@ Everything displaced is in `_pre_pearson_20260910/`.
 | `conservation/conservation_summary_<A>_to_<B>_pearson.tsv` | rates by stratum and by weight decile, each against its own ortholog-shuffle null, with a `null_basis` column |
 | `conservation/conserved_genes_<A>_pearson.txt` | genes on a conserved Pearson-only edge (37,867 / 42,194) — **not** a filter for any stage |
 | `figures/figure4_conservation.*` | rebuilt 2026-09-13 on the Pearson-only graphs: rates vs null, conserved-set GO on the adopted annotation, the **strength curve** (replacing the dead layer panel), the funnel |
-| `conservation/enrichment_conserved/` | conserved-set GO (BP/MF/CC) re-run on the `_pearson` gene sets and the adopted InterProScan annotation |
+| `conservation/enrichment_conserved/`, `enrichment_nonconserved/` | GO (BP/MF/CC) for the genes on a conserved edge and for the exact complement, on the `_pearson` gene sets and the adopted InterProScan annotation |
+| `conservation/nonconserved_genes_<study>_pearson.txt` | network nodes with NO conserved edge — the complement of `conserved_genes_<study>_pearson.txt`, together an exact partition |
 | `<study>/module_go/` | **BP, MF and CC**, all run 2026-09-13 on the adopted single-source annotation (full InterProScan, 17 DBs) over the blocked responsive modules |
 | `figures/figure6_module_go.*` | rebuilt 2026-09-13; panel A's gate numbers read 588/479/425 and 182/118/109 straight from the current tables |
 | `<study>/module_profile_<study>.tsv`, `heatmaps/`, `module_summary_<study>.*` | |

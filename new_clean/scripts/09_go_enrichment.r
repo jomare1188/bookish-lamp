@@ -51,7 +51,21 @@ plot_height <- 30          # cm
 plot_dpi    <- 300
 
 cons_dir <- file.path(RESULTS, "conservation")
-enrich_dir <- file.path(cons_dir, "enrichment_conserved")
+# WHICH SIDE OF THE PARTITION. `conserved` is the genes on at least one conserved
+# edge; `nonconserved` is the exact complement -- network nodes with NO conserved
+# edge. Together they partition the node set (sugarcane 37,867 + 64,123 = 101,990),
+# so the two runs are a real contrast against one shared background rather than two
+# overlapping sets. The literal alternative, "genes on at least one NON-conserved
+# edge", is 99.3% of the network -- with a mean degree near 1,477 almost every gene
+# has some non-conserved edge -- so it would be tested against itself.
+GENE_SET <- env_opt("CLEAN_GENE_SET", "conserved")
+if (!GENE_SET %in% c("conserved", "nonconserved"))
+  stop("CLEAN_GENE_SET must be conserved or nonconserved (got '", GENE_SET, "')",
+       call. = FALSE)
+# The tag rides on every output path AND every filename, so the two runs can never
+# overwrite each other or be mistaken for one another downstream.
+TAG <- GENE_SET
+enrich_dir <- file.path(cons_dir, sprintf("enrichment_%s", TAG))
 
 # One entry per network.
 #   gene_list = genes on >=1 conserved edge (06_conservation_join.r) [interest set]
@@ -71,8 +85,14 @@ enrich_dir <- file.path(cons_dir, "enrichment_conserved")
 CONS_SET <- env_opt("CLEAN_CONS_SET", "pearson")
 if (!CONS_SET %in% c("pearson", "FULL"))
   stop("CLEAN_CONS_SET must be pearson or FULL (got '", CONS_SET, "')", call. = FALSE)
-CONS_GENES_FILE <- function(sp) sprintf("conserved_genes_%s_%s.txt", sp, CONS_SET)
-cat(sprintf("conserved-gene set: %s\n", CONS_SET))
+CONS_GENES_FILE <- function(sp) {
+  if (GENE_SET == "conserved") {
+    sprintf("conserved_genes_%s_%s.txt", sp, CONS_SET)
+  } else {
+    sprintf("nonconserved_genes_%s_%s.txt", sp, CONS_SET)
+  }
+}
+cat(sprintf("gene set: %s  (%s edge set)\n", GENE_SET, CONS_SET))
 
 networks <- list(
   list(
@@ -234,7 +254,7 @@ save_go_plot <- function(results_df, ntop, label, out_dir) {
   ggdata <- ggdata[!duplicated(ggdata$Term), ]
   ggdata$Term <- factor(ggdata$Term, levels = rev(unique(ggdata$Term)))
 
-  plot_title <- sprintf("GO %s - conserved sub-network\n%s", ontology, label)
+  plot_title <- sprintf("GO %s - %s sub-network\n%s", ontology, TAG, label)
   xlab_note  <- if (!is.na(floor_val) && n_zeroes > 0)
     sprintf("GO Term  [*%d term(s) with p=0 floored at %.2e for display]",
             n_zeroes, floor_val)
@@ -253,7 +273,7 @@ save_go_plot <- function(results_df, ntop, label, out_dir) {
     ) +
     coord_flip()
 
-  base_name <- file.path(out_dir, paste0("GO_", ontology, "_conserved_", label))
+  base_name <- file.path(out_dir, paste0("GO_", ontology, "_", TAG, "_", label))
   ggsave(paste0(base_name, ".png"), plot = p, device = "png",
          width = plot_width, height = plot_height, dpi = plot_dpi, units = "cm")
   ggsave(paste0(base_name, ".pdf"), plot = p, device = "pdf",
@@ -266,7 +286,7 @@ save_go_plot <- function(results_df, ntop, label, out_dir) {
 # ============================================================================
 
 cat("=================================================================\n")
-cat("GO ENRICHMENT — conserved sub-network (background = network nodes)\n")
+cat(sprintf("GO ENRICHMENT — %s sub-network (background = network nodes)\n", TAG))
 cat("=================================================================\n\n")
 
 summary_rows   <- list()
@@ -336,12 +356,12 @@ for (net in networks) {
     cat("      No significant GO terms after FDR correction.\n")
   } else {
     cat(sprintf("      Enriched GO terms (raw weight01 p <= %.2f): %d\n", p_threshold, n_sig))
-    out_csv <- file.path(net$out_dir, paste0("GO_", ontology, "_conserved_", net$label, ".csv"))
+    out_csv <- file.path(net$out_dir, paste0("GO_", ontology, "_", TAG, "_", net$label, ".csv"))
     write.csv(res, out_csv, row.names = FALSE)   # quote: GO Term labels contain commas
     cat(sprintf("      Table -> %s\n", out_csv))
     save_go_plot(res, ntop, net$label, net$out_dir)
-    cat(sprintf("      Plot  -> %s/GO_%s_conserved_%s.{png,pdf}\n",
-                net$out_dir, ontology, net$label))
+    cat(sprintf("      Plot  -> %s/GO_%s_%s_%s.{png,pdf}\n",
+                net$out_dir, ontology, TAG, net$label))
   }
 
   results_by_net[[net$label]] <- res   # NULL if no significant terms — handled below
@@ -364,7 +384,7 @@ if (length(summary_rows) > 0) {
   summary_df <- do.call(rbind, summary_rows)
   rownames(summary_df) <- NULL
   summary_file <- file.path(enrich_dir,
-    paste0("GO_", ontology, "_conserved_summary.csv"))
+    paste0("GO_", ontology, "_", TAG, "_summary.csv"))
   dir.create(dirname(summary_file), showWarnings = FALSE, recursive = TRUE)
   write.csv(summary_df, summary_file, row.names = FALSE, quote = FALSE)
   cat(sprintf("    Summary -> %s\n\n", summary_file))
@@ -375,10 +395,11 @@ if (length(summary_rows) > 0) {
 # CROSS-SPECIES TERM COMPARISON — how many enriched terms are shared vs unique
 # Matching is on GO.ID (accession), NOT the Term label. Produces 4 files at the
 # top of enrichment_conserved/, following the existing naming pattern:
-#   GO_<ont>_conserved_shared_terms.csv        (terms enriched in BOTH)
-#   GO_<ont>_conserved_unique_<A>.csv          (terms enriched only in A)
-#   GO_<ont>_conserved_unique_<B>.csv          (terms enriched only in B)
-#   GO_<ont>_conserved_comparison_summary.csv  (counts + Jaccard)
+#   GO_<ont>_<tag>_shared_terms.csv        (terms enriched in BOTH species)
+#   GO_<ont>_<tag>_unique_<A>.csv          (terms enriched only in A)
+#   GO_<ont>_<tag>_unique_<B>.csv          (terms enriched only in B)
+#   GO_<ont>_<tag>_comparison_summary.csv  (counts + Jaccard)
+#   where <tag> is `conserved` or `nonconserved` -- see CLEAN_GENE_SET above.
 # Comparison CSVs are quoted (default) because GO Term labels can contain commas.
 # ============================================================================
 
@@ -416,10 +437,10 @@ if (empty_terms(resA) || empty_terms(resB)) {
   uniqA_df <- resA[resA$GO.ID %in% uniqA_ids, ]
   uniqB_df <- resB[resB$GO.ID %in% uniqB_ids, ]
 
-  f_shared <- file.path(cmp_dir, sprintf("GO_%s_conserved_shared_terms.csv", ontology))
-  f_uniqA  <- file.path(cmp_dir, sprintf("GO_%s_conserved_unique_%s.csv", ontology, labA))
-  f_uniqB  <- file.path(cmp_dir, sprintf("GO_%s_conserved_unique_%s.csv", ontology, labB))
-  f_cmpsum <- file.path(cmp_dir, sprintf("GO_%s_conserved_comparison_summary.csv", ontology))
+  f_shared <- file.path(cmp_dir, sprintf("GO_%s_%s_shared_terms.csv", ontology, TAG))
+  f_uniqA  <- file.path(cmp_dir, sprintf("GO_%s_%s_unique_%s.csv", ontology, TAG, labA))
+  f_uniqB  <- file.path(cmp_dir, sprintf("GO_%s_%s_unique_%s.csv", ontology, TAG, labB))
+  f_cmpsum <- file.path(cmp_dir, sprintf("GO_%s_%s_comparison_summary.csv", ontology, TAG))
 
   write.csv(shared_df, f_shared, row.names = FALSE)
   write.csv(uniqA_df,  f_uniqA,  row.names = FALSE)

@@ -1946,6 +1946,45 @@ read as one series. Nothing here touches a `_FULL` path — `conserved_genes_<st
 is still read by `run.sh trait`, `08` and `09_go_enrichment.r`, and overwriting it
 would have made three superseded stages describe a mixture of two graphs.
 
+### What transfers is housekeeping; what does not is regulation
+
+`09_go_enrichment.r` now runs on either side of a partition: the genes on at least one
+conserved edge, and the **exact complement** — network nodes with no conserved edge.
+They partition the node set (sugarcane 37,867 + 64,123 = 101,990; purple 42,194 +
+127,941 = 170,135) and share a background, so this is one gene set split two ways
+rather than two unrelated tests.
+
+| conserved edges | no conserved edge |
+|---|---|
+| translation | regulation of DNA-templated transcription |
+| intracellular protein transport | response to auxin |
+| protein folding | protein ubiquitination |
+| vesicle-mediated transport | positive regulation of transcription by RNA pol II |
+| photosynthesis, light harvesting | mitotic cell cycle phase transition |
+| mRNA splicing, via spliceosome | ethylene-activated signalling pathway |
+
+*(top 6 BP terms per set, ranked by the worse of the two species' p-values, so each is
+a term both species agree on. 111 shared terms in the conserved set, 61 in the
+complement.)*
+
+The co-expression that survives between the two species is **core cellular machinery**;
+what does not is the **regulatory layer** — transcriptional control, hormone signalling,
+ubiquitination, the cell cycle.
+
+**One caveat that is structural, not incidental.** A gene with no ortholog at all cannot
+have a conserved edge, so it lands in the complement by construction — 2,775 sugarcane
+and 1,217 purple genes among the nitrogen-responsive alone. The regulatory signal is
+therefore partly a statement about which gene families have clean orthology between
+these two genomes, not purely about which are conserved in co-expression. Transcription
+factors and hormone-signalling families are exactly the ones that expand and diverge, so
+the two explanations are not separable here.
+
+**The literal alternative was degenerate and was not used.** "Genes on at least one
+non-conserved edge" is 101,256 of 101,990 sugarcane nodes — 99.3% — because at a mean
+degree near 1,477 almost every gene has some non-conserved edge. It overlaps the
+conserved set by 37,133 genes and would have been tested against a background that is
+essentially itself.
+
 ### The join was verified independently
 
 A fast vectorised join that is subtly wrong returns plausible numbers — that is how

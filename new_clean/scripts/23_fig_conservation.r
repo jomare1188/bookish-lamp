@@ -99,8 +99,16 @@ STAT <- rbindlist(lapply(c("sugarcane", "purple"), function(sp)
   fread(file.path(CONS_DIR, sprintf("%s_status_blocked_nodes.tsv", sp)))[
     , .(species = sp, status)]))
 
-GO_DIR <- file.path(CONS_DIR, "enrichment_conserved")
-GO_SHARED <- fread(file.path(GO_DIR, sprintf("GO_%s_conserved_shared_terms.csv", GO_ONT)))
+# BOTH SIDES OF THE PARTITION. `conserved` is the genes on at least one conserved
+# edge; `nonconserved` is the exact complement -- network nodes with NO conserved
+# edge (37,867 + 64,123 = 101,990 in sugarcane). Same background for both, so the
+# two are a contrast rather than two unrelated tests.
+SETS <- c(conserved = "on a conserved edge", nonconserved = "no conserved edge")
+godir <- function(tag) file.path(CONS_DIR, sprintf("enrichment_%s", tag))
+gof <- function(tag, pat) file.path(godir(tag), sprintf(pat, GO_ONT, tag))
+GO_DIR <- godir("conserved")
+GO_SHARED <- rbindlist(lapply(names(SETS), function(tg)
+  fread(gof(tg, "GO_%s_%s_shared_terms.csv"))[, set := tg]))
 # topGO's GenTable truncates term names at 40 characters with an ellipsis, so the
 # CSV carries strings like "positive regulation of cellular cataboli...". Expand
 # them from the cached GO.db dump; anything missing keeps the truncated string
@@ -108,7 +116,7 @@ GO_SHARED <- fread(file.path(GO_DIR, sprintf("GO_%s_conserved_shared_terms.csv",
 GO_NAMES <- env_opt("CLEAN_GO_NAMES")
 if (nzchar(GO_NAMES) && file.exists(GO_NAMES)) {
   nm <- fread(GO_NAMES)
-  GO_SHARED <- merge(GO_SHARED, nm, by = "GO.ID", all.x = TRUE, sort = FALSE)
+  GO_SHARED <- merge(GO_SHARED, nm, by = "GO.ID", all.x = TRUE, sort = FALSE, allow.cartesian = TRUE)
   n_trunc <- GO_SHARED[grepl("\\.\\.\\.$", Term), .N]
   GO_SHARED[!is.na(Term_full) & nzchar(Term_full), Term := Term_full]
   say(sprintf("expanded %d truncated %s term name(s) from %s",
@@ -116,10 +124,12 @@ if (nzchar(GO_NAMES) && file.exists(GO_NAMES)) {
 } else {
   say("NOTE: no GO term-name cache; long term names stay truncated as topGO wrote them")
 }
-GO_CMP <- rbindlist(lapply(c("BP", "MF", "CC"), function(o)
-  fread(file.path(GO_DIR, sprintf("GO_%s_conserved_comparison_summary.csv", o)))))
-GO_SUM <- fread(file.path(GO_DIR, sprintf("GO_%s_conserved_summary.csv", GO_ONT)))
-gc_ <- function(o, col) GO_CMP[Ontology == o][[col]]
+GO_CMP <- rbindlist(lapply(names(SETS), function(tg)
+  rbindlist(lapply(c("BP", "MF", "CC"), function(o)
+    fread(file.path(godir(tg), sprintf("GO_%s_%s_comparison_summary.csv", o, tg)))[
+      , set := tg]))))
+GO_SUM <- fread(gof("conserved", "GO_%s_%s_summary.csv"))
+gc_ <- function(o, col, tg = "conserved") GO_CMP[Ontology == o & set == tg][[col]]
 gs_ <- function(sp, col) GO_SUM[Network == sp][[col]]
 
 SUMS[, dir_lab := factor(DIR_LAB[direction], levels = unname(DIR_LAB))]
@@ -169,38 +179,59 @@ pA <- ggplot(obsA, aes(dir_ax, rate, fill = what)) +
 # =============================================================================
 # B — fold over null, by layer and direction
 # =============================================================================
-# Ranked by the WORSE of the two p-values, so the panel shows terms BOTH species
-# are enriched for rather than terms one species drives.
+# WHAT THE PANEL CONTRASTS. Top terms of the genes ON a conserved edge against top
+# terms of the exact complement -- genes with NO conserved edge. The two sets
+# partition the network and share a background, so the comparison is of the same
+# genes split one way, not of two unrelated tests.
+#
+# Each set gets its OWN top terms rather than the two being scored on one term list:
+# the finding is that the lists differ, and forcing a common list would hide exactly
+# that. Within each set, terms are ranked by the WORSE of the two species' p-values,
+# so these are terms BOTH species agree on rather than terms one species drives.
 gsh <- copy(GO_SHARED)
 setnames(gsh, c("pvalue_sugarcane", "pvalue_purple"), c("p_sugarcane", "p_purple"))
 gsh[, worst := pmax(p_sugarcane, p_purple)]
-setorder(gsh, worst)
-top <- head(gsh, GO_NTERMS)
-goB <- melt(top[, .(Term, p_sugarcane, p_purple)], id.vars = "Term",
-            variable.name = "species", value.name = "p")
-goB[, species := factor(sub("^p_", "", species), levels = c("sugarcane", "purple"))]
-# Full GO names run to 70+ characters and, unwrapped, the label column eats half
-# the figure width and squeezes panel A. Wrapped to two or three short lines.
-wrap_term <- function(x, w = 38)
+setorder(gsh, set, worst)
+NPER <- max(4L, GO_NTERMS %/% 2L)
+top <- gsh[, head(.SD, NPER), by = set]
+top[, set_lab := factor(SETS[set], levels = unname(SETS))]
+
+# Full GO names run to 70+ characters and, unwrapped, the label column eats half the
+# figure width. Wrapped to two short lines. The set tag is carried in the factor
+# level because two sets can share a term name and would otherwise collapse onto one
+# row of the shared y axis.
+wrap_term <- function(x, w = 34)
   vapply(x, function(t) paste(strwrap(t, w), collapse = "\n"), "")
 top[, Term_w := wrap_term(Term)]
-goB <- merge(goB, top[, .(Term, Term_w)], by = "Term")
-goB[, Term := factor(Term_w, levels = rev(top$Term_w))]
-goB[, mlp := -log10(p)]
-say(sprintf("panel B: %s terms shared by both conserved sets, showing top %d",
-            fmt_n(nrow(gsh)), nrow(top)))
-print(top[, .(Term = substr(Term, 1, 46), p_sugarcane, p_purple)], row.names = FALSE)
+top[, key := paste(set, Term, sep = "|")]
+setorder(top, set_lab, -worst)
+top[, key := factor(key, levels = key)]
 
-pB <- ggplot(goB, aes(mlp, Term)) +
-  geom_line(aes(group = Term), colour = "grey70", linewidth = 0.35) +
+goB <- melt(top[, .(key, set_lab, Term_w, p_sugarcane, p_purple)],
+            id.vars = c("key", "set_lab", "Term_w"),
+            variable.name = "species", value.name = "p")
+goB[, species := factor(sub("^p_", "", species), levels = c("sugarcane", "purple"))]
+goB[, mlp := -log10(p)]
+say(sprintf("panel B: %d shared %s terms (conserved) and %d (non-conserved); top %d each",
+            gsh[set == "conserved", .N], GO_ONT, gsh[set == "nonconserved", .N], NPER))
+print(top[, .(set, Term = substr(Term, 1, 44), p_sugarcane, p_purple)], row.names = FALSE)
+
+pB <- ggplot(goB, aes(mlp, key)) +
+  geom_line(aes(group = key), colour = "grey70", linewidth = 0.35) +
   geom_point(aes(fill = species), shape = 21, size = 1.9,
              colour = "grey25", stroke = 0.25) +
+  facet_grid(set_lab ~ ., scales = "free_y", space = "free_y", switch = "y") +
+  scale_y_discrete(labels = setNames(top$Term_w, top$key)) +
   scale_fill_manual(values = setNames(scico(3, palette = "batlow")[1:2],
                                       c("sugarcane", "purple")), name = NULL) +
-  scale_x_continuous(expand = expansion(mult = c(0.03, 0.08))) +
+  scale_x_continuous(expand = expansion(mult = c(0.04, 0.08))) +
   labs(x = expression(-log[10](p)~", topGO weight01"), y = NULL) +
-  theme_f + theme(axis.text.y = element_text(size = 6, lineheight = 0.95),
-                  panel.grid.major.y = element_line(linewidth = 0.2))
+  theme_f +
+  theme(axis.text.y = element_text(size = 5.7, lineheight = 0.92),
+        panel.grid.major.y = element_line(linewidth = 0.2),
+        strip.placement = "outside",
+        strip.text.y.left = element_text(angle = 90, size = 6.3, face = "bold"),
+        panel.spacing.y = unit(1.6, "mm"))
 
 # =============================================================================
 # C — conservation against edge strength
@@ -222,64 +253,45 @@ print(DEC[, .(dir_lab, decile, edges = fmt_n(edges),
               pct = round(100 * conserved_fraction, 3), fold = fold_over_null)],
       row.names = FALSE)
 
-# WHAT THIS PANEL HAS TO SAY, in one sentence: the stronger the co-expression, the
-# likelier the edge is to exist in the other species too -- in both species, and not
-# because of orthology.
+# WHAT THIS PANEL SAYS, in one sentence: the stronger the co-expression, the likelier
+# the edge exists in the other species too -- in both directions.
 #
-# It is TWO sub-panels and not four. The earlier version split by direction as well
-# as by measure, which buried the message in a 2x2 grid of bare numeric axes:
-#   * THE FOLD NEEDS NO SPLIT AT ALL. It is already divided by each direction's own
-#     null, which is precisely the normalisation that makes the two directions
-#     comparable. Splitting it implied they could not be compared, which is the
-#     opposite of true.
-#   * THE RATE GOES ON A LOG AXIS instead of being split. Sugarcane runs at ~10% and
-#     purple at ~1.5% -- the 7x panel A exists to explain -- and on a linear shared
-#     axis purple flattens to the floor. On a log axis both fit AND their slopes are
-#     directly readable as RELATIVE change, which is the comparison that means
-#     something: purple rises 84% across the deciles against sugarcane's 16%.
+# ONE PLOT, NOT TWO. An earlier version drew the fold over null beside the rate. The
+# fold is still computed, still in the summary table and still quoted in the legend --
+# it is what rules out the rate rising merely because strongly co-expressed genes have
+# more or better orthologs -- but it is a second statistic about the same curve, and
+# the panel reads better making one point than two.
 #
-# The dashed line at fold = 1 is where orthology alone would put the curve.
-decL <- melt(DEC[, .(dir_lab, decile, rate = conserved_fraction,
-                     fold = fold_over_null)],
-             id.vars = c("dir_lab", "decile"), variable.name = "measure",
-             value.name = "v")
+# THE AXIS IS LOGARITHMIC, and that is not only to fit both directions on it. Sugarcane
+# runs at ~10% and purple at ~1.5% -- the 7x that panel A exists to explain -- so a
+# linear axis flattens purple onto the floor. On a log axis both fit AND slopes read as
+# RELATIVE change, which is the comparison that means something here: purple rises 84%
+# across the deciles against sugarcane's 16%, so the effect is the LARGER one in purple
+# despite the lower absolute rate. A linear panel would show the opposite.
+say("panel C: conservation by weight decile")
+print(DEC[, .(dir_lab, decile, edges = fmt_n(edges),
+              pct = round(100 * conserved_fraction, 3), fold = fold_over_null)],
+      row.names = FALSE)
 
-x_dec <- list(
-  scale_x_continuous(breaks = c(1, 4, 7, 10),
-                     labels = c("D1\nweakest", "D4", "D7", "D10\nstrongest"),
-                     expand = expansion(mult = 0.06)),
-  labs(x = "edge weight decile"))
-
-pC_rate <- ggplot(decL[measure == "rate"], aes(decile, v, colour = dir_lab)) +
-  geom_line(linewidth = 0.5) + geom_point(size = 1.2) +
+pC <- ggplot(DEC, aes(decile, conserved_fraction, colour = dir_lab)) +
+  geom_line(linewidth = 0.55) +
+  geom_point(size = 1.4) +
   scale_colour_manual(values = PAL_DIR, name = NULL) +
   scale_y_log10(labels = function(x) sprintf("%g%%", 100 * x),
                 breaks = c(0.0125, 0.025, 0.05, 0.10),
                 expand = expansion(mult = c(0.10, 0.10))) +
-  x_dec +
-  labs(y = "edges with a conserved\npartner  (log scale)") +
-  theme_f
-
-pC_fold <- ggplot(decL[measure == "fold"], aes(decile, v, colour = dir_lab)) +
-  geom_hline(yintercept = 1, linetype = "22", linewidth = 0.35, colour = "grey45") +
-  geom_line(linewidth = 0.5) + geom_point(size = 1.2) +
-  scale_colour_manual(values = PAL_DIR, name = NULL) +
-  scale_y_continuous(breaks = c(1.0, 1.5, 2.0),
-                     limits = c(0.93, max(DEC$fold_over_null) * 1.06),
-                     expand = expansion(mult = 0)) +
-  x_dec +
-  labs(y = "fold over permutation null\n(1 = orthology alone)") +
-  theme_f
-
-pC <- (pC_rate | pC_fold) +
-  plot_layout(guides = "collect") &
-  theme(axis.title.y = element_text(size = 6.3, lineheight = 1.05),
-        axis.title.x = element_text(size = 6.5),
-        axis.text.x = element_text(size = 5.7, lineheight = 1.0),
-        axis.text.y = element_text(size = 6.0),
+  scale_x_continuous(breaks = c(1, 4, 7, 10),
+                     labels = c("D1\nweakest", "D4", "D7", "D10\nstrongest"),
+                     expand = expansion(mult = 0.06)) +
+  labs(x = "edge weight decile",
+       y = "edges with a conserved partner\n(log scale)") +
+  theme_f +
+  theme(axis.title.y = element_text(size = 6.5, lineheight = 1.05),
+        axis.title.x = element_text(size = 6.7),
+        axis.text.x = element_text(size = 6.0, lineheight = 1.0),
         legend.position = "bottom",
         legend.box.margin = margin(-7, 0, 0, 0),
-        legend.text = element_text(size = 6.4))
+        legend.text = element_text(size = 6.5))
 
 # =============================================================================
 # D — the funnel
@@ -333,7 +345,7 @@ pD <- ggplot(funD, aes(stage, n, fill = species)) +
 # =============================================================================
 # The GO panel needs the taller row: its labels are full GO term names wrapped
 # to two or three lines, and at equal row heights they collide.
-fig <- (pA | pB) / (wrap_elements(full = pC) | pD) +
+fig <- (pA | pB) / (pC | pD) +
   plot_layout(heights = c(1.25, 1)) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 12))
@@ -390,47 +402,58 @@ fmt_n(ALLROW[direction == D2, conserved]), " (", pc(ALLROW[direction == D2, cons
 "merged-network version this replaces: that one drew from all 275,047 pairs including genes that ",
 "could never have matched, and reported a correspondingly larger fold.\n",
 "\n",
-"(B) What the conserved genes are for: one topGO enrichment (", GO_ONT, ", weight01) per species ",
-"over the genes on at least one conserved edge, against that network's own GO-annotated nodes as ",
-"the background, so the test asks what is special about the conserved genes RELATIVE TO THEIR OWN ",
-"NETWORK rather than to the genome. Points are the two species' p-values for the same term, ",
-"joined by a line; terms are ranked by the WORSE of the two, so these are terms both species agree ",
-"on rather than terms one species drives. ", fmt_n(gc_(GO_ONT, "Shared")), " ", GO_ONT,
-" terms are enriched in both conserved sets (Jaccard ", sprintf("%.3f", gc_(GO_ONT, "Jaccard")),
-"), against ", fmt_n(gc_(GO_ONT, "Unique_sugarcane")), " enriched only in sugarcane and ",
-fmt_n(gc_(GO_ONT, "Unique_purple")), " only in purple; the top ", nrow(top), " are drawn. GO comes ",
-"from the adopted full-InterProScan annotation, which reaches 62.9% and 64.4% of network nodes. ",
-"topGO reports anything below 1e-30 AS 1e-30, so a term at the right edge is censored rather than ",
-"exactly that significant, and two points there coincide because both are at the floor -- not ",
-"because the two species agree to that precision.\n",
+"(B) WHAT TRANSFERS IS HOUSEKEEPING; WHAT DOES NOT IS REGULATION. One topGO enrichment (",
+GO_ONT, ", weight01) per species over the genes ON at least one conserved edge (top) and over the ",
+"EXACT COMPLEMENT -- network nodes with no conserved edge (bottom). The two sets partition the ",
+"node set (sugarcane ", fmt_n(fn("sugarcane")[2]), " + ",
+fmt_n(fn("sugarcane")[1] - fn("sugarcane")[2]), " = ", fmt_n(fn("sugarcane")[1]),
+") and are tested against the SAME background, that network's own GO-annotated nodes, so this is ",
+"one gene set split two ways rather than two unrelated tests. Points are the two species' ",
+"p-values for the same term, joined by a line; within each set terms are ranked by the WORSE of ",
+"the two and the top ", NPER, " are drawn, so these are terms BOTH species agree on rather than ",
+"terms one species drives. Each set gets its own term list because the finding IS that the lists ",
+"differ -- conserved edges are enriched for translation, protein folding and transport, ",
+"photosynthesis and splicing, the core cellular machinery; the complement is enriched for ",
+"regulation of transcription, auxin and ethylene signalling, ubiquitination and the cell cycle, ",
+"i.e. the regulatory layer. ", fmt_n(gc_(GO_ONT, "Shared", "conserved")), " ", GO_ONT,
+" terms are shared by both species in the conserved set (Jaccard ",
+sprintf("%.3f", gc_(GO_ONT, "Jaccard", "conserved")), ") and ",
+fmt_n(gc_(GO_ONT, "Shared", "nonconserved")), " in the complement (Jaccard ",
+sprintf("%.3f", gc_(GO_ONT, "Jaccard", "nonconserved")), "). ",
+"NOTE WHAT THE COMPLEMENT NECESSARILY CONTAINS: a gene with no ortholog at all cannot have a ",
+"conserved edge, so it is in the bottom set by construction -- 2,775 sugarcane genes and 1,217 ",
+"purple ones among the nitrogen-responsive alone. The regulatory signal is therefore partly a ",
+"statement about which gene families have clean one-to-one orthology across these two genomes, ",
+"not only about which are conserved in co-expression. GO comes from the adopted ",
+"full-InterProScan annotation, which reaches 62.9% and 64.4% of network nodes. topGO reports ",
+"anything below 1e-30 AS 1e-30, so a term at the right edge is censored rather than exactly that ",
+"significant, and two points there coincide because both are at the floor -- not because the two ",
+"species agree to that precision.\n",
 "\n",
 "(C) THE STRONGER THE CO-EXPRESSION, THE LIKELIER THE EDGE EXISTS IN THE OTHER SPECIES -- in ",
-"both directions, and not because of orthology. Edges are split into ten rank-based weight ",
-"deciles, so each bin holds a tenth of that network's edges, D1 the weakest and D10 the ",
-"strongest. LEFT: the share of edges in each decile that have a conserved partner, ",
-"sugarcane from ", pc(dc(D1, 1, "conserved_fraction")), " to ", pc(dc(D1, 10, "conserved_fraction")),
-" and purple from ", pc(dc(D2, 1, "conserved_fraction")), " to ",
-pc(dc(D2, 10, "conserved_fraction")), ". The axis is LOGARITHMIC for the reason panel A gives -- ",
-"the two directions differ ~7x in absolute rate, and on a linear axis purple would lie flat on ",
-"the floor -- and a log axis has the further advantage that SLOPES READ AS RELATIVE CHANGE, which ",
-"is the comparison that means anything here: purple's conservation rises ",
-sprintf("%.0f%%", 100 * (dc(D2, 10, "conserved_fraction") / dc(D2, 1, "conserved_fraction") - 1)),
+"both directions. Edges are split into ten rank-based weight deciles, so each bin holds a tenth ",
+"of that network's edges, D1 the weakest and D10 the strongest, and the panel plots the share of ",
+"each decile that has a conserved partner: sugarcane from ", pc(dc(D1, 1, "conserved_fraction")),
+" to ", pc(dc(D1, 10, "conserved_fraction")), " and purple from ",
+pc(dc(D2, 1, "conserved_fraction")), " to ", pc(dc(D2, 10, "conserved_fraction")),
+", monotonically in both. THE AXIS IS LOGARITHMIC and that is not only to fit both curves on it: ",
+"the two directions differ ~7x in absolute rate for the reason panel A gives, so a linear axis ",
+"lays purple flat on the floor, and on a log axis slopes read as RELATIVE change, which is the ",
+"comparison that means anything here. Read that way the result inverts -- purple's conservation ",
+"rises ", sprintf("%.0f%%", 100 * (dc(D2, 10, "conserved_fraction") / dc(D2, 1, "conserved_fraction") - 1)),
 " across the deciles against sugarcane's ",
 sprintf("%.0f%%", 100 * (dc(D1, 10, "conserved_fraction") / dc(D1, 1, "conserved_fraction") - 1)),
-", so the effect is the larger one in purple even though its absolute rate is far lower. ",
-"RIGHT: the same deciles as a fold over each decile's OWN permutation null; the dashed line at 1 ",
-"is where orthology alone would put the curve. Unlike the rates, folds ARE directly comparable ",
-"between directions, because dividing by each direction's own null is exactly the normalisation ",
-"that removes the density difference -- which is why this half is one axis and not two. It rises ",
-"from ", dc(D1, 1, "fold_over_null"), " to ", dc(D1, 10, "fold_over_null"), " (sugarcane) and ",
-dc(D2, 1, "fold_over_null"), " to ", dc(D2, 10, "fold_over_null"), " (purple), monotonically in ",
-"both. THE RIGHT HALF IS WHAT MAKES THE LEFT HALF MEAN SOMETHING: a conservation rate rising ",
-"with edge strength is also what you would see if strongly co-expressed genes simply had more or ",
-"better orthologs, and only the fold rising rules that out. Weight is the per-study rescaling of ",
-"|r| to [0.01, 1], so a decile does NOT stand for the same |r| in both species; the boundaries ",
-"are in the summary table. What this does not settle is WHY -- stronger selective constraint on ",
-"tight co-expression, and a noisier weakest decile sitting nearest the |r| >= 0.8 threshold, ",
-"predict the same shape.\n",
+", so the effect is the LARGER one in purple despite its far lower absolute rate. ",
+"A RISING RATE ALONE WOULD NOT SETTLE THIS, because it is also what you would see if strongly ",
+"co-expressed genes simply had more or better orthologs. What rules that out is the fold over ",
+"each decile's own permutation null, which rises with it: ", dc(D1, 1, "fold_over_null"), " to ",
+dc(D1, 10, "fold_over_null"), " in sugarcane and ", dc(D2, 1, "fold_over_null"), " to ",
+dc(D2, 10, "fold_over_null"), " in purple, never below 1. Those folds are in ",
+basename(paste0(OUT_PREFIX, "_stats.tsv")), " and in the summary tables rather than on the panel, ",
+"which makes one point. Weight is the per-study rescaling of |r| to [0.01, 1], so a decile does ",
+"NOT stand for the same |r| in both species; the boundaries are in the summary table. What this ",
+"does not settle is WHY -- stronger selective constraint on tight co-expression, and a noisier ",
+"weakest decile sitting nearest the |r| >= 0.8 threshold, predict the same shape.\n",
 "\n",
 "(D) The funnel, per species, log scale. Sugarcane: ", fmt_n(fn("sugarcane")[1]),
 " network nodes -> ", fmt_n(fn("sugarcane")[2]), " on at least one conserved edge -> ",
