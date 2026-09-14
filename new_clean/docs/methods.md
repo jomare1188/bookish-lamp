@@ -890,6 +890,41 @@ Re-run on the adopted annotation, 2026-09-14:
 
 ## 11 · readouts
 
+### `module20` steps 06-08 — the AtMYB59 copies as network objects
+
+```
+./run.sh module20 06      # or scripts/11_readouts/module20/run_all.sh 06
+```
+
+| | |
+|---|---|
+| 06 | neighbourhoods from the `.pairs` dumps, cross-species overlap + degree-matched null (`pytorch`, ~3 min) |
+| 07 | weight01 Fisher on each neighbourhood, BP/MF/CC (`topGO_env`, ~18 min) |
+| 08 | the four-panel readout figure (`r_env`) |
+| writes | `myb59_neighbour_overlap.tsv`, `myb59_within_sugarcane_overlap.tsv`, `myb59_neighbour_go.tsv`, `myb59_copies_readout.{png,pdf}` |
+
+Reuses `62_conserved_edges_pearson.py`'s index-space approach and asserts the **same**
+114,681-pair ortholog universe, so the overlap numbers are comparable with the
+conservation analysis.
+
+**Three guards that each caught or would catch a real error.** The neighbour count for
+every gene must equal its recorded degree — a target appears sometimes as `i` and
+sometimes as `j` in a `--dump-upper` file, and scanning one column silently halves every
+degree (this fired during development). The background must equal the one `09`/`18`/`63`
+use, or the GO results cannot be set beside theirs. And the ortholog universe is
+asserted, not assumed.
+
+**Four similarity measures are written, and the ranking uses only one.** Jaccard is
+dominated by set size when neighbourhoods differ 30-fold; the overlap coefficient divides
+by `min(|A|,|B|)` and that minimum *flips* between rows, so read down a column it is not
+one statistic. The ranking uses `shared / |focus neighbourhood|` — one denominator for
+every row — and the raw count is carried because all three ratios hide how few genes the
+result rests on.
+
+---
+
+
+
 The H1 readouts (TF identification, MYB61 copies, Muñoz Module 20). None of them
 read an edge table — only `node_metrics`, `mcl_*_membership`,
 `conserved_genes_*_FULL`, `gene_trait_correlations_*` and TPM matrices.

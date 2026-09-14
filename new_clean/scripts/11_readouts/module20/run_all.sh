@@ -20,7 +20,9 @@ run() {
   echo; echo "======================================================================"
   echo "== $script"
   echo "======================================================================"
-  if [ -n "$interp" ]; then "$interp" "$script"; else "./$script"; fi
+  if [ "$interp" = "conda-topgo" ]; then
+    conda run --no-capture-output -n topGO_env Rscript "$script"
+  elif [ -n "$interp" ]; then "$interp" "$script"; else "./$script"; fi
 }
 
 run 01 01_extract_module20.sh
@@ -29,6 +31,13 @@ run 02b 02b_tf_call_on_munoz.sh
 run 03 03_network_readout.r    "$RSCRIPT_PLOT"
 run 04 04_nitrogen_response.r  "$RSCRIPT_PLOT"
 run 05 05_module20_heatmaps.r  "$RSCRIPT_PLOT"
+
+# 06-08: the AtMYB59 copies as NETWORK objects -- degree, cross-species
+# neighbourhood overlap, and what the neighbourhoods are enriched for. 06 streams
+# both .pairs dumps (~2 min) and needs numpy/pandas; 07 needs topGO_env.
+run 06 06_myb59_neighbourhoods.py "$PYTORCH"
+run 07 07_myb59_neighbour_go.r    "conda-topgo"
+run 08 08_myb59_readout_figure.r  "$RSCRIPT_PLOT"
 
 echo
 echo "======================================================================"
@@ -45,4 +54,8 @@ echo "  module20_module_membership.tsv       which of our modules they fall in"
 echo "  module20_nitrogen_<sp>.tsv           design-aware N tests"
 echo "  module20_network_overview.{png,pdf}  network figure"
 echo "  module20_heatmap_<sp>.{png,pdf}      full ComplexHeatmap figure per species"
+echo "  myb59_neighbour_overlap.tsv          cross-species neighbourhood overlap + null"
+echo "  myb59_within_sugarcane_overlap.tsv   copy-vs-copy overlap (they are not independent)"
+echo "  myb59_neighbour_go.tsv               BP/MF/CC enrichment of each neighbourhood"
+echo "  myb59_copies_readout.{png,pdf}       the four-panel readout"
 echo "======================================================================"

@@ -2406,6 +2406,91 @@ side turns back up.
 
 ---
 
+## The AtMYB59 copies as network objects
+
+Figure 7 establishes that `Soffic.09G0001580-9H` is the only expressed AtMYB59-anchor
+copy in purple and that its nitrogen response is U-shaped. This readout asks what these
+genes are *in the graphs*: hubs or not, which sugarcane copy resembles the purple one,
+and what their neighbourhoods do. `scripts/11_readouts/module20/06`–`08`.
+
+**The answer is a four-part negative**, and it is worth having precisely because Muñoz's
+claim is about network position.
+
+### They are not hubs
+
+| | degree | percentile in its own network |
+|---|---|---|
+| sugarcane copies (9) | 76 – 2,198 | 54.6 – 84.7 |
+| **`Soffic.09G0001580-9H`** | 635 | **48.2 — below median** |
+| `Soffic.05G0021340-5A` (silent MYB) | 135 | 28.0 |
+| `Soffic.05G0022030-5F` | — | not in the network at all |
+
+Module 20 is defined as high-betweenness *on Muñoz's own network*. In ours these are
+ordinary mid-degree genes and the focus gene sits below purple's median. That is the
+non-circular version of the centrality claim, and it does not hold.
+
+### Only one sugarcane copy is the ortholog — and it is not the most similar
+
+The nine are one locus only by **Arabidopsis anchor**. OrthoFinder splits them across at
+least four orthogroups, and exactly one pairs 1:1 with the purple gene: `06Ag012300`
+(OG0088735), which is also the highest-degree copy. **That prior was stated before the
+neighbour test, not after.**
+
+Projecting each copy's neighbourhood through orthology and intersecting with the purple
+gene's 635 neighbours, against a degree-matched null (200 purple genes within ±20% of
+635):
+
+| sugarcane copy | ortholog? | shared | expected | % of 635 | z | p | p_adj |
+|---|---|---|---|---|---|---|---|
+| `6us88g046700` | — | 12 | 4.0 | 1.89% | 2.65 | 0.030 | 0.067 |
+| **`06Ag012300`** | **YES** | 11 | 8.4 | 1.73% | **0.53** | **0.289** | 0.325 |
+| `6us88g046900` | — | 4 | 0.7 | 0.63% | 3.14 | 0.010 | 0.067 |
+| `06Eg019700` | — | 4 | 0.8 | 0.63% | 3.15 | 0.015 | 0.067 |
+| `06Fg016300` | — | 0 | 0.8 | 0.00% | −0.75 | 1.000 | 1.000 |
+
+**Nothing clears BH**, and the 1:1 ortholog is *specifically* indistinguishable from
+chance — its 11 shared genes are exactly what a 2,540-gene projected neighbourhood yields
+against any purple gene of that degree. No copy recovers more than 1.9% of the purple
+gene's neighbourhood. The z-values near 3 rest on **4 shared genes against an expectation
+of 1** and should not be read as findings.
+
+### The measure is not the problem
+
+Within sugarcane the same copies share neighbourhoods heavily — the most similar pair
+shares **83.1%** of the smaller neighbourhood, and 6 of 9 sit in one MCL module
+(`Module_010`, 1,132 genes). So the ~1–2% cross-species figure is a result, not a
+limitation of the statistic. It also means **nine copies are not nine measurements**;
+`myb59_within_sugarcane_overlap.tsv` carries the full pairwise matrix.
+
+The clustering says the same thing from the other side: `06Ag012300` sits alone in
+sugarcane's 23,439-gene giant module, while the purple focus gene is in `Module_12226` —
+**a module of 2 genes**. It has 635 neighbours that MCL cannot place it with.
+
+### The neighbourhoods do different things
+
+11 neighbourhoods × BP/MF/CC, weight01 Fisher against each network's GO-annotated nodes
+(the same background `09`, `18` and `63` use). Term-level convergence is also nil: 1–3
+shared terms out of 20–35, Jaccard 0.03–0.07.
+
+| | top terms |
+|---|---|
+| **purple `Soffic.09G0001580-9H`** | tryptophan synthase, terpene synthase, innate immune response, response to wounding, diterpenoid biosynthesis |
+| **sugarcane `06Ag012300`** (1:1 ortholog) | vesicle fusion, translation initiation, proton transport, ribosome binding, TCA cycle |
+
+The purple gene sits in a **stress and specialised-metabolism** neighbourhood; its
+sugarcane ortholog sits in **core housekeeping**. That is consistent with the U-shape —
+a gene induced by nitrogen stress in either direction — but it is an observation about
+one gene's neighbours, not a test of it.
+
+### What this does and does not say
+
+The gene is not a hub, its neighbourhood does not transfer, and its sugarcane ortholog
+keeps different company. Taken with figure 7 — where the U-shape is significant in one of
+two purple genotypes and does not survive genome-wide correction — **`Soffic.09G0001580-9H`
+is a candidate worth following and not a result.** What the readout adds is that the
+reasons to be cautious are independent: the expression evidence is thin *and* the network
+evidence does not corroborate it.
+
 ## Open items
 
 - The 47,192 spurious sugarcane edges were present in every downstream result of
