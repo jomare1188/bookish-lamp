@@ -54,10 +54,13 @@ FIG        <- env_opt("CLEAN_FIG_NUM", "3")
 NGRID      <- as.integer(env_num("CLEAN_TOPO_GRID", 300))
 setDTthreads(as.integer(env_num("CLEAN_CORES", 8)))
 
+NTERMS     <- as.integer(env_num("CLEAN_GO_NTERMS", 7))
+
 cfg <- lapply(STUDIES, function(st) list(
   nodes  = env_req(sprintf("CLEAN_NODES_%s", toupper(st))),
   global = env_req(sprintf("CLEAN_GLOBAL_%s", toupper(st))),
-  mcl    = env_req(sprintf("CLEAN_MCL_%s", toupper(st)))))
+  mcl    = env_req(sprintf("CLEAN_MCL_%s", toupper(st))),
+  degreego = env_opt(sprintf("CLEAN_DEGREEGO_%s", toupper(st)), "")))
 names(cfg) <- STUDIES
 
 banner(sprintf("Figure %s — network topology", FIG))
@@ -189,13 +192,87 @@ pD <- ggplot(modD, aes(size, p, colour = study)) +
   theme_f
 
 # =============================================================================
+# C — what the hubs are for, and what the periphery is for
+# =============================================================================
+# Panels A and B describe the degree distribution; this asks what sits at its two
+# ends. 63_degree_go.r does the testing (weight01 + KS on the FULL degree ranking,
+# not an over-representation test on a decile) and writes the table; nothing is
+# computed here.
+#
+# BOTH THE p AND THE EFFECT SIZE ARE DRAWN. At n = 64,178 a KS test calls terms
+# significant on small shifts -- sugarcane's "carbohydrate metabolic process" clears
+# p = 2.6e-08 with its median degree at 1.04x the background, i.e. no shift at all.
+# Point size is the median degree of the term's genes over the background median, so
+# a term that is significant but flat is visibly small and cannot be mistaken for a
+# strong one.
+DG <- rbindlist(lapply(STUDIES, function(st) {
+  f <- cfg[[st]]$degreego
+  if (!nzchar(f) || !file.exists(f)) {
+    say("NOTE: no degree-GO table for ", st, " -- run ./run.sh degreego ", st)
+    return(NULL)
+  }
+  fread(f)[, study := st]
+}), fill = TRUE)
+
+pC <- NULL
+if (length(DG) && nrow(DG)) {
+  DG[, study := factor(study, levels = STUDIES)]
+  setorder(DG, study, direction, pvalue)
+  topC <- DG[, head(.SD, NTERMS), by = .(study, direction)]
+  # Opposed on one axis -- hubs to the right, periphery to the left -- the same
+  # idiom 25_fig_module_go.r uses for its two response directions, so a reader meets
+  # it twice in the same form rather than learning two layouts.
+  topC[, mlp := -log10(pmax(pvalue, 1e-300))]
+  topC[, x := ifelse(direction == "hub", mlp, -mlp)]
+  topC[, dir_lab := factor(ifelse(direction == "hub", "hubs", "periphery"),
+                           levels = c("periphery", "hubs"))]
+  wrap_term <- function(z, w = 40)
+    vapply(z, function(t) paste(strwrap(t, w), collapse = "\n"), "")
+  topC[, Term_w := wrap_term(Term)]
+  topC[, key := paste(study, direction, Term, sep = "|")]
+  setorder(topC, study, -x)
+  topC[, key := factor(key, levels = rev(unique(key)))]
+  say("panel C: degree-ranked GO, top ", NTERMS, " per direction per study")
+  print(topC[, .(study, direction, Term = substr(Term, 1, 42),
+                 p = signif(pvalue, 3), ratio = degree_ratio)], row.names = FALSE)
+
+  PAL_DIR3 <- setNames(rev(scico(3, palette = "managua", begin = 0.08, end = 0.92))[c(3, 1)],
+                       c("periphery", "hubs"))
+  pC <- ggplot(topC, aes(x, key, fill = dir_lab, size = degree_ratio)) +
+    geom_vline(xintercept = 0, linewidth = 0.3, colour = "grey45") +
+    geom_segment(aes(x = 0, xend = x, y = key, yend = key, colour = dir_lab),
+                 linewidth = 0.35, show.legend = FALSE) +
+    geom_point(shape = 21, colour = "grey25", stroke = 0.25) +
+    facet_wrap(~ study, nrow = 1, scales = "free") +
+    scale_fill_manual(values = PAL_DIR3, name = NULL) +
+    scale_colour_manual(values = PAL_DIR3) +
+    scale_size_continuous(range = c(1.1, 4.4),
+                          name = "median degree\n/ background",
+                          breaks = c(0.25, 1, 4, 9)) +
+    scale_y_discrete(labels = setNames(topC$Term_w, topC$key)) +
+    scale_x_continuous(labels = function(z) abs(z),
+                       expand = expansion(mult = c(0.10, 0.10))) +
+    labs(x = expression(-log[10](p)~", topGO weight01 + KS"), y = NULL) +
+    theme_f +
+    theme(axis.text.y = element_text(size = 5.4, lineheight = 0.92),
+          panel.grid.major.y = element_line(linewidth = 0.2),
+          legend.position = "right",
+          legend.title = element_text(face = "bold", size = 6.4),
+          legend.text = element_text(size = 6.2))
+}
+
+# =============================================================================
 # compose
 # =============================================================================
-fig <- (pA | pD) +
-  plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(face = "bold", size = 12))
+fig <- if (is.null(pC)) {
+  (pA | pD) + plot_annotation(tag_levels = "A")
+} else {
+  (pA | pD) / pC + plot_layout(heights = c(0.62, 1)) +
+    plot_annotation(tag_levels = "A")
+}
+fig <- fig & theme(plot.tag = element_text(face = "bold", size = 12))
 
-W <- 20; H <- 7.5
+W <- 20; H <- if (is.null(pC)) 7.5 else 18
 invisible(ensure_dir(dirname(OUT_PREFIX)))
 ggsave(paste0(OUT_PREFIX, ".png"), fig, width = W, height = H, units = "cm",
        dpi = 400, type = "cairo")
@@ -273,7 +350,49 @@ fmt_n(un(S1)), " and ", fmt_n(un(S2)), " genes in groups below the minimum modul
 sprintf("%.0f%%", 100 * mo(S2, "max") / as.integer(gv(S2, "Nodes"))), " of its nodes against ",
 sprintf("%.0f%%", 100 * mo(S1, "max") / as.integer(gv(S1, "Nodes"))), " for ", S1,
 ", so ", S2, "'s module structure in particular should be treated as a working partition rather ",
-"than as biology, and any per-module claim from it read with that in mind.")
+"than as biology, and any per-module claim from it read with that in mind.",
+if (is.null(pC)) "" else paste0(
+"\n\n",
+"(C) WHAT SITS AT THE TWO ENDS OF THAT DEGREE DISTRIBUTION. Every GO-annotated network node is ",
+"ranked by degree and each GO term tested for concentration at one end, by a Kolmogorov-Smirnov ",
+"statistic under topGO's weight01 algorithm; terms enriched among HUBS extend to the right and ",
+"terms enriched at the PERIPHERY to the left, the top ", NTERMS, " each. THE RANKING IS USED ",
+"WHOLE, with no cut: degree spans four orders of magnitude (", S1, "'s 10th percentile is 2, its ",
+"median ", fmt_n(round(median(as.numeric(fread(cfg[[S1]]$nodes, select = 'degree')[[1]])))),
+", its 90th percentile in the thousands), so any decile boundary is arbitrary and discards the ",
+"middle of the data. weight01 is kept rather than moving to a GSEA implementation because it ",
+"decorrelates the GO DAG -- without it a parent and its children score on the same genes and the ",
+"table fills with near-duplicates.\n",
+"\n",
+"POINT SIZE IS THE EFFECT, and it is drawn because the p-value alone is misleading at this n. ",
+"Over ", fmt_n(nrow(DG[study == S1 & direction == 'hub'])), " tested terms a KS test reaches ",
+"significance on small shifts: ", S1, "'s `carbohydrate metabolic process` clears p = 2.6e-08 ",
+"with its genes' median degree at 1.04x the background, which is no shift at all, while ",
+"`trehalose biosynthetic process` sits at 0.15x. Size is that ratio -- the median degree of the ",
+"term's genes over the background median -- so a term that is significant but flat is visibly ",
+"small.\n",
+"\n",
+"THE TWO SPECIES AGREE. Hubs in both are photosynthesis and light harvesting (median degree ",
+"5.7x and 9.8x the background), translation, intracellular protein transport, mRNA splicing and ",
+"protein deubiquitination. The periphery in both is regulatory and metabolic: RNA modification, ",
+"protein phosphorylation, hydrogen peroxide catabolism, carbohydrate metabolism. So the densely ",
+"connected core of a co-expression network is the housekeeping machinery, and signalling and ",
+"regulation sit at its edge -- in two species whose networks were built from unrelated ",
+"experiments.\n",
+"\n",
+"READ THIS WITH FIGURE 4 PANEL B, which is largely the same contrast reached another way. Genes ",
+"on a conserved edge are hubs: median degree 228 against 18 in ", S1, " and 6,916 against 376 in ",
+S2, ", and 63.3% of ", S1, "'s top-degree decile sits on a conserved edge against 7.1% of the ",
+"bottom. Part of that is arithmetic -- one conserved edge out of 6,677 is near-certain at a 10.4% ",
+"per-edge rate and unlikely out of 2 -- so panel B's housekeeping-versus-regulation split and this ",
+"one are entangled, and neither is independent evidence for the other.\n",
+"\n",
+"Selection is on the RAW weight01 p. weight01 deliberately makes a term's score depend on its ",
+"neighbours', so its p-values are not an exchangeable family and BH's assumptions do not hold on ",
+"them; a BH column is carried in the source table but does not select. One caveat measured rather ",
+"than assumed: GO coverage is mildly degree-dependent, 59.7% in ", S1, "'s bottom degree decile ",
+"against 66.8% in its top (62.6% and 65.4% in ", S2, "), so the periphery is slightly the less ",
+"well annotated end. Source: 63_degree_go.r -> results/<study>/degree_go_<study>.tsv."))
 
 legend_file <- paste0(OUT_PREFIX, "_legend.txt")
 writeLines(wrap_at(legend), legend_file)

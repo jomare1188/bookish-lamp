@@ -1002,3 +1002,63 @@ membership confirmed by one awk pass over the raw 14.5 GB purple.pairs. 4,000 of
 conserved edges confirmed; 0 of 4,000 non-conserved edges (both endpoints mappable)
 wrongly match. The negative half is the one that can fail -- a join that over-matches
 passes the positive test.
+
+
+## 2026-09-14 — Degree-ranked GO: weight01 + KS, and the confound it exposed
+
+A panel showing what high- and low-degree genes are enriched in. Three decisions came
+out of building it, and one of them changes how an existing panel should be read.
+
+**THE TEST IS topGO weight01 WITH THE KS STATISTIC ON THE FULL DEGREE RANKING.** Not an
+over-representation test on a decile: degree spans four orders of magnitude (sugarcane
+p10 = 2, median 53, p90 = 6,677), so any cut is arbitrary and throws away the middle 80%
+of the genes. Not fgsea either, although it is installed (1.32.2, in r_clusterprofiler):
+fgsea treats GO terms as independent sets, so a parent and its children all score on the
+same genes and the top of the table fills with near-duplicates -- decorrelating the DAG
+is exactly what weight01 is for and what every other GO panel in this paper relies on.
+weight01 + ks gives the threshold-free test AND the DAG handling, in 26 s per direction.
+Verified by running it before choosing it.
+
+**AN EFFECT SIZE IS WRITTEN BESIDE EVERY p-VALUE**, because at n = 64,178 a KS test is
+significant on shifts that do not matter. sugarcane's `carbohydrate metabolic process`
+clears p = 2.6e-08 with its genes' median degree at 1.04x the background -- no shift at
+all -- while `trehalose biosynthetic process` sits at 0.15x. The figure encodes the ratio
+as point size so the two cannot look alike. A panel of pure p-values would have implied
+they were comparable findings.
+
+### The confound, which is why the panel went into figure 3 and not figure 4
+
+Genes on a conserved edge ARE hubs: median degree 228 against 18 (sugarcane) and 6,916
+against 376 (purple); 63.3% of sugarcane's top-degree decile sits on a conserved edge
+against 7.1% of its bottom. PART OF THAT IS ARITHMETIC -- "on at least one conserved
+edge" is near-certain for a gene with 6,677 edges at a 10.4% per-edge rate and unlikely
+for a gene with 2.
+
+The consequence is that figure 4 panel B's conserved/non-conserved GO split and this
+hub/periphery split are largely THE SAME CONTRAST reached two ways, and the term lists
+bear that out. Both legends now carry the numbers and say that neither is independent
+evidence for the other. What the pair establishes is that a housekeeping core with a
+regulatory periphery is visible from two directions in two species built from unrelated
+experiments; what it does NOT establish is that edge conservation selects housekeeping
+genes over and above their being hubs. That would need a degree-matched comparison and is
+recorded as not done rather than glossed.
+
+The panel therefore lives in figure 3, the topology figure, beside the degree
+distribution it interrogates -- which also keeps figure 4 about conservation.
+
+### Two smaller things
+
+Selection is on the RAW weight01 p, following 09_go_enrichment.r:177-181: weight01
+deliberately makes a term's score depend on its neighbours', so its p-values are not an
+exchangeable family and BH's assumptions do not hold. A BH column is carried and does not
+select.
+
+GO coverage is mildly degree-dependent -- 59.7% in sugarcane's bottom degree decile
+against 66.8% in its top, 62.6% and 65.4% in purple -- so the periphery is slightly the
+less well annotated end. Measured and reported, not discovered later.
+
+**An environment trap worth recording:** data.table's auto-indexing SEGFAULTS in
+topGO_env. `d[gene %chin% names(gene2GO)]` dies in forderv -> setkeyv -> setindexv,
+reproducibly, taking R down with it. 63_degree_go.r is base R throughout for that reason
+and says so at the top, because the natural instinct on reading it would be to
+"modernise" it into data.table.

@@ -1825,6 +1825,67 @@ Collapsing them would make a coverage gap look like biological absence. Of sugar
 rather than the transcriptome: a gene can have a perfectly good ortholog that is simply
 not in the other species' graph. Purple: 1,736 / 1,217 / 311 / 591.
 
+## What hubs are for, and what the periphery is for
+
+`63_degree_go.r` ranks every GO-annotated network node by degree and tests each GO term
+for concentration at one end, by a Kolmogorov–Smirnov statistic under topGO's `weight01`
+algorithm. The ranking is used whole: degree spans four orders of magnitude (sugarcane's
+10th percentile is 2, median 53, 90th 6,677), so any decile cut is arbitrary and
+discards the middle. `weight01` is kept rather than moving to `fgsea` because it
+decorrelates the GO DAG — without it a parent and its children score on the same genes
+and the table fills with near-duplicates.
+
+**The two species agree**, across networks built from unrelated experiments:
+
+| | hubs | median degree / background |
+|---|---|---|
+| both | photosynthesis, light harvesting | 5.7× / 9.8× |
+| both | photosynthesis | 5.1× / 10.7× |
+| both | translation | 2.6× / 4.2× |
+| both | mRNA splicing, intracellular protein transport, protein deubiquitination | 2.6–7.4× |
+
+| | periphery | median degree / background |
+|---|---|---|
+| sugarcane | regulation of DNA-templated transcription | 0.55× |
+| both | RNA modification | 0.52× / 0.41× |
+| both | protein phosphorylation | 0.69× / 0.76× |
+| both | hydrogen peroxide catabolism | 0.77× / 0.49× |
+| sugarcane | trehalose biosynthesis | **0.15×** |
+
+The densely connected core of a co-expression network is the housekeeping machinery;
+signalling, regulation and specialised metabolism sit at its edge.
+
+**An effect size is reported beside every p, and it is not decoration.** Over 1,711
+tested terms a KS test reaches significance on small shifts: sugarcane's *carbohydrate
+metabolic process* clears p = 2.6e-08 with its genes' median degree at **1.04×** the
+background — no shift at all — while *trehalose biosynthesis* sits at 0.15×. The figure
+encodes the ratio as point size, so a term that is significant but flat is visibly small.
+
+### This is the same contrast as figure 4 panel B, reached another way
+
+Genes on a conserved edge **are** hubs:
+
+| | median degree, on a conserved edge | no conserved edge |
+|---|---|---|
+| sugarcane | 228 | 18 |
+| purple | 6,916 | 376 |
+
+63.3% of sugarcane's top-degree decile sits on a conserved edge against 7.1% of its
+bottom. **Part of that is arithmetic**: at a 10.4% per-edge conservation rate, one
+conserved edge out of 6,677 is near-certain and out of 2 is unlikely.
+
+So the conserved/non-conserved GO split and the hub/periphery GO split are **entangled,
+and neither is independent evidence for the other**. Both legends now say so, with the
+numbers. What the pair does establish is that the housekeeping-core/regulatory-periphery
+organisation is visible from two directions in two species; what it does not establish is
+that cross-species edge conservation selects housekeeping genes *over and above* their
+being hubs. Separating those would need a degree-matched comparison, which is not done
+here.
+
+One caveat measured rather than assumed: GO coverage is mildly degree-dependent — 59.7%
+in sugarcane's bottom degree decile against 66.8% in its top (62.6% / 65.4% in purple) —
+so the periphery is slightly the less well annotated end.
+
 ## Edge-level conservation, on the Pearson-only networks
 
 The node level moved to the Pearson-only graphs with `61`; the **edge** level had not,
@@ -2108,7 +2169,7 @@ file; re-run the figure, then `legends`.
 |---|---|---|
 | **1** | `figdataset` | the two designs, library QC, the gene funnel, PCA per study |
 | **2** | `figrepro` | each source study's own finding, reproduced here |
-| **3** | `figtopology` | degree and module-size CCDFs (edge composition dropped — Pearson-only) |
+| **3** | `figtopology` | degree and module-size CCDFs, and what hubs vs the periphery are enriched for |
 | **4** | `figconservation` | conservation vs null (both directions), conserved-set GO, conservation vs edge strength, the funnel |
 | **5** | `figmodules` | module selection, the Spearman gain, the responsive eigengenes |
 | **6** | `figmodulego` | the annotation gate, then GO by response direction per species |

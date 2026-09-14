@@ -834,6 +834,9 @@ main() {
     CLEAN_GLOBAL_PURPLE="$(study_dir purple)/network_purple_global_metrics.tsv" \
     CLEAN_MCL_SUGARCANE="$(clus_prefix sugarcane)_module_summary.tsv" \
     CLEAN_MCL_PURPLE="$(clus_prefix purple)_module_summary.tsv" \
+    CLEAN_DEGREEGO_SUGARCANE="$(study_dir sugarcane)/degree_go_sugarcane.tsv" \
+    CLEAN_DEGREEGO_PURPLE="$(study_dir purple)/degree_go_purple.tsv" \
+    CLEAN_GO_NTERMS="$DEGREE_GO_FIG_NTERMS" \
     CLEAN_TOPO_GRID="$TOPO_GRID" \
     CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_TOPOLOGY}_topology" \
     CLEAN_CORES="$NUM_CORES" \
@@ -978,6 +981,26 @@ main() {
     CLEAN_GO_P="$GO_P" CLEAN_GO_NTOP="$GO_NTOP" \
       conda run --no-capture-output -n "$CONDA_TOPGO" \
         Rscript "${SCRIPTS}/09_go_enrichment.r"
+    ;;
+
+  # What HUBS are for against what the PERIPHERY is for: weight01 + KS on the full
+  # degree ranking, not an over-representation test on a decile. Runs in topGO_env
+  # and writes a table; figure 3 panel C reads it. CLEAN_EXPECT_ANNOTATED makes the
+  # script refuse to run on a universe other than the one figure 4 panel B uses --
+  # this panel is a control on that one, and a control on a different background
+  # controls nothing.
+  degreego)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_NODE_METRICS="$(node_list "$ARG")" \
+    CLEAN_GENE2GO="$(gene2go_tsv "$ARG")" \
+    CLEAN_OUT_FILE="$(study_dir "$ARG")/degree_go_${ARG}.tsv" \
+    CLEAN_ONTOLOGY="${EXTRA[0]:-$DEGREE_GO_ONTOLOGY}" \
+    CLEAN_GO_NODESIZE="$DEGREE_GO_NODESIZE" \
+    CLEAN_GO_P="$GO_P" \
+    CLEAN_EXPECT_ANNOTATED="$(cfg GO_BACKGROUND "$ARG")" \
+      conda run --no-capture-output -n "$CONDA_TOPGO" \
+        Rscript "${SCRIPTS}/63_degree_go.r"
     ;;
 
   gosem)

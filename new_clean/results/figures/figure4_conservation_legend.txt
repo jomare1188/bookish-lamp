@@ -31,15 +31,20 @@ translation, protein folding and transport, photosynthesis and splicing, the cor
 machinery; the complement is enriched for regulation of transcription, auxin and ethylene
 signalling, ubiquitination and the cell cycle, i.e. the regulatory layer. 111 BP terms are
 shared by both species in the conserved set (Jaccard 0.425) and 61 in the complement (Jaccard
-0.424). NOTE WHAT THE COMPLEMENT NECESSARILY CONTAINS: a gene with no ortholog at all cannot
-have a conserved edge, so it is in the bottom set by construction -- 2,775 sugarcane genes and
-1,217 purple ones among the nitrogen-responsive alone. The regulatory signal is therefore
-partly a statement about which gene families have clean one-to-one orthology across these two
-genomes, not only about which are conserved in co-expression. GO comes from the adopted
-full-InterProScan annotation, which reaches 62.9% and 64.4% of network nodes. topGO reports
-anything below 1e-30 AS 1e-30, so a term at the right edge is censored rather than exactly that
-significant, and two points there coincide because both are at the floor -- not because the two
-species agree to that precision.
+0.424). TWO THINGS THE SPLIT IS ENTANGLED WITH, both measured. FIRST, ORTHOLOGY: a gene with no
+ortholog at all cannot have a conserved edge, so it is in the bottom set by construction --
+2,775 sugarcane genes and 1,217 purple ones among the nitrogen-responsive alone -- which makes
+the regulatory signal partly a statement about which gene families have clean one-to-one
+orthology across these two genomes. SECOND, DEGREE, and this one is partly arithmetic: genes on
+a conserved edge are hubs (median degree 228 against 18 in sugarcane, 6,916 against 376 in
+purple; 63.3% of sugarcane's top-degree decile against 7.1% of its bottom), because one
+conserved edge out of 6,677 is near-certain at a 10.4% per-edge rate and unlikely out of 2.
+Ranking the SAME genes by degree instead of by conservation reproduces almost this same term
+split -- figure 3 panel C -- so the two are one contrast seen twice and neither is independent
+evidence for the other. GO comes from the adopted full-InterProScan annotation, which reaches
+62.9% and 64.4% of network nodes. topGO reports anything below 1e-30 AS 1e-30, so a term at the
+right edge is censored rather than exactly that significant, and two points there coincide
+because both are at the floor -- not because the two species agree to that precision.
 
 (C) THE STRONGER THE CO-EXPRESSION, THE LIKELIER THE EDGE EXISTS IN THE OTHER SPECIES -- in
 both directions. Edges are split into ten rank-based weight deciles, so each bin holds a tenth

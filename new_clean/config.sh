@@ -488,6 +488,20 @@ CONS_WEIGHT_BINS=10
 # 100 buys a 0.0099 floor for ~15 min.
 CONS_EDGE_NULL_REPS=100
 
+# --- degree-ranked GO (63_degree_go.r) ---------------------------------------
+# What hubs are for, and what the periphery is for. A KS test on the FULL degree
+# ranking rather than an over-representation test on a decile: degree spans four
+# orders of magnitude (sugarcane p10 = 2, median 53, p90 = 6,677), so any cut is
+# arbitrary and discards the middle 80%. weight01 keeps the DAG handling the rest
+# of the paper's GO uses, which fgsea would not.
+DEGREE_GO_ONTOLOGY=BP
+DEGREE_GO_NODESIZE=10
+DEGREE_GO_FIG_NTERMS=7
+# The GO-annotated node count per study, i.e. the background figure 4 panel B tests
+# against. 63 refuses to run on anything else, so the two panels stay comparable.
+GO_BACKGROUND_sugarcane=64178
+GO_BACKGROUND_purple=109591
+
 # The non-monotone tier for purple (30_gene_trait_ushape.r). Purple has THREE
 # nitrogen levels, so a gene moved the same way by deficiency and excess is
 # invisible to every monotone test in the pipeline. A purple gene counts as

@@ -33,3 +33,42 @@ ones -- and both modularity values are low, which is what clustering a dense gra
 purple's largest module holds 23% of its nodes against 23% for sugarcane, so purple's module
 structure in particular should be treated as a working partition rather than as biology, and
 any per-module claim from it read with that in mind.
+
+(C) WHAT SITS AT THE TWO ENDS OF THAT DEGREE DISTRIBUTION. Every GO-annotated network node is
+ranked by degree and each GO term tested for concentration at one end, by a Kolmogorov-Smirnov
+statistic under topGO's weight01 algorithm; terms enriched among HUBS extend to the right and
+terms enriched at the PERIPHERY to the left, the top 7 each. THE RANKING IS USED WHOLE, with no
+cut: degree spans four orders of magnitude (sugarcane's 10th percentile is 2, its median 53,
+its 90th percentile in the thousands), so any decile boundary is arbitrary and discards the
+middle of the data. weight01 is kept rather than moving to a GSEA implementation because it
+decorrelates the GO DAG -- without it a parent and its children score on the same genes and the
+table fills with near-duplicates.
+
+POINT SIZE IS THE EFFECT, and it is drawn because the p-value alone is misleading at this n.
+Over 1,711 tested terms a KS test reaches significance on small shifts: sugarcane's
+`carbohydrate metabolic process` clears p = 2.6e-08 with its genes' median degree at 1.04x the
+background, which is no shift at all, while `trehalose biosynthetic process` sits at 0.15x.
+Size is that ratio -- the median degree of the term's genes over the background median -- so a
+term that is significant but flat is visibly small.
+
+THE TWO SPECIES AGREE. Hubs in both are photosynthesis and light harvesting (median degree 5.7x
+and 9.8x the background), translation, intracellular protein transport, mRNA splicing and
+protein deubiquitination. The periphery in both is regulatory and metabolic: RNA modification,
+protein phosphorylation, hydrogen peroxide catabolism, carbohydrate metabolism. So the densely
+connected core of a co-expression network is the housekeeping machinery, and signalling and
+regulation sit at its edge -- in two species whose networks were built from unrelated
+experiments.
+
+READ THIS WITH FIGURE 4 PANEL B, which is largely the same contrast reached another way. Genes
+on a conserved edge are hubs: median degree 228 against 18 in sugarcane and 6,916 against 376
+in purple, and 63.3% of sugarcane's top-degree decile sits on a conserved edge against 7.1% of
+the bottom. Part of that is arithmetic -- one conserved edge out of 6,677 is near-certain at a
+10.4% per-edge rate and unlikely out of 2 -- so panel B's housekeeping-versus-regulation split
+and this one are entangled, and neither is independent evidence for the other.
+
+Selection is on the RAW weight01 p. weight01 deliberately makes a term's score depend on its
+neighbours', so its p-values are not an exchangeable family and BH's assumptions do not hold on
+them; a BH column is carried in the source table but does not select. One caveat measured
+rather than assumed: GO coverage is mildly degree-dependent, 59.7% in sugarcane's bottom degree
+decile against 66.8% in its top (62.6% and 65.4% in purple), so the periphery is slightly the
+less well annotated end. Source: 63_degree_go.r -> results/<study>/degree_go_<study>.tsv.
