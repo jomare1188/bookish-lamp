@@ -51,6 +51,7 @@
 #   ./run.sh ushape    [study]               U-shape contrast, genome-wide (purple)
 #   ./run.sh traitblocked <study>            gene-trait with the design in the model
 #   ./run.sh consblocked  [0|1]              conserved N response at NODE level, blocked
+#   ./run.sh consedges <direction>           edge-level conservation, Pearson-only
 #   ./run.sh go        BP|MF|CC              GO enrichment
 #   ./run.sh gosem                           GO semantic clustering
 #   ./run.sh tfs       <study>               TFs in the network (step 04 only)
@@ -638,6 +639,28 @@ main() {
     CLEAN_SEED="$TRAIT_NULL_SEED" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_NET" "${SCRIPTS}/61_conserved_blocked_nodes.r"
+    ;;
+
+  # Edge-level conservation on the PEARSON-ONLY graphs, for all edges and for the
+  # nitrogen-correlated subsets. Reads the mcxdump edge stream rather than a
+  # gene-name edge table, because those were deleted; `conserve` (06) stays as the
+  # merged-network record and is not replaced.
+  consedges)
+    case "$ARG" in
+      sugarcane_to_purple|purple_to_sugarcane) ;;
+      *) die "usage: run.sh consedges sugarcane_to_purple|purple_to_sugarcane" ;;
+    esac
+    CLEAN_DIRECTION="$ARG" \
+    CLEAN_WORK_DIR="$CLUSTER_WORK_DIR" \
+    CLEAN_RESULTS="$RESULTS" \
+    CLEAN_OUT_DIR="${RESULTS}/conservation" \
+    CLEAN_ORTHOGROUPS="$ORTHOGROUPS" \
+    CLEAN_CONS_EDGE_CHUNK="$CONS_EDGE_CHUNK" \
+    CLEAN_CONS_WEIGHT_BINS="$CONS_WEIGHT_BINS" \
+    CLEAN_NULL_REPS="$CONS_EDGE_NULL_REPS" \
+    CLEAN_NULL_SAMPLE="$NULL_SAMPLE" \
+    CLEAN_SEED="$TRAIT_NULL_SEED" \
+      "$PYTORCH" -u "${SCRIPTS}/62_conserved_edges_pearson.py"
     ;;
 
   conscor)

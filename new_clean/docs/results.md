@@ -1825,6 +1825,144 @@ Collapsing them would make a coverage gap look like biological absence. Of sugar
 rather than the transcriptome: a gene can have a perfectly good ortholog that is simply
 not in the other species' graph. Purple: 1,736 / 1,217 / 311 / 591.
 
+## Edge-level conservation, on the Pearson-only networks
+
+The node level moved to the Pearson-only graphs with `61`; the **edge** level had not,
+so every edge-conservation number in this project still described the merged
+(Pearson + MI) graph. `62_conserved_edges_pearson.py` closes that, in both directions
+and for the nitrogen-correlated subsets. `06_conservation_join.r` and
+`13_conservation_null.r` are untouched and remain the record of the merged analysis.
+
+### The input, since the edge tables were deleted
+
+`06` streams `network_<study>_edges.tsv`, and the Pearson-only versions were deleted —
+70 GB whose only consumer was `mcxload`. Nothing had to be regenerated: `mcxdump` had
+already written `<study>.pairs` for the Leiden sweep, one row per undirected edge as
+`idx1 idx2 weight`, and both files verify **exactly** against the matrices
+(75,333,769 and 675,955,918 edges). The script asserts that before doing anything, so
+a stale dump cannot quietly shrink a network and depress every rate.
+
+Everything runs in integer index space — gene names are materialised only when
+conserved edges are written — which is what makes 676 M edges against a 676 M-edge
+adjacency affordable: one sorted `int64` key array and a binary search.
+
+### Both directions
+
+| | sugarcane → purple | purple → sugarcane |
+|---|---|---|
+| edges | 75,333,769 | 675,955,918 |
+| conserved | **7,806,379 (10.36%)** | **10,196,172 (1.51%)** |
+| fold over null | **1.69** | **1.71** |
+| empirical p | 0.0099 | 0.0099 |
+| genes on a conserved edge | 37,867 | 42,194 |
+
+These land where they should: the merged network's *Pearson-layer* rows were 10.69%
+and 1.50%, and the graphs differ by only 1.1% and 4.2% of edges.
+
+**The two directions are not comparable to each other** and never should be. Purple's
+density is 3.2× sugarcane's (0.0467 against 0.0145), so a random ortholog pair is far
+likelier to land on an edge there. Each is read only against its own null.
+
+**The fold is lower than the merged network's 2.57, and that is a stricter null, not a
+weaker signal.** This null draws only from ortholog pairs whose **both** sides are
+network nodes — the same 114,681-pair universe `61` uses, asserted equal at run time.
+The old null drew from all 275,047 pairs including genes that could never have been
+matched, which inflates the fold by giving the permutation impossible assignments to
+fail at.
+
+### Conservation rises with edge strength, in both species
+
+This replaces the old by-layer breakdown ("are MI edges conserved as often as Pearson
+edges?"), which is vacuous on a single-layer graph. Rank-based deciles, so each bin
+holds a tenth of the edges:
+
+| decile | sugarcane → purple | fold | purple → sugarcane | fold |
+|---|---|---|---|---|
+| D1 (weakest) | 9.72% | 1.57 | 1.17% | 1.39 |
+| D5 | 10.20% | 1.66 | 1.39% | 1.59 |
+| D10 (strongest) | **11.30%** | **1.85** | **2.16%** | **2.30** |
+
+**Monotone across all ten deciles in both directions, in rate and in fold.** The fold
+rising is the part that matters: if strong edges were merely joining better-annotated
+genes, the rate would rise and the fold would not. Purple's effect is the larger one —
+its strongest decile is conserved 1.8× as often as its weakest.
+
+Weight ranges are reported per bin because the [0.01, 1] rescaling is per-study: a
+decile in sugarcane and a decile in purple do not stand for the same |r|.
+
+### The nitrogen-correlated edges — and what the null does to them
+
+Who is nitrogen-correlated is read from `61`, never recomputed, so the node and edge
+levels cannot drift.
+
+| | edges | conserved | rate | fold | p |
+|---|---|---|---|---|---|
+| **sugarcane → purple** | | | | | |
+| both ends responsive in sugarcane | 407,700 | 44,114 | 10.82% | 1.44 | 0.0099 |
+| both ends responsive in **both species** | 945 | 295 | **31.22%** | **1.58** | **0.0198** |
+| **purple → sugarcane** | | | | | |
+| both ends responsive in purple | 849,681 | 12,615 | 1.49% | 1.27 | 0.0198 |
+| both ends responsive in **both species** | 5,692 | 337 | **5.92%** | **1.07** | **0.37** |
+
+Read the raw rates alone and this looks like a 3–4× enrichment in both species: edges
+joining two genes that respond to nitrogen on both sides are conserved at 31.2% and
+5.92% against backgrounds of 10.4% and 1.5%.
+
+**Against the proper null, most of that is orthology, and in purple all of it is.**
+Genes responsive in both species are by construction genes with good orthologs, and
+the ortholog shuffle prices that in. Sugarcane keeps a modest real excess (1.58×,
+p = 0.02); purple's vanishes entirely (1.07×, p = 0.37). The honest statement is that
+**a shared nitrogen response predicts edge conservation in sugarcane and not in
+purple**, and that the eye-catching raw rates are mostly a selection effect.
+
+### A defect in the first version of this null, and why the fix changed the answer
+
+The first run computed every stratum's null on a 5 M-edge Bernoulli sample. That is
+right for a 676 M-edge network and **wrong for a rare stratum**: the sample caught 46
+of purple's 5,692 `resp_both` edges, none of which happened to be conserved, so the
+null divided by nothing and reported **fold 0.0, p 1.0** against a true rate of 5.92%.
+The null now runs on the **complete** stratum for both responsive sets (5,692 and
+849,681 edges — trivially affordable) and samples only for `all`; every output row
+carries a `null_basis` column naming the set its fold came from, so a sampled fold and
+a complete-stratum fold cannot be compared by accident.
+
+It was not only purple that moved: sugarcane's `resp_both` fold was 1.92 on the
+sampled null and is 1.58 on the complete stratum. The sampled null was optimistic in
+both species.
+
+### What is written
+
+Only **conserved** edges, with their weights — 7.8 M and 10.2 M rows, ~1 GB. The old
+schema wrote every edge with a `conserved` TRUE/FALSE column (~36 GB here) and every
+consumer immediately filtered to TRUE; the totals those FALSE rows carried are in the
+summary.
+
+Outputs carry a `_pearson` suffix. Note that `08_conserved_cor_genes.r` also writes
+`*_pearson.tsv` files, where the word means its **pearson selection rule** on the
+merged graph; here it means the **Pearson-only network**. The base names differ
+(`conserved_correlated_*` for `08`, `conserved_edges_*_to_*` and
+`conservation_summary_*_to_*` here) so no file is overwritten, but the two must not be
+read as one series. Nothing here touches a `_FULL` path — `conserved_genes_<study>_FULL.txt`
+is still read by `run.sh trait`, `08` and `09_go_enrichment.r`, and overwriting it
+would have made three superseded stages describe a mixture of two graphs.
+
+### The join was verified independently
+
+A fast vectorised join that is subtly wrong returns plausible numbers — that is how
+the k-NN result went wrong once. So the join was checked by a different route
+entirely: resolve gene **names** through a fresh parse of `Orthogroups.tsv`, build
+candidate index pairs as plain tuples, and confirm membership with one `awk` pass over
+the raw 14.5 GB `purple.pairs`.
+
+    POSITIVE  4,000 of 4,000 conserved edges confirmed
+    NEGATIVE  0 of 4,000 non-conserved edges wrongly match
+
+The negative case is the one with teeth: 4,000 edges the script called *not*
+conserved, all with both endpoints mappable through orthology, and none of their
+36,011 candidate pairs is a real purple edge. A join that over-matches passes the
+positive test and fails that one. The check also reproduced 61,846 mappable sugarcane
+genes independently.
+
 ## The module enrichment analysis, on one annotation
 
 GO is now derived from **one source**: a full local InterProScan 5.78 over all 17
@@ -2083,11 +2221,18 @@ side turns back up.
 - ~~**The gene level is still Pearson + MI; only the module level moved to
   Spearman.**~~ **CLOSED.** The gene level is now blocked, Spearman for purple, on the
   Pearson-only network's node universe, and it did matter: 3,854 responsive purple
-  genes against 882 under the marginal rule, a strict superset. The
-  conserved-response answer was rebuilt with it (`61_conserved_blocked_nodes.r`,
-  node level). What it did NOT rebuild is the **edge level** — that needs
-  conserved-edge tables, which still describe the merged graph — so `conscor`'s edge
-  numbers remain the merged-network result and are marked stale.
+  genes against 882 under the marginal rule, a strict superset. The conserved-response
+  answer was rebuilt with it at **node** level (`61_conserved_blocked_nodes.r`) and at
+  **edge** level (`62_conserved_edges_pearson.py`), the latter reading the mcxdump
+  edge stream since the Pearson-only edge tables were deleted. `conscor`'s numbers
+  remain the merged-network record and are marked stale.
+- **Why does conservation rise with edge strength?** Monotone across all ten weight
+  deciles in both directions, in rate AND in fold over null (sugarcane 1.57 → 1.85,
+  purple 1.39 → 2.30). The fold rising rules out the simplest explanation — that
+  strong edges merely join better-annotated genes. Whether it reflects stronger
+  selective constraint on tight co-expression, or the weakest decile sitting nearer
+  the |r| ≥ 0.8 threshold where edge membership is noisiest in both species, is not
+  answered here and is a real question.
 - **Purple's blocked p-value histogram is still not flat.** Blocking took the last
   decile from 11.8% (old universe) / 12.5% (new) down to 10.2%, but the shape dips to
   5.4% and then rises again. Genotype plus nitrogen does not account for everything at

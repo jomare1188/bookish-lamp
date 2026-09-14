@@ -472,6 +472,22 @@ TRAIT_PLANT_FROM_purple=""
 TRAIT_NULL_REPS=1000
 TRAIT_NULL_SEED=1188
 
+# --- edge-level conservation (62_conserved_edges_pearson.py) -----------------
+# Edges per streaming chunk. 5M keeps the candidate expansion (each edge fans out
+# through orthology, ~2-3 candidates) inside a few GB while amortising the parse.
+CONS_EDGE_CHUNK=5000000
+# Conservation against edge STRENGTH replaces the old by-layer breakdown, which is
+# vacuous on a single-layer graph. Bins are RANK-based, so each holds a tenth of the
+# edges; their weight ranges are reported because the [0.01, 1] rescaling is
+# per-study and a decile does not stand for the same |r| in both species.
+CONS_WEIGHT_BINS=10
+# Replicates for the edge-level ortholog-shuffle null. NOT TRAIT_NULL_REPS (1000):
+# at gene level a replicate is a join over a few hundred thousand pairs, here it is
+# a join over a 5M-edge sample and costs ~9 s, so 1000 would be 2.5 h per direction
+# for a p-value floor nobody needs -- the merged-network run reached z = 79 on 20.
+# 100 buys a 0.0099 floor for ~15 min.
+CONS_EDGE_NULL_REPS=100
+
 # The non-monotone tier for purple (30_gene_trait_ushape.r). Purple has THREE
 # nitrogen levels, so a gene moved the same way by deficiency and excess is
 # invisible to every monotone test in the pipeline. A purple gene counts as
@@ -719,3 +735,8 @@ network_tsv() { echo "${RESULTS}/$1/network_$1_edges.tsv"; }
 # sugarcane / 170,135 purple). 52_pearson_node_metrics.sh writes it. Its first
 # column is the gene id, which is all the readers take.
 node_list()   { echo "${RESULTS}/$1/network_$1_node_metrics.tsv"; }
+# The Pearson-only edge STREAM. mcxdump wrote it for the Leiden sweep
+# (--dump-pairs --dump-upper --no-loops): one row per undirected edge, `idx1 idx2
+# weight`, indices into <study>.tab. It is what edge-level conservation reads, since
+# the gene-name edge tables were deleted -- 70 GB whose only consumer was mcxload.
+pairs_file()  { echo "${CLUSTER_WORK_DIR}/$1.pairs"; }

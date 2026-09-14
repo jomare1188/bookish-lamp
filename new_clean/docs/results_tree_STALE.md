@@ -20,6 +20,9 @@ Everything displaced is in `_pre_pearson_20260910/`.
 | `<study>/gene_trait_blocked_<study>.tsv` | **blocked** gene-level nitrogen test on the Pearson-only node universe (101,990 / 170,135), marginal fit carried beside it on the same genes |
 | `purple/gene_trait_ushape_purple.tsv` | the blocked quadratic contrast, on the same universe so the two test families share a denominator |
 | `conservation/conserved_correlated_*_blocked_nodes*.tsv` | the conserved nitrogen response at **node** level, blocked rule, with the ortholog-shuffle null |
+| `conservation/conserved_edges_<A>_to_<B>_pearson.tsv` | **edge-level** conservation on the Pearson-only graphs, conserved edges only with weights (7.8 M and 10.2 M rows) |
+| `conservation/conservation_summary_<A>_to_<B>_pearson.tsv` | rates by stratum and by weight decile, each against its own ortholog-shuffle null, with a `null_basis` column |
+| `conservation/conserved_genes_<A>_pearson.txt` | genes on a conserved Pearson-only edge (37,867 / 42,194) — **not** a filter for any stage |
 | `<study>/module_go/` | **BP, MF and CC**, all run 2026-09-13 on the adopted single-source annotation (full InterProScan, 17 DBs) over the blocked responsive modules |
 | `figures/figure6_module_go.*` | rebuilt 2026-09-13; panel A's gate numbers read 588/479/425 and 182/118/109 straight from the current tables |
 | `<study>/module_profile_<study>.tsv`, `heatmaps/`, `module_summary_<study>.*` | |
@@ -36,10 +39,9 @@ clustering, so joining them to anything above compares two analyses.
 | `<study>/network_<study>_edges.tsv` | the MERGED network. The Pearson-only edge tables were deleted (70 GB whose only consumer was `mcxload`); the `.mci` in `/dados04/jorge/tmp/mcl_work_cluster/` is the live Pearson-only graph |
 | — | `network_<study>_global_metrics.tsv` is **current** (recomputed 2026-09-12 from the Pearson-only matrix: 958 and 43 components). The per-study degree/strength plots are still from the merged build |
 | — | **figure 3 is current**: rebuilt 2026-09-12 on the Pearson-only graphs and the new clustering, with panels B (mean weight vs degree) and C (edge composition by layer) removed |
-| `conservation_*` (`06_conservation_join.r`, `13_conservation_null.r`) | merged networks, both directions |
 | `<study>/gene_trait_correlations_<study>.tsv`, `selected_genes_*` (`07_gene_trait_cor.r`) | the **marginal** gene-level test, over the merged graph's conserved-edge gene set. Superseded at gene level by `gene_trait_blocked_<study>.tsv`, which carries the marginal fit as a column on the current universe |
 | `<study>/gene_trait_mi_<study>.tsv` (`12_gene_trait_mi.py`) | the MI statistic. There is no MI layer in the current networks, so nothing selects on it any more |
-| `conserved_*` **edge level** (`08_conserved_cor_genes.r`) | merged networks + the marginal rule. `61_conserved_blocked_nodes.r` replaces its NODE level only — the edge level needs `conserved_edges_*_FULL.tsv`, which describes the merged graph, and has not been rebuilt |
+| `conserved_*` (`08_conserved_cor_genes.r`), `conservation_*_FULL.*` (`06`, `13`) | merged networks + the marginal rule. Superseded at NODE level by `61` and at EDGE level by `62`, both on the Pearson-only graphs. Kept as the record of that analysis — and note `08` writes `*_pearson.tsv` files where the word means its pearson SELECTION RULE, not the Pearson-only network |
 
 ## GO: one source, adopted 2026-09-12, closed 2026-09-13
 
