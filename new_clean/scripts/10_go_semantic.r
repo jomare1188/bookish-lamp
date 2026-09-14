@@ -16,14 +16,26 @@
 #     the same clusters, functional enrichment is convergent.
 #   - quantify convergence per theme: sugarcane-only / both / purple-only.
 #
-# Input : files/network_conservation/enrichment_conserved/
+# Input : results/conservation/enrichment_conserved/
 #             sugarcane/GO_<ONT>_conserved_sugarcane.csv
 #             purple/GO_<ONT>_conserved_purple.csv
-# Output: files/network_conservation/enrichment_conserved/semantic/
+# Output: results/conservation/enrichment_conserved/semantic/
 #
-# RUN INSIDE conda env:  r_clusterprofiler
-#   conda activate r_clusterprofiler
-#   Rscript GO_semanthinc_enrichment.r
+# THE INPUTS CARRY THE ANNOTATION WITH THEM. 09_go_enrichment.r moved onto the
+# adopted full-InterProScan table and onto the Pearson-only conserved-gene sets on
+# 2026-09-13; this stage reads its output, so re-running it is what brings the
+# semantic view onto the same annotation. It has no annotation of its own and must
+# never grow one -- two GO sources in one comparison is the failure this project
+# spent a week removing. Re-run `./run.sh go <ONT>` before this whenever the
+# annotation or the conserved-gene set changes.
+#
+# WHY Wang AND NOT AN IC-BASED MEASURE: `r_clusterprofiler` has no OrgDb for either
+# species, so information content cannot be estimated from a corpus. Wang similarity
+# is graph-based and IC-free -- godata(ont, computeIC = FALSE) -- which is what makes
+# this runnable at all here. Clustering is base hclust and the embedding is PCoA,
+# for the same reason: rrvgo/treemap/pheatmap are not installed in that env.
+#
+# RUN: through run.sh  ->  ./run.sh gosem        (env: r_clusterprofiler)
 # ============================================================================
 
 suppressMessages({

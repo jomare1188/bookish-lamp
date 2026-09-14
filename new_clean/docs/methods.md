@@ -860,8 +860,31 @@ all three ontologies itself.
 |---|---|
 | reads | `enrichment_conserved/<study>/GO_<ont>_conserved_<study>.csv` |
 | writes | `enrichment_conserved/semantic/` |
-| cost | minutes |
+| cost | ~30 s |
 | env | `r_clusterprofiler` |
+
+**It has no annotation of its own, and must never grow one.** It reads `09 · go`'s
+output, so the annotation and the gene set arrive with the inputs — re-running `09` is
+what moves this stage onto a new annotation. Two GO sources in one comparison is the
+failure this project spent a week removing.
+
+Wang similarity rather than an IC-based measure because `r_clusterprofiler` has no OrgDb
+for either species, so information content cannot be estimated from a corpus;
+`godata(ont, computeIC = FALSE)` is what makes the stage runnable here at all. Clustering
+is base `hclust` and the embedding PCoA, for the same reason — rrvgo/treemap/pheatmap are
+not installed in that env.
+
+One semantic space is built from the **union** of both species' terms and both are
+embedded in it, rather than the two being merged: the claim is that each species'
+*independent* enrichment lands on the same regions, which a merged set could not test.
+
+Re-run on the adopted annotation, 2026-09-14:
+
+| ontology | sugarcane | purple | union | shared | themes |
+|---|---|---|---|---|---|
+| BP | 165 | 207 | 261 | **111 (42.5%)** | 12 |
+| MF | 197 | 236 | 314 | **119 (37.9%)** | 12 |
+| CC | 52 | 58 | 79 | **31 (39.2%)** | 12 |
 
 ---
 

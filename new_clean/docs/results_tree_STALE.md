@@ -29,6 +29,7 @@ Everything displaced is in `_pre_pearson_20260910/`.
 | `figures/figure2_reproduction.*` | verified 2026-09-14 — re-rendering is byte-identical. Its inputs are study-intrinsic (TPM, expression ANOVA, variance partition) and unaffected by the network rebuild |
 | `figures/figure4_conservation.*` | rebuilt 2026-09-13 on the Pearson-only graphs: rates vs null, conserved-set GO on the adopted annotation, the **strength curve** (replacing the dead layer panel), the funnel |
 | `conservation/enrichment_conserved/`, `enrichment_nonconserved/` | GO (BP/MF/CC) for the genes on a conserved edge and for the exact complement, on the `_pearson` gene sets and the adopted InterProScan annotation |
+| `conservation/enrichment_conserved/semantic/` | GO semantic convergence (BP/MF/CC), re-run 2026-09-14 on the same inputs |
 | `conservation/nonconserved_genes_<study>_pearson.txt` | network nodes with NO conserved edge — the complement of `conserved_genes_<study>_pearson.txt`, together an exact partition |
 | `<study>/module_go/` | **BP, MF and CC**, all run 2026-09-13 on the adopted single-source annotation (full InterProScan, 17 DBs) over the blocked responsive modules |
 | `figures/figure6_module_go.*` | rebuilt 2026-09-13; panel A's gate numbers read 588/479/425 and 182/118/109 straight from the current tables |
@@ -63,10 +64,11 @@ original eggNOG GO column — that column used emapper's default `--go_evidence
 non-electronic`, which excludes every IEA term, and for grass proteins almost all GO
 is IEA.
 
-`09_go_enrichment.r` was brought onto the same footing on 2026-09-13: it now reads the
-`_pearson` conserved-gene sets and the adopted table (`CLEAN_GENE2GO_*`, the same
-`parse_gene2go()` reader `18_module_go.r` uses), so no stage runs on the eggNOG GO
-column any more. STILL STALE: **`10_go_semantic.r`**, which clusters the old terms. `emapper.annotations` itself is
+`09_go_enrichment.r` was brought onto the same footing on 2026-09-13 (it reads the
+`_pearson` gene sets and the adopted table via `CLEAN_GENE2GO_*`, the same
+`parse_gene2go()` reader `18_module_go.r` uses), and `10_go_semantic.r` on 2026-09-14 —
+it has no annotation of its own and simply reads `09`'s output. **No stage runs on the
+eggNOG GO column any more.** `emapper.annotations` itself is
 untouched and is still the source for KEGG and Preferred_name; only its GO column was
 rejected. PFAM-based work (`37_cluster_homogeneity.r`) is unaffected — eggNOG's PFAMs
 column is 87.6% filled and was never the problem.

@@ -1962,6 +1962,45 @@ One caveat measured rather than assumed: GO coverage is mildly degree-dependent 
 in sugarcane's bottom degree decile against 66.8% in its top (62.6% / 65.4% in purple) —
 so the periphery is slightly the less well annotated end.
 
+### Semantic convergence, on the adopted annotation
+
+`10_go_semantic.r` builds one GO semantic space (GOSemSim Wang, graph-based and IC-free
+since no OrgDb exists for either species) from the **union** of the two species' enriched
+terms, clusters it into macro-themes, and embeds both species in it. The two sets are
+never merged: the claim is that each species' *independent* enrichment lands on the same
+regions, and a merged set could not test that.
+
+It was the last stage still running on the old eggNOG annotation — it reads `09 · go`'s
+output, so re-running `09` on the adopted table and the `_pearson` gene sets and then
+re-running this is what moved it. Regenerated 2026-09-14:
+
+| ontology | sugarcane | purple | union | shared | themes |
+|---|---|---|---|---|---|
+| BP | 165 | 207 | 261 | **111 (42.5%)** | 12 |
+| MF | 197 | 236 | 314 | **119 (37.9%)** | 12 |
+| CC | 52 | 58 | 79 | **31 (39.2%)** | 12 |
+
+**The convergence holds, and every one of the 12 BP themes contains terms from both
+species.** Ranked by shared terms:
+
+| theme | sugarcane | purple | shared |
+|---|---|---|---|
+| protein folding | 27 | 31 | 20 |
+| photosynthesis | 17 | 28 | 13 |
+| organelle organization | 16 | 19 | 11 |
+| vesicle-mediated transport | 13 | 20 | 10 |
+| mRNA splicing, via spliceosome | 19 | 22 | 10 |
+| L-phenylalanine catabolic process | 16 | 21 | 10 |
+
+This is the same core the other two routes find — conserved edges (figure 4B) and high
+degree (figure 3C) — reached a third way, on term *semantics* rather than on term
+identity. That it agrees is reassuring rather than independent: all three read the same
+annotation over largely overlapping gene sets.
+
+Note the shared fraction is a little under half in every ontology (42.5% / 37.9% /
+39.2%). The convergence claim is about themes, not terms: the two species rarely enrich
+the identical term, but they land in the same regions of GO space.
+
 ## Edge-level conservation, on the Pearson-only networks
 
 The node level moved to the Pearson-only graphs with `61`; the **edge** level had not,
@@ -2430,6 +2469,6 @@ side turns back up.
   contrast seen twice. Whether cross-species edge conservation selects housekeeping
   genes *over and above* their being hubs would need a degree-matched comparison,
   which is not done here.
-- **`10_go_semantic.r` is the last stage on the old annotation.** It clusters terms
-  from the 7.7% eggNOG GO column. Every other GO-consuming stage moved to the adopted
-  InterProScan table on 2026-09-13/14.
+- ~~**`10_go_semantic.r` is the last stage on the old annotation.**~~ **CLOSED
+  2026-09-14** — re-run on the adopted table; every GO-consuming stage is now on one
+  annotation.
