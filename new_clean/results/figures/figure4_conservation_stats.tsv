@@ -1,20 +1,38 @@
 panel	study	quantity	value
-A	sugarcane → purple	ALL: observed / null / fold	0.1076 / 0.0418 / 2.57
-A	sugarcane → purple	Pearson only: observed / null / fold	0.1069 / 0.0417 / 2.57
-A	sugarcane → purple	both estimators: observed / null / fold	0.1280 / 0.0463 / 2.76
-A	sugarcane → purple	MI only: observed / null / fold	0.1207 / 0.0468 / 2.58
-A	purple → sugarcane	ALL: observed / null / fold	0.0152 / 0.0061 / 2.49
-A	purple → sugarcane	Pearson only: observed / null / fold	0.0150 / 0.0061 / 2.46
-A	purple → sugarcane	both estimators: observed / null / fold	0.0184 / 0.0062 / 2.95
-A	purple → sugarcane	MI only: observed / null / fold	0.0141 / 0.0062 / 2.27
-B	both	BP terms: sugarcane / purple / shared	106 / 155 / 69 (Jaccard 0.359)
-B	both	MF terms: sugarcane / purple / shared	70 / 93 / 39 (Jaccard 0.315)
-B	both	CC terms: sugarcane / purple / shared	38 / 48 / 24 (Jaccard 0.387)
-D	sugarcane	nodes in the network	103,336
-D	sugarcane	on a conserved edge	 39,226
-D	sugarcane	nitrogen- responsive	  3,265
-D	sugarcane	responsive on both sides	      2
-D	purple	nodes in the network	170,736
-D	purple	on a conserved edge	 44,118
-D	purple	nitrogen- responsive	     32
-D	purple	responsive on both sides	      2
+A	sugarcane → purple	all: observed / null / fold / p  [null on sample]	0.10362 / 0.06155 / 1.69 / 0.009901
+A	sugarcane → purple	resp_source: observed / null / fold / p  [null on complete stratum]	0.10820 / 0.07530 / 1.44 / 0.009901
+A	sugarcane → purple	resp_both: observed / null / fold / p  [null on complete stratum]	0.31217 / 0.19762 / 1.58 / 0.0198
+A	purple → sugarcane	all: observed / null / fold / p  [null on sample]	0.01508 / 0.00881 / 1.71 / 0.009901
+A	purple → sugarcane	resp_source: observed / null / fold / p  [null on complete stratum]	0.01485 / 0.01169 / 1.27 / 0.0198
+A	purple → sugarcane	resp_both: observed / null / fold / p  [null on complete stratum]	0.05921 / 0.05551 / 1.07 / 0.3663
+C	purple → sugarcane	decile 1 (w min-0.071312): rate / fold	0.01172 / 1.39
+C	purple → sugarcane	decile 2 (w 0.071312-0.135446): rate / fold	0.01207 / 1.40
+C	purple → sugarcane	decile 3 (w 0.135446-0.202354): rate / fold	0.01258 / 1.46
+C	purple → sugarcane	decile 4 (w 0.202354-0.272828): rate / fold	0.01321 / 1.57
+C	purple → sugarcane	decile 5 (w 0.272828-0.347759): rate / fold	0.01389 / 1.59
+C	purple → sugarcane	decile 6 (w 0.347759-0.428831): rate / fold	0.01470 / 1.66
+C	purple → sugarcane	decile 7 (w 0.428831-0.518273): rate / fold	0.01566 / 1.75
+C	purple → sugarcane	decile 8 (w 0.518273-0.619006): rate / fold	0.01680 / 1.84
+C	purple → sugarcane	decile 9 (w 0.619006-0.740936): rate / fold	0.01862 / 2.03
+C	purple → sugarcane	decile 10 (w 0.740936-max): rate / fold	0.02157 / 2.30
+C	sugarcane → purple	decile 1 (w min-0.050363): rate / fold	0.09717 / 1.57
+C	sugarcane → purple	decile 2 (w 0.050363-0.093647): rate / fold	0.09825 / 1.59
+C	sugarcane → purple	decile 3 (w 0.093647-0.140448): rate / fold	0.09959 / 1.61
+C	sugarcane → purple	decile 4 (w 0.140448-0.19136): rate / fold	0.10068 / 1.64
+C	sugarcane → purple	decile 5 (w 0.19136-0.247471): rate / fold	0.10196 / 1.66
+C	sugarcane → purple	decile 6 (w 0.247471-0.310813): rate / fold	0.10344 / 1.66
+C	sugarcane → purple	decile 7 (w 0.310813-0.38411): rate / fold	0.10528 / 1.72
+C	sugarcane → purple	decile 8 (w 0.38411-0.473156): rate / fold	0.10720 / 1.75
+C	sugarcane → purple	decile 9 (w 0.473156-0.593501): rate / fold	0.10969 / 1.80
+C	sugarcane → purple	decile 10 (w 0.593501-max): rate / fold	0.11295 / 1.85
+B	both	BP terms: sugarcane / purple / shared	165 / 207 / 111 (Jaccard 0.425)
+B	both	MF terms: sugarcane / purple / shared	197 / 236 / 119 (Jaccard 0.379)
+B	both	CC terms: sugarcane / purple / shared	52 / 58 / 31 (Jaccard 0.392)
+D	sugarcane	nodes in the network	101,990
+D	sugarcane	on a conserved edge	 37,867
+D	sugarcane	nitrogen- responsive	  8,737
+D	sugarcane	responsive on both sides	    326
+D	purple	nodes in the network	170,135
+D	purple	on a conserved edge	 42,194
+D	purple	nitrogen- responsive	  3,855
+D	purple	responsive on both sides	    311

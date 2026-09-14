@@ -969,6 +969,9 @@ main() {
     CLEAN_RESULTS="$RESULTS" \
     CLEAN_EMAPPER_SUGARCANE="$EMAPPER_sugarcane" \
     CLEAN_EMAPPER_PURPLE="$EMAPPER_purple" \
+    CLEAN_GENE2GO_SUGARCANE="$(gene2go_tsv sugarcane)" \
+    CLEAN_GENE2GO_PURPLE="$(gene2go_tsv purple)" \
+    CLEAN_CONS_SET="${CLEAN_CONS_SET:-pearson}" \
     CLEAN_GO_P="$GO_P" CLEAN_GO_NTOP="$GO_NTOP" \
       conda run --no-capture-output -n "$CONDA_TOPGO" \
         Rscript "${SCRIPTS}/09_go_enrichment.r"

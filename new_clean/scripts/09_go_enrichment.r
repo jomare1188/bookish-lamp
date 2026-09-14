@@ -62,11 +62,24 @@ enrich_dir <- file.path(cons_dir, "enrichment_conserved")
 #
 # node_id_strip is gone: ids are normalised once, in 01_export_vst.r, so every
 # file under results/ already carries the bare form.
+# WHICH CONSERVED-GENE SET, and it is not a cosmetic switch. `_FULL` is the genes on
+# a conserved edge of the MERGED (Pearson + MI) graph, written by 06; `_pearson` is
+# the same thing on the Pearson-only graphs, written by 62. They are different gene
+# sets from different networks -- 39,226/44,118 against 37,867/42,194 -- so mixing
+# them with the current annotation would describe two analyses at once. Default is
+# the current one; set CLEAN_CONS_SET=FULL to reproduce the merged-network result.
+CONS_SET <- env_opt("CLEAN_CONS_SET", "pearson")
+if (!CONS_SET %in% c("pearson", "FULL"))
+  stop("CLEAN_CONS_SET must be pearson or FULL (got '", CONS_SET, "')", call. = FALSE)
+CONS_GENES_FILE <- function(sp) sprintf("conserved_genes_%s_%s.txt", sp, CONS_SET)
+cat(sprintf("conserved-gene set: %s\n", CONS_SET))
+
 networks <- list(
   list(
     label      = "sugarcane",
     annotation = env_req("CLEAN_EMAPPER_SUGARCANE"),
-    gene_list  = file.path(cons_dir, "conserved_genes_sugarcane_FULL.txt"),
+    gene2go    = env_opt("CLEAN_GENE2GO_SUGARCANE", ""),
+    gene_list  = file.path(cons_dir, CONS_GENES_FILE("sugarcane")),
     nodes      = file.path(RESULTS, "sugarcane", "network_sugarcane_node_metrics.tsv"),
     node_id_strip = NULL,
     out_dir    = file.path(enrich_dir, "sugarcane")
@@ -74,7 +87,8 @@ networks <- list(
   list(
     label      = "purple",
     annotation = env_req("CLEAN_EMAPPER_PURPLE"),
-    gene_list  = file.path(cons_dir, "conserved_genes_purple_FULL.txt"),
+    gene2go    = env_opt("CLEAN_GENE2GO_PURPLE", ""),
+    gene_list  = file.path(cons_dir, CONS_GENES_FILE("purple")),
     nodes      = file.path(RESULTS, "purple", "network_purple_node_metrics.tsv"),
     node_id_strip = NULL,
     out_dir    = file.path(enrich_dir, "purple")
@@ -264,8 +278,18 @@ for (net in networks) {
   cat(sprintf("Network: %s\n", net$label))
 
   # --- annotation (genome-wide gene -> GO) ---------------------------------
-  cat("  [1] Parsing eggNOG annotation...\n")
-  gene2GO_all <- parse_eggnog(net$annotation)
+  # CLEAN_GENE2GO_* takes precedence: the adopted full-InterProScan table, which
+  # reaches 62.9%/64.4% of network genes against the eggNOG GO column's 8.0%/7.2%.
+  # Same switch 18_module_go.r:111-119 makes, and the same parse_gene2go() reader,
+  # so the module level and the conserved-set level cannot end up on two
+  # annotations. See annotation/README.md for why eggNOG's column was rejected.
+  if (nzchar(net$gene2go)) {
+    cat(sprintf("  [1] Parsing derived GO table: %s\n", basename(net$gene2go)))
+    gene2GO_all <- parse_gene2go(net$gene2go)
+  } else {
+    cat("  [1] Parsing eggNOG annotation...\n")
+    gene2GO_all <- parse_eggnog(net$annotation)
+  }
   cat(sprintf("      Genome GO-annotated genes: %d\n", length(gene2GO_all)))
 
   # --- background: GO-annotated NODES of THIS network ----------------------

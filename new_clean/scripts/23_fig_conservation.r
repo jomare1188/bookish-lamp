@@ -5,45 +5,49 @@
 # This is the comparative core of the project. Two networks built from two
 # unrelated studies are joined through the OrthoFinder orthogroups and asked
 # whether their EDGES agree more than orthology alone would produce. The figure
-# has to carry two findings that pull in opposite directions and are both true:
-# edge conservation is real and roughly 2.5x above chance in both directions,
-# and the nitrogen RESPONSE nevertheless fails to transfer at all.
+# has to carry findings that pull in opposite directions and are all true: edge
+# conservation is real and ~1.7x above chance in both directions, it rises with
+# edge strength, and the nitrogen RESPONSE still barely travels with it.
+#
+# REBUILT 2026-09-13 ON THE PEARSON-ONLY GRAPHS. Every number now comes from
+# 62_conserved_edges_pearson.py and 61_conserved_blocked_nodes.r. The old panel C
+# (edge composition by layer) is gone: there is one layer, so it was a 100% bar.
+# What replaced it is the finding that took its place in the analysis too.
 #
 #   A  OBSERVED CONSERVED-EDGE RATE AGAINST ITS PERMUTATION NULL, per direction.
 #      The raw rates differ ~7x between directions and that difference is
-#      MEANINGLESS on its own -- purple has 9.3x more edges, so a sugarcane edge
-#      has far more chances to find a partner than the reverse. The panel shows
-#      the observed rate beside the null built for that direction, which is the
-#      only way the two are readable together.
+#      MEANINGLESS on its own -- purple has 9x more edges, so a sugarcane edge has
+#      far more chances to find a partner than the reverse. The panel shows the
+#      observed rate beside the null built for that direction, which is the only
+#      way the two are readable together.
 #
 #   B  WHAT THE CONSERVED GENES ARE FOR. One topGO BP enrichment per species over
-#      the genes sitting on at least one conserved edge, against that network's
-#      own GO-annotated nodes as background, showing the terms enriched in BOTH.
+#      the genes on at least one conserved edge, against that network's own
+#      GO-annotated nodes as background, showing the terms enriched in BOTH.
 #      Conservation of edges is a structural statement; this is the panel that
 #      says whether the structure that transfers is doing anything recognisable.
 #      Terms are ranked by their WORSE p-value across the two species, so the
 #      panel shows terms both species agree on rather than terms one species
 #      drives.
 #
-#   C  EDGE COMPOSITION BY LAYER, per network -- how much of each network the
-#      non-linear layer actually contributes. Stacked as a proportion so the two
-#      are comparable across a 9.3x difference in edge count, with the absolute
-#      counts on the bars. Together with the per-layer conservation folds quoted
-#      in the legend, this is the case on the MI layer: it is a small minority of
-#      both networks AND the edges it alone finds are not better conserved.
+#   C  CONSERVATION AGAINST EDGE STRENGTH. Rank-based weight deciles, one line per
+#      direction, on free y scales because the two rates differ ~7x for the reason
+#      panel A exists. It is monotone in BOTH species and -- the load-bearing part
+#      -- so is the fold over null, which is why the fold is drawn as the second
+#      series rather than left in a table. If strong edges merely joined
+#      better-annotated genes the rate would rise and the fold would not.
 #
 #   D  THE FUNNEL, per species: network nodes -> genes on at least one conserved
-#      edge -> nitrogen-responsive among those -> responsive on BOTH sides of an
-#      ortholog pair. Log scale, because it spans five orders of magnitude and
-#      closes at 2. This is where the comparative question actually dies, and it
-#      dies in purple.
+#      edge -> nitrogen-responsive -> responsive on BOTH sides of an ortholog
+#      pair. Log scale, because it spans four orders of magnitude. This is where
+#      the comparative question narrows hardest.
 #
 # NOTHING IS WRITTEN ON THE FIGURE THAT BELONGS IN THE LEGEND -- panel letters and
 # the labels the data needs, nothing else. See docs/methods.md, "The rule every
 # paper figure follows".
 #
-# NO EDGE TABLE IS READ. conserved_edges_*_FULL.tsv are 5 GB and 39 GB; every
-# number here comes from the summary and null tables beside them.
+# NO EDGE TABLE IS READ. The conserved-edge files are 472 MB and 517 MB; every
+# number here comes from the summary tables beside them.
 #
 # RUN: through run.sh  ->  ./run.sh figconservation   (then ./run.sh legends)
 # =============================================================================
@@ -87,13 +91,13 @@ theme_f <- theme_bw(base_size = 8) +
         plot.margin = margin(2, 4, 2, 2))
 
 # --- inputs ------------------------------------------------------------------
-NULLS <- rbindlist(lapply(DIRS, function(d)
-  fread(file.path(CONS_DIR, sprintf("conservation_null_%s.tsv", d)))))
+# ONE table per direction now: 62 writes the observed rate, the null and the
+# decile breakdown together, so the figure cannot pair a rate with the wrong null.
 SUMS <- rbindlist(lapply(DIRS, function(d)
-  fread(file.path(CONS_DIR, sprintf("conservation_summary_%s_FULL.tsv", d)))))
-CORR <- fread(file.path(CONS_DIR,
-                        sprintf("conserved_correlated_summary_%s.tsv", SELECTION)))
-cv <- function(k) as.numeric(CORR[metric == k, value])
+  fread(file.path(CONS_DIR, sprintf("conservation_summary_%s_pearson.tsv", d)))))
+STAT <- rbindlist(lapply(c("sugarcane", "purple"), function(sp)
+  fread(file.path(CONS_DIR, sprintf("%s_status_blocked_nodes.tsv", sp)))[
+    , .(species = sp, status)]))
 
 GO_DIR <- file.path(CONS_DIR, "enrichment_conserved")
 GO_SHARED <- fread(file.path(GO_DIR, sprintf("GO_%s_conserved_shared_terms.csv", GO_ONT)))
@@ -118,49 +122,42 @@ GO_SUM <- fread(file.path(GO_DIR, sprintf("GO_%s_conserved_summary.csv", GO_ONT)
 gc_ <- function(o, col) GO_CMP[Ontology == o][[col]]
 gs_ <- function(sp, col) GO_SUM[Network == sp][[col]]
 
-NULLS[, dir_lab := factor(DIR_LAB[direction], levels = unname(DIR_LAB))]
-NULLS[, layer := factor(fifelse(source == "ALL", "ALL", LAYERS[source]),
-                        levels = c("ALL", unname(LAYERS)))]
 SUMS[, dir_lab := factor(DIR_LAB[direction], levels = unname(DIR_LAB))]
+ALLROW <- SUMS[stratum == "all" & weight_bin == "ALL"]
+sm <- function(d, col) ALLROW[direction == d][[col]]
 
-say("conservation, full edge sets:")
-print(SUMS[, .(dir_lab, layer, total_edges = fmt_n(total_edges),
-               conserved = fmt_n(conserved_edges),
-               pct = round(100 * conserved_fraction, 3))], row.names = FALSE)
+say("conservation, Pearson-only graphs:")
+print(ALLROW[, .(dir_lab, edges = fmt_n(edges), conserved = fmt_n(conserved),
+                 pct = round(100 * conserved_fraction, 3),
+                 fold = fold_over_null, p = p_emp)], row.names = FALSE)
 
 # =============================================================================
 # A — observed vs null, per direction (ALL edges)
 # =============================================================================
-alld <- NULLS[source == "ALL"]
-# Totals come from the FULL edge sets, not the 5 M null sample, so the absolute
-# counts printed on the bars are the real ones. The null bar's absolute value is
-# the count its rate implies over that same full set, i.e. edges expected to find
-# a partner by chance.
-tot <- SUMS[layer == "ALL", .(direction, total_edges, conserved_edges)]
-alld <- merge(alld, tot, by = "direction")
+# The observed rate comes from the FULL edge set; the null from whatever set 62
+# could afford for that stratum (`null_basis`). For `all` that is a 5M sample, so
+# the null bar is the count its rate implies over the full set -- edges expected to
+# find a partner by chance. Pairing a full-pass rate with a sampled null would
+# confound the two, which is why 62 carries the basis and this panel prints it.
 obsA <- rbindlist(list(
-  alld[, .(dir_lab, total_edges, what = "observed", rate = obs_rate,
-           lo = obs_rate, hi = obs_rate, n = conserved_edges)],
-  alld[, .(dir_lab, total_edges, what = "permutation null", rate = null_mean_rate,
-           lo = null_min_rate, hi = null_max_rate,
-           n = round(null_mean_rate * total_edges))]))
+  ALLROW[, .(dir_lab, edges, what = "observed", rate = conserved_fraction,
+             n = conserved)],
+  ALLROW[, .(dir_lab, edges, what = "permutation null", rate = null_mean,
+             n = round(null_mean * edges))]))
 obsA[, what := factor(what, levels = names(PAL_OBS))]
 # The denominator rides on the axis label, so the panel carries the percentage,
-# the count and what the count is out of.
-# Broken across three short lines rather than two long ones: at this panel width
-# "sugarcane → purple" on one line is wider than the space a single group gets,
-# and the two group labels collide.
+# the count and what the count is out of. Broken across three short lines rather
+# than two long ones: at this panel width "sugarcane → purple" on one line is
+# wider than the space a single group gets, and the two group labels collide.
 ax_lab <- function(d, n)
   sprintf("%s\n%s edges", sub(" (→|->) ", "\n\\1 ", d), trimws(fmt_n(n)))
-obsA[, dir_ax := factor(ax_lab(dir_lab, total_edges),
-                        levels = unique(ax_lab(dir_lab, total_edges)[order(dir_lab)]))]
+obsA[, dir_ax := factor(ax_lab(dir_lab, edges),
+                        levels = unique(ax_lab(dir_lab, edges)[order(dir_lab)]))]
 say("panel A: observed vs null, with absolute counts")
 print(obsA[, .(dir_lab, what, pct = round(100 * rate, 3), n = fmt_n(n))], row.names = FALSE)
 
 pA <- ggplot(obsA, aes(dir_ax, rate, fill = what)) +
   geom_col(position = position_dodge(width = 0.65), width = 0.55) +
-  geom_errorbar(aes(ymin = lo, ymax = hi), width = 0.14,
-                position = position_dodge(width = 0.65), linewidth = 0.3) +
   geom_text(aes(label = fmt_n(n)), position = position_dodge(width = 0.65),
             vjust = -0.55, size = 2.1) +
   scale_fill_manual(values = PAL_OBS, name = NULL) +
@@ -206,70 +203,96 @@ pB <- ggplot(goB, aes(mlp, Term)) +
                   panel.grid.major.y = element_line(linewidth = 0.2))
 
 # =============================================================================
-# C — edge composition by layer
+# C — conservation against edge strength
 # =============================================================================
-# What this panel replaced, and why the numbers it carried are now in the legend:
-# it used to plot each non-linear layer relative to the Pearson-only layer under
-# two normalisations, which is the sharpest form of the "MI adds nothing" result.
-# The composition is the more direct statement of the same case -- MI-only edges
-# are a small minority of both networks to begin with -- so the plot shows that
-# and the legend keeps the fold-over-null numbers, which are the actual evidence.
-LAY <- rbindlist(lapply(c("sugarcane", "purple"), function(st) {
-  d <- if (st == "sugarcane") "sugarcane_to_purple" else "purple_to_sugarcane"
-  x <- SUMS[direction == d & layer != "ALL"]
-  data.table(study = st, layer = factor(LAYERS[x$layer], levels = unname(LAYERS)),
-             n = x$total_edges)
-}))
-LAY[, study := factor(study, levels = c("sugarcane", "purple"))]
-LAY[, frac := n / sum(n), by = study]
-say("panel C: edge composition by layer")
-print(LAY[, .(study, layer, n = fmt_n(n), pct = round(100 * frac, 2))], row.names = FALSE)
+# WHAT THIS REPLACED. The old panel C was edge composition by layer, the sharpest
+# form of the "MI adds nothing" argument. The networks are Pearson-only now, so
+# that panel is one 100% bar. This is what took its place in the analysis as well:
+# the question a single weighted layer can still be asked is whether the STRENGTH
+# of co-expression predicts whether an edge survives across species.
+#
+# BOTH SERIES ARE DRAWN. The rate alone would be consistent with strong edges
+# simply joining better-annotated genes; the fold over null rising with it is what
+# rules that out, so it is a panel series rather than a number in the legend.
+DEC <- SUMS[stratum == "all" & weight_bin != "ALL"]
+DEC[, decile := as.integer(sub("^D", "", weight_bin))]
+setorder(DEC, direction, decile)
+say("panel C: conservation by weight decile")
+print(DEC[, .(dir_lab, decile, edges = fmt_n(edges),
+              pct = round(100 * conserved_fraction, 3), fold = fold_over_null)],
+      row.names = FALSE)
 
-# The two minority classes are 1-7% of a bar, so their in-slice labels sit on top
-# of each other however they are justified. They go under the axis instead, where
-# they cannot collide and where the numbers the MI argument needs are the easiest
-# thing on the panel to read.
-minor <- LAY[layer != "Pearson only"]
-# Percentages only, and the class names shortened: the full "both estimators
-# 2,004,577 (2.6%)" is wider than a bar and the two studies' labels collide. The
-# counts are in the legend and the stats table.
-lab_c <- minor[, .(lab = paste(sprintf("%s %.1f%%",
-                                       fifelse(layer == "MI only", "MI only", "both"),
-                                       100 * frac),
-                               collapse = "\n")), by = study]
-lab_c <- lab_c[match(levels(LAY$study), study)]
-LAY[, study_ax := factor(sprintf("%s\n%s", study, lab_c$lab[match(study, lab_c$study)]),
-                         levels = sprintf("%s\n%s", lab_c$study, lab_c$lab))]
+decL <- melt(DEC[, .(dir_lab, decile, `conserved edges` = conserved_fraction,
+                     `fold over null` = fold_over_null)],
+             id.vars = c("dir_lab", "decile"), variable.name = "measure",
+             value.name = "v")
 
-pC <- ggplot(LAY, aes(study_ax, frac, fill = layer)) +
-  geom_col(width = 0.58, colour = "white", linewidth = 0.3) +
-  geom_text(data = LAY[layer == "Pearson only"],
-            aes(label = sprintf("%s\n%.1f%%", fmt_n(n), 100 * frac)),
-            position = position_stack(vjust = 0.5), size = 2.2,
-            lineheight = 0.95, colour = "white") +
-  scale_fill_manual(values = PAL_LAYER, name = NULL) +
-  scale_y_continuous(labels = percent_format(accuracy = 1),
-                     expand = expansion(mult = c(0, 0.02))) +
-  labs(x = NULL, y = "share of edges") +
-  theme_f + theme(axis.text.x = element_text(size = 6.1, lineheight = 1.15))
+# FREE Y IN EVERY CELL, which needs facet_grid and not facet_wrap(~ measure).
+# Faceting on measure alone puts both directions on one axis, and since sugarcane
+# runs at ~10% and purple at ~1.5% -- the 7x panel A exists to explain -- purple's
+# curve collapses onto the floor and reads as flat. It is not flat: it rises 84%
+# relative, from 1.17% to 2.16%, which is the larger effect of the two. One cell
+# per direction per measure is what makes both visible.
+pC <- ggplot(decL, aes(decile, v, colour = dir_lab)) +
+  geom_line(linewidth = 0.5) +
+  geom_point(size = 1.1) +
+  # facet_WRAP on both variables, not facet_grid: grid's scales = "free_y" frees
+  # the axis per ROW, so the two directions still share one, and purple's rate
+  # (1.17-2.16%) collapses against sugarcane's 12.5% ceiling -- the exact problem
+  # this panel is here to avoid. wrap gives every cell its own axis.
+  facet_wrap(~ measure + dir_lab, nrow = 2, scales = "free_y") +
+  scale_colour_manual(values = PAL_DIR, guide = "none") +
+  # Bare decile numbers: "D1 weakest" and "D10 strongest" are wide enough that the
+  # right label of one column and the left label of the next print on top of each
+  # other. The direction of the axis goes in its title instead.
+  scale_x_continuous(breaks = c(1, 5, 10), labels = c("D1", "D5", "D10")) +
+  # The rate cells want percent and the fold cells want a bare ratio, and one
+  # scale cannot do both -- so the rate is carried as a percentage POINT value
+  # and the axis label says so, rather than printing "0.09" at a reader.
+  scale_y_continuous(expand = expansion(mult = c(0.12, 0.12)),
+                     # if/else, NOT ifelse: the condition is length 1, and
+                     # ifelse() would return a single label for a vector of breaks
+                     # ("`breaks` and `labels` have different lengths").
+                     labels = function(x) {
+                       if (all(is.na(x)) || max(x, na.rm = TRUE) < 0.5)
+                         sprintf("%.1f%%", 100 * x)
+                       else sprintf("%.2f", x)
+                     }) +
+  labs(x = "edge weight decile,  weakest → strongest", y = NULL) +
+  theme_f +
+  theme(axis.text.x = element_text(size = 6.0),
+        axis.text.y = element_text(size = 5.8),
+        axis.title.x = element_text(size = 6.4),
+        strip.text = element_text(size = 6.0, lineheight = 1.05),
+        panel.spacing = unit(1.6, "mm"))
 
 # =============================================================================
 # D — the funnel
 # =============================================================================
 n_nodes <- c(sugarcane = nrow(fread(NODES_SUG, select = 1L)),
              purple    = nrow(fread(NODES_PUR, select = 1L)))
+# Stages 3 and 4 come from 61_conserved_blocked_nodes.r's status tables, which ARE
+# the responsive genes (one row each) with `conserved_correlated` marking the ones
+# whose ortholog responds too. Reading them rather than a separate summary is what
+# keeps the funnel and the node-level analysis from drifting apart.
+# The conserved-gene count lives in the gene list 62 writes, not in the summary
+# table -- read the file rather than a number that would have to be kept in sync.
+n_cons <- vapply(c("sugarcane", "purple"), function(sp)
+  length(readLines(file.path(CONS_DIR, sprintf("conserved_genes_%s_pearson.txt", sp)),
+                   warn = FALSE)), integer(1))
+n_resp <- STAT[, .N, by = species]
+n_both <- STAT[status == "conserved_correlated", .N, by = species]
+gv <- function(d, sp) d[species == sp, N]
 funD <- data.table(
   species = rep(c("sugarcane", "purple"), each = 4),
   stage = factor(rep(c("nodes in\nthe network", "on a conserved\nedge",
                        "nitrogen-\nresponsive", "responsive on\nboth sides"), 2),
                  levels = c("nodes in\nthe network", "on a conserved\nedge",
                             "nitrogen-\nresponsive", "responsive on\nboth sides")),
-  n = c(n_nodes[["sugarcane"]],
-        SUMS[direction == "sugarcane_to_purple" & layer == "ALL", conserved_genes],
-        cv("correlated_sugarcane_genes"), cv("sugarcane_genes_conserved_correlated"),
-        n_nodes[["purple"]],
-        SUMS[direction == "purple_to_sugarcane" & layer == "ALL", conserved_genes],
-        cv("correlated_purple_genes"), cv("purple_genes_conserved_correlated")))
+  n = c(n_nodes[["sugarcane"]], n_cons[["sugarcane"]],
+        gv(n_resp, "sugarcane"), gv(n_both, "sugarcane"),
+        n_nodes[["purple"]], n_cons[["purple"]],
+        gv(n_resp, "purple"), gv(n_both, "purple")))
 funD[, species := factor(species, levels = c("sugarcane", "purple"))]
 say("panel D: the funnel")
 print(funD[, .(species, stage = gsub("\n", " ", stage), n = fmt_n(n))], row.names = FALSE)
@@ -319,137 +342,117 @@ wrap_at <- function(x, width = 96)
                                     collapse = "\n"),
                ""), collapse = "\n\n")
 
-nl  <- function(d, sc, col) NULLS[direction == d & source == sc][[col]]
-sm  <- function(d, l, col)  SUMS[direction == d & layer == l][[col]]
-ly  <- function(st, l, col) LAY[study == st & layer == l][[col]]
 D1 <- DIRS[1]; D2 <- DIRS[2]
-n_perm <- 20
+st <- function(d, stratum, col) SUMS[direction == d & stratum == ..stratum &
+                                     weight_bin == "ALL"][[col]]
+dc <- function(d, dec, col) DEC[direction == d & decile == dec][[col]]
+pc <- function(x) sprintf("%.2f%%", 100 * x)
+gsum <- function(sp, col) gs_(sp, col)
+fn <- function(sp) funD[species == sp, n]
 
 legend <- paste0(
-"Figure ", FIG, ". Cross-species conservation of network edges, and the failure of the nitrogen ",
-"response to travel with them. An edge is CONSERVED when both of its genes have orthologs in the ",
-"other species and those orthologs are themselves connected there; orthology is the OrthoFinder ",
-"backbone described in Figure 1. Conservation is asked in both directions and the two are not ",
-"interchangeable, because a sugarcane edge searching a 706-million-edge purple network has far ",
-"more opportunity than a purple edge searching a 76-million-edge sugarcane one.\n",
+"Figure ", FIG, ". Cross-species conservation of network edges on the unpruned Pearson-only ",
+"graphs, and how little of the nitrogen response travels with it. An edge is CONSERVED when both ",
+"of its genes have orthologs in the other species and those orthologs are themselves joined by an ",
+"edge there. Orthology is many-to-many and any ortholog pair counts, so this is the most ",
+"permissive definition available; it is scored against a null that removes only the orthology ",
+"ASSIGNMENT.\n",
 "\n",
-"(A) Share of each network's edges with a conserved partner, against a permutation null built ",
-"separately for each direction; bars carry the absolute edge counts and the axis label the ",
-"denominator. ", DIR_LAB[[D1]], ": ", fmt_n(sm(D1, "ALL", "conserved_edges")), " of ",
-fmt_n(sm(D1, "ALL", "total_edges")), " edges conserved (",
-sprintf("%.2f%%", 100 * nl(D1, "ALL", "obs_rate")), ") against ",
-fmt_n(round(nl(D1, "ALL", "null_mean_rate") * sm(D1, "ALL", "total_edges"))), " expected by ",
-"chance (", sprintf("%.2f%%", 100 * nl(D1, "ALL", "null_mean_rate")), "), a fold over null of ",
-sprintf("%.2f", nl(D1, "ALL", "fold_over_null")), "x. ", DIR_LAB[[D2]], ": ",
-fmt_n(sm(D2, "ALL", "conserved_edges")), " of ", fmt_n(sm(D2, "ALL", "total_edges")), " (",
-sprintf("%.2f%%", 100 * nl(D2, "ALL", "obs_rate")), ") against ",
-fmt_n(round(nl(D2, "ALL", "null_mean_rate") * sm(D2, "ALL", "total_edges"))), " (",
-sprintf("%.2f%%", 100 * nl(D2, "ALL", "null_mean_rate")), "), fold ",
-sprintf("%.2f", nl(D2, "ALL", "fold_over_null")), "x. The two folds agree closely even though ",
-"the raw percentages differ ~7x, and the fold is the comparable quantity: a sugarcane edge ",
-"searching a 706-million-edge purple network has far more opportunity than the reverse. Every ",
-"layer in both directions clears the null with z between ", sprintf("%.0f", min(NULLS$z)),
-" and ", sprintf("%.0f", max(NULLS$z)), "; the empirical p is ",
-sprintf("%.3f", 1 / (n_perm + 1)), " throughout, which is simply the floor set by ", n_perm,
-" permutations and should be read as \'beyond every permutation drawn\' rather than as a precise ",
-"p-value. Bars on the null are its full range ",
-"over ", n_perm, " permutations, which shuffle gene labels within the orthology map so that ",
-"orthogroup fan-out and per-gene coverage are preserved and only the pairing is randomised -- ",
-"without that the null would mostly measure how many orthologs each gene has. Nulls are computed ",
-"on a 5-million-edge sample of each direction, whose observed rate matches the full set to three ",
-"decimals. THE TWO RAW RATES ARE NOT COMPARABLE WITH EACH OTHER: the ~7x difference between ",
-"directions is opportunity, not biology, which is the reason panel B exists.\n",
+"(A) Observed conserved-edge rate against its own permutation null, per direction; bar labels are ",
+"absolute edge counts. In ", fmt_n(ALLROW[direction == D1, edges]), " sugarcane edges, ",
+fmt_n(ALLROW[direction == D1, conserved]), " (", pc(ALLROW[direction == D1, conserved_fraction]),
+") have a purple counterpart, ", ALLROW[direction == D1, fold_over_null],
+"x the null rate; in ", fmt_n(ALLROW[direction == D2, edges]), " purple edges, ",
+fmt_n(ALLROW[direction == D2, conserved]), " (", pc(ALLROW[direction == D2, conserved_fraction]),
+"), ", ALLROW[direction == D2, fold_over_null], "x. THE TWO DIRECTIONS ARE NOT COMPARABLE TO EACH ",
+"OTHER and the panel is not an invitation to compare them: purple's edge density is 3.2x ",
+"sugarcane's, so a random ortholog pair is far likelier to land on an edge there, which is exactly ",
+"what each direction's own null absorbs. The null permutes the target column of the ortholog ",
+"table, preserving every gene's ortholog count, which genes have any ortholog at all, and the ",
+"multiset of targets -- so the only thing destroyed is which target each source maps to. It is ",
+"computed over ortholog pairs whose BOTH sides are network nodes (114,681 pairs over 43,390 ",
+"orthogroups, the same universe the node-level analysis uses), which is a stricter null than the ",
+"merged-network version this replaces: that one drew from all 275,047 pairs including genes that ",
+"could never have matched, and reported a correspondingly larger fold.\n",
 "\n",
-"(B) What the conserved genes are FOR. Panel A is a structural statement; this asks whether the ",
-"structure that transfers is doing anything recognisable. One topGO ", GO_ONT, " enrichment per ",
-"species over the genes on at least one conserved edge (", fmt_n(gs_("sugarcane", "Conserved_genes")),
-" and ", fmt_n(gs_("purple", "Conserved_genes")), " genes, of which ",
-fmt_n(gs_("sugarcane", "Conserved_in_bg")), " and ", fmt_n(gs_("purple", "Conserved_in_bg")),
-" carry any GO annotation), tested against that network's OWN GO-annotated nodes as background (",
-fmt_n(gs_("sugarcane", "Node_background_w_GO")), " and ",
-fmt_n(gs_("purple", "Node_background_w_GO")), ") rather than against the genome, so the result is ",
-"not the generic \'co-expressed genes differ from the genome\' effect. Sugarcane returns ",
-gc_(GO_ONT, "Terms_sugarcane"), " enriched ", GO_ONT, " terms and purple ",
-gc_(GO_ONT, "Terms_purple"), ", of which ", gc_(GO_ONT, "Shared"), " are SHARED (Jaccard ",
-sprintf("%.2f", gc_(GO_ONT, "Jaccard")), "); MF and CC behave the same way, at ",
-gc_("MF", "Shared"), " and ", gc_("CC", "Shared"), " shared terms. Plotted are the ",
-sprintf("%d", nrow(top)), " shared terms with the strongest agreement, ranked by the WORSE of ",
-"the two p-values so the panel shows terms both species support rather than terms one species ",
-"drives; the two points on a row are the same term in the two networks. The shared set is ",
-"dominated by regulation and core metabolism -- regulation of gene expression, MAPK cascade, ",
-"proteolysis, translation, thylakoid membrane organization -- and it includes two terms that ",
-"speak directly to the trait: GLUTAMATE BIOSYNTHETIC PROCESS and the AMMONIA ASSIMILATION CYCLE, ",
-"enriched in both conserved sets. So the conserved edges are not a structural curiosity: they ",
-"connect genes doing the same recognisable jobs in both species, including nitrogen assimilation ",
-"itself. Read this alongside panel D, which shows that this shared FUNCTION coexists with almost ",
-"no shared responsive GENES -- an ordinary evolutionary pattern, but note the power gap between ",
-"the two tests before reading it as agreement.\n",
+"(B) What the conserved genes are for: one topGO enrichment (", GO_ONT, ", weight01) per species ",
+"over the genes on at least one conserved edge, against that network's own GO-annotated nodes as ",
+"the background, so the test asks what is special about the conserved genes RELATIVE TO THEIR OWN ",
+"NETWORK rather than to the genome. Points are the two species' p-values for the same term, ",
+"joined by a line; terms are ranked by the WORSE of the two, so these are terms both species agree ",
+"on rather than terms one species drives. ", fmt_n(gc_(GO_ONT, "Shared")), " ", GO_ONT,
+" terms are enriched in both conserved sets (Jaccard ", sprintf("%.3f", gc_(GO_ONT, "Jaccard")),
+"), against ", fmt_n(gc_(GO_ONT, "Unique_sugarcane")), " enriched only in sugarcane and ",
+fmt_n(gc_(GO_ONT, "Unique_purple")), " only in purple; the top ", nrow(top), " are drawn. GO comes ",
+"from the adopted full-InterProScan annotation, which reaches 62.9% and 64.4% of network nodes. ",
+"topGO reports anything below 1e-30 AS 1e-30, so a term at the right edge is censored rather than ",
+"exactly that significant, and two points there coincide because both are at the floor -- not ",
+"because the two species agree to that precision.\n",
 "\n",
-"(C) Composition of each network by which estimator found the edge, stacked as a share so the ",
-"two are comparable across a ", sprintf("%.1f", sm(D2, "ALL", "total_edges") /
-sm(D1, "ALL", "total_edges")), "x difference in edge count; absolute counts are on the bars. In ",
-"sugarcane, ", fmt_n(ly("sugarcane", "Pearson only", "n")), " edges (",
-sprintf("%.1f%%", 100 * ly("sugarcane", "Pearson only", "frac")), ") are found by Pearson alone, ",
-fmt_n(ly("sugarcane", "both estimators", "n")), " (",
-sprintf("%.1f%%", 100 * ly("sugarcane", "both estimators", "frac")), ") by both estimators, and ",
-fmt_n(ly("sugarcane", "MI only", "n")), " (",
-sprintf("%.1f%%", 100 * ly("sugarcane", "MI only", "frac")), ") by mutual information alone; in ",
-"purple the same three are ", fmt_n(ly("purple", "Pearson only", "n")), " (",
-sprintf("%.1f%%", 100 * ly("purple", "Pearson only", "frac")), "), ",
-fmt_n(ly("purple", "both estimators", "n")), " (",
-sprintf("%.1f%%", 100 * ly("purple", "both estimators", "frac")), ") and ",
-fmt_n(ly("purple", "MI only", "n")), " (",
-sprintf("%.1f%%", 100 * ly("purple", "MI only", "frac")), "). Purple's larger non-linear share is ",
-"NOT more non-linear biology: the two layers are matched on p-value, and at n = 18 the p implied ",
-"by |r| = 0.8 is 6.7e-05 against 9.0e-12 at n = 48, so purple's MI floor is far softer in ",
-"absolute terms.\n",
+"(C) Conservation against edge STRENGTH, in rank-based weight deciles so each bin holds a tenth of ",
+"the edges. Left, the conserved fraction; right, the fold over that decile's own null. Both rise ",
+"MONOTONICALLY across all ten deciles in both directions: sugarcane from ",
+pc(dc(D1, 1, "conserved_fraction")), " to ", pc(dc(D1, 10, "conserved_fraction")), " (fold ",
+dc(D1, 1, "fold_over_null"), " to ", dc(D1, 10, "fold_over_null"), ") and purple from ",
+pc(dc(D2, 1, "conserved_fraction")), " to ", pc(dc(D2, 10, "conserved_fraction")), " (fold ",
+dc(D2, 1, "fold_over_null"), " to ", dc(D2, 10, "fold_over_null"),
+"). THE FOLD IS DRAWN BECAUSE THE RATE ALONE WOULD NOT SETTLE IT: a rate rising with strength is ",
+"also what you would see if strong edges simply joined better-annotated, better-orthologued genes, ",
+"and only the fold rising rules that out. Axes are free -- the two directions differ ~7x in rate ",
+"for the reason panel A gives, and rate and fold are different units. Weight is the per-study ",
+"rescaling of |r| to [0.01, 1], so a decile does NOT stand for the same |r| in both species; the ",
+"boundaries are in the summary table. What this does not settle is WHY: stronger selective ",
+"constraint on tight co-expression and a noisier weakest decile near the |r| >= 0.8 threshold ",
+"predict the same shape.\n",
 "\n",
-"Read against the conservation results, this panel is the case against the MI layer. The ",
-"MI-ONLY edges are a small minority of both networks -- ",
-sprintf("%.1f%%", 100 * ly("sugarcane", "MI only", "frac")), " and ",
-sprintf("%.1f%%", 100 * ly("purple", "MI only", "frac")), " -- and they are not better conserved ",
-"than Pearson-only edges once chance is accounted for: their fold over null is ",
-sprintf("%.2f", nl(D1, "mi", "fold_over_null")), "x and ",
-sprintf("%.2f", nl(D2, "mi", "fold_over_null")), "x against ",
-sprintf("%.2f", nl(D1, "pearson", "fold_over_null")), "x and ",
-sprintf("%.2f", nl(D2, "pearson", "fold_over_null")), "x for Pearson-only, i.e. parity in one ",
-"direction and BELOW Pearson in the other. Any apparent MI advantage in the raw conserved rate is ",
-"opportunity bias -- MI-only edges connect genes with more orthologs, so they had more chances to ",
-"match by accident, and the permutation null absorbs exactly that. The one layer that does earn ",
-"its place is `both`: edges the two estimators agree on conserve at ",
-sprintf("%.2f", nl(D1, "both", "fold_over_null")), "x and ",
-sprintf("%.2f", nl(D2, "both", "fold_over_null")), "x, above Pearson-only in both directions. So ",
-"the defensible statement is not that mutual information finds better-conserved edges -- it does ",
-"not -- but that agreement between two estimators marks better-conserved edges than either ",
-"alone.\n",
+"(D) The funnel, per species, log scale. Sugarcane: ", fmt_n(fn("sugarcane")[1]),
+" network nodes -> ", fmt_n(fn("sugarcane")[2]), " on at least one conserved edge -> ",
+fmt_n(fn("sugarcane")[3]), " nitrogen-responsive under the blocked test -> ",
+fmt_n(fn("sugarcane")[4]), " whose ortholog is responsive in purple too. Purple: ",
+fmt_n(fn("purple")[1]), " -> ", fmt_n(fn("purple")[2]), " -> ", fmt_n(fn("purple")[3]), " -> ",
+fmt_n(fn("purple")[4]), ". The funnel does NOT close at orthology or at edge conservation -- ",
+"37% and 25% of nodes sit on a conserved edge -- but at the last step, and the last step is small ",
+"in both species.\n",
 "\n",
-"(D) Where the comparative question closes, per species, on a log axis. Of ",
-fmt_n(n_nodes[["sugarcane"]]), " sugarcane nodes, ",
-fmt_n(sm(D1, "ALL", "conserved_genes")), " sit on at least one conserved edge, ",
-fmt_n(cv("correlated_sugarcane_genes")), " of those are nitrogen-responsive, and ",
-fmt_n(cv("sugarcane_genes_conserved_correlated")), " have an ortholog that is responsive in ",
-"purple too. The purple column is ", fmt_n(n_nodes[["purple"]]), " -> ",
-fmt_n(sm(D2, "ALL", "conserved_genes")), " -> ", fmt_n(cv("correlated_purple_genes")), " -> ",
-fmt_n(cv("purple_genes_conserved_correlated")), ". The funnel does not close at the orthology ",
-"step or at the conservation step -- both leave tens of thousands of genes -- it closes at ",
-"purple's ", fmt_n(cv("correlated_purple_genes")), " responsive genes, and that is a POWER ",
-"result rather than a biological one: at n = 18 over ", fmt_n(sm(D2, "ALL", "conserved_genes")),
-" genes a gene needs |r| ~ 0.80 merely to clear the false-discovery correction. Selection here ",
-"is the `", SELECTION, "` rule (responsive by Pearson or by mutual information); the Pearson-only ",
-"and MI-only rules give ", fmt_n(1), " and ", fmt_n(0), " conserved responsive pairs ",
-"respectively, so no choice of statistic rescues it. At the EDGE level the count is 0 under every ",
-"rule, because a conserved responsive edge needs two connected genes responsive on both sides and ",
-"there are at most ", fmt_n(cv("conserved_correlated_ortholog_pairs")), " such genes in the whole ",
-"analysis.")
+"WHAT THE NITROGEN-RESPONSIVE EDGES DO, since it is the question the figure is built around and ",
+"the raw numbers mislead. Edges joining two genes responsive in BOTH species are conserved at ",
+pc(SUMS[direction == D1 & stratum == "resp_both" & weight_bin == "ALL", conserved_fraction]),
+" in sugarcane (", fmt_n(SUMS[direction == D1 & stratum == "resp_both" & weight_bin == "ALL", edges]),
+" edges) and ",
+pc(SUMS[direction == D2 & stratum == "resp_both" & weight_bin == "ALL", conserved_fraction]),
+" in purple (", fmt_n(SUMS[direction == D2 & stratum == "resp_both" & weight_bin == "ALL", edges]),
+" edges), against backgrounds of ", pc(ALLROW[direction == D1, conserved_fraction]), " and ",
+pc(ALLROW[direction == D2, conserved_fraction]), " -- a 3-4x raw enrichment. Against the ",
+"ortholog-shuffle null MOST OF THAT IS ORTHOLOGY, because genes responsive in both species are by ",
+"construction genes with good orthologs: sugarcane keeps a modest real excess (",
+SUMS[direction == D1 & stratum == "resp_both" & weight_bin == "ALL", fold_over_null], "x, p = ",
+SUMS[direction == D1 & stratum == "resp_both" & weight_bin == "ALL", p_emp], ") and purple's ",
+"disappears entirely (",
+SUMS[direction == D2 & stratum == "resp_both" & weight_bin == "ALL", fold_over_null], "x, p = ",
+SUMS[direction == D2 & stratum == "resp_both" & weight_bin == "ALL", p_emp],
+"). A shared nitrogen response therefore predicts edge conservation in sugarcane and not in ",
+"purple, and the raw rates should not be quoted without their nulls.\n",
+"\n",
+"Sources: 62_conserved_edges_pearson.py (edges and nulls, from the mcxdump edge stream), ",
+"61_conserved_blocked_nodes.r (who is responsive), 09_go_enrichment.r (panel B). The edge join was ",
+"verified against an independent route -- gene names resolved through a fresh Orthogroups.tsv ",
+"parse and membership confirmed by a direct pass over the raw edge dump -- confirming 4,000 of ",
+"4,000 conserved edges and rejecting 4,000 of 4,000 non-conserved ones.")
 
 legend_file <- paste0(OUT_PREFIX, "_legend.txt")
 writeLines(wrap_at(legend), legend_file)
 say("wrote ", basename(legend_file))
 
 stats <- rbindlist(list(
-  NULLS[, .(panel = "A", study = DIR_LAB[direction],
-            quantity = sprintf("%s: observed / null / fold", layer),
-            value = sprintf("%.4f / %.4f / %.2f", obs_rate, null_mean_rate, fold_over_null))],
+  SUMS[weight_bin == "ALL", .(panel = "A", study = DIR_LAB[direction],
+       quantity = sprintf("%s: observed / null / fold / p  [null on %s]",
+                          stratum, null_basis),
+       value = sprintf("%.5f / %.5f / %.2f / %.4g",
+                       conserved_fraction, null_mean, fold_over_null, p_emp))],
+  DEC[, .(panel = "C", study = DIR_LAB[direction],
+          quantity = sprintf("decile %d (w %s-%s): rate / fold",
+                             decile, weight_lo, weight_hi),
+          value = sprintf("%.5f / %.2f", conserved_fraction, fold_over_null))],
   GO_CMP[, .(panel = "B", study = "both",
              quantity = sprintf("%s terms: sugarcane / purple / shared", Ontology),
              value = sprintf("%d / %d / %d (Jaccard %.3f)",

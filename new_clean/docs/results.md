@@ -2070,7 +2070,7 @@ file; re-run the figure, then `legends`.
 | **1** | `figdataset` | the two designs, library QC, the gene funnel, PCA per study |
 | **2** | `figrepro` | each source study's own finding, reproduced here |
 | **3** | `figtopology` | degree and module-size CCDFs (edge composition dropped — Pearson-only) |
-| **4** | `figconservation` | conservation vs null, conserved-set GO, the funnel that closes |
+| **4** | `figconservation` | conservation vs null (both directions), conserved-set GO, conservation vs edge strength, the funnel |
 | **5** | `figmodules` | module selection, the Spearman gain, the responsive eigengenes |
 | **6** | `figmodulego` | the annotation gate, then GO by response direction per species |
 | **7** | `figmodule20` | Module 20 in sugarcane with its AtMYB59 copies marked, in purple with a TF column, and the one copy with a U-shape response |
