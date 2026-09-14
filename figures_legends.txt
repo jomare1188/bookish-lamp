@@ -270,11 +270,14 @@ confirming 4,000 of 4,000 conserved edges and rejecting 4,000 of 4,000 non-conse
 Figure 5. The nitrogen response at module level. Each MCL module of >= 3 genes is summarised by
 an eigengene -- PC1 of its members' variance-stabilised expression, genes scaled before the
 decomposition per the WGCNA convention, oriented to mean module expression and z-scored --
-giving 3,627 and 7,493 tests per study instead of the 39,226 and 44,118 the gene level carries.
-Association with nitrogen is SPEARMAN'S RHO ALONE, at padj <= 0.05 (Benjamini-Hochberg over
-every module in the study) and |rho| >= 0.6, the same two thresholds the gene level uses.
-Neither Pearson nor mutual information is used here: the trait is ordinal, and MI at this
-resolution proved to be an omnibus test firing on quirks in one or two libraries.
+giving 3,627 and 7,493 tests per study instead of the 101,990 and 170,135 the gene level
+carries. Association with nitrogen is a BLOCKED SPEARMAN PARTIAL CORRELATION -- the eigengene
+and the trait are both reduced to midranks and then residualised on the experimental design
+(genotype, and leaf segment in sugarcane), so rho is the association that survives with the
+design in the model rather than beside it -- at padj <= 0.05 (Benjamini-Hochberg over every
+module in the study) and |rho| >= 0.6, the same two thresholds the gene level uses. Neither
+marginal Pearson nor mutual information decides anything here: the trait is ordinal, and MI at
+this resolution proved to be an omnibus test firing on quirks in one or two libraries.
 
 (A) Every module as |rho| against its adjusted p, with both thresholds dashed; coloured points
 clear both. The panel is here to show WHICH THRESHOLD BINDS, and it is a different one in each

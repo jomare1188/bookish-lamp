@@ -2,9 +2,13 @@
 # 24_fig_modules.r — the module-level figure: the nitrogen response at the
 # resolution where it can actually be tested.
 #
-# The gene level dies on a testing burden of 39,226 / 44,118 genes. One eigengene
-# per MCL module cuts that to ~6,500 tests per study, and a module signal can
-# survive where a single gene cannot. This figure shows what that buys, how the
+# The gene level carries a testing burden of one test per network node. One
+# eigengene per MCL module cuts that to ~11,000 tests across both studies, and a
+# module signal can survive where a single gene cannot. The gene-level counts are
+# READ from the blocked gene-trait tables rather than written here: they changed
+# once already, when the gene universe moved from the merged graph's conserved-edge
+# set (39,226 / 44,118) to the Pearson-only node set, and a hardcoded number in a
+# legend is exactly the thing that goes stale without anyone noticing. This figure shows what that buys, how the
 # responsive set was selected, that it is not noise, and what the responding
 # modules look like.
 #
@@ -61,7 +65,8 @@ cfg <- lapply(STUDIES, function(st) list(
   null    = env_req(sprintf("CLEAN_NULL_%s", toupper(st))),
   eigen   = env_req(sprintf("CLEAN_EIGEN_%s", toupper(st))),
   meta    = env_req(sprintf("CLEAN_META_%s", toupper(st))),
-  traits  = env_req(sprintf("CLEAN_TRAITS_%s", toupper(st)))))
+  traits  = env_req(sprintf("CLEAN_TRAITS_%s", toupper(st))),
+  genetrait = env_opt(sprintf("CLEAN_GENETRAIT_%s", toupper(st)), "")))
 names(cfg) <- STUDIES
 
 banner(sprintf("Figure %s — module-level nitrogen response", FIG))
@@ -88,6 +93,18 @@ theme_f <- theme_bw(base_size = 8) +
 
 PROF <- rbindlist(lapply(STUDIES, function(st)
   fread(cfg[[st]]$profile)[, study := st]), fill = TRUE)
+
+# THE GENE-LEVEL TESTING BURDEN, read rather than typed. It is the row count of the
+# blocked gene-trait table, i.e. one test per network node. If the table is absent
+# the legend says so instead of quoting a number that might be from another universe.
+N_GENE_TESTS <- setNames(lapply(STUDIES, function(st) {
+  f <- cfg[[st]]$genetrait
+  if (nzchar(f) && file.exists(f)) {
+    n <- nrow(fread(f, select = 1L))
+    say(sprintf("  %-10s gene-level tests: %s", st, fmt_n(n)))
+    n
+  } else NA_integer_
+}), STUDIES)
 PROF[, study := factor(study, levels = STUDIES)]
 NUL <- rbindlist(lapply(STUDIES, function(st)
   fread(cfg[[st]]$null)[, study := st]))
@@ -317,12 +334,17 @@ legend <- paste0(
 "summarised by an eigengene -- PC1 of its members' variance-stabilised expression, genes scaled ",
 "before the decomposition per the WGCNA convention, oriented to mean module expression and ",
 "z-scored -- giving ", fmt_n(rs(S1, "tested")), " and ", fmt_n(rs(S2, "tested")),
-" tests per study instead of the 39,226 and 44,118 the gene level carries. Association with ",
-"nitrogen is SPEARMAN'S RHO ALONE, at padj <= ", sprintf("%.2f", PADJ_THR),
+" tests per study instead of the ", paste(vapply(STUDIES, function(st)
+  ifelse(is.na(N_GENE_TESTS[[st]]), "?", fmt_n(N_GENE_TESTS[[st]])), ""), collapse = " and "),
+" the gene level carries. Association with ",
+"nitrogen is a BLOCKED SPEARMAN PARTIAL CORRELATION -- the eigengene and the trait are both ",
+"reduced to midranks and then residualised on the experimental design (genotype, and leaf ",
+"segment in sugarcane), so rho is the association that survives with the design in the model ",
+"rather than beside it -- at padj <= ", sprintf("%.2f", PADJ_THR),
 " (Benjamini-Hochberg over every module in the study) and |rho| >= ", sprintf("%.1f", R_THR),
-", the same two thresholds the gene level uses. Neither Pearson nor mutual information is used ",
-"here: the trait is ordinal, and MI at this resolution proved to be an omnibus test firing on ",
-"quirks in one or two libraries.\n",
+", the same two thresholds the gene level uses. Neither marginal Pearson nor mutual information ",
+"decides anything here: the trait is ordinal, and MI at this resolution proved to be an omnibus ",
+"test firing on quirks in one or two libraries.\n",
 "\n",
 "(A) Every module as |rho| against its adjusted p, with both thresholds dashed; coloured points ",
 "clear both. The panel is here to show WHICH THRESHOLD BINDS, and it is a different one in each ",

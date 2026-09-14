@@ -883,6 +883,8 @@ main() {
     CLEAN_META_PURPLE="$META_purple" \
     CLEAN_TRAITS_SUGARCANE="$TRAITS_sugarcane" \
     CLEAN_TRAITS_PURPLE="$TRAITS_purple" \
+    CLEAN_GENETRAIT_SUGARCANE="$(study_dir sugarcane)/gene_trait_blocked_sugarcane.tsv" \
+    CLEAN_GENETRAIT_PURPLE="$(study_dir purple)/gene_trait_blocked_purple.tsv" \
     CLEAN_OUT_PREFIX="${RESULTS}/figures/figure${FIG_MODULES}_modules" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_PLOT" "${SCRIPTS}/24_fig_modules.r"
