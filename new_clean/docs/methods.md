@@ -142,6 +142,12 @@ One study per invocation, so a purple failure cannot lose the sugarcane result.
 
 ## 06 · conserve — `./run.sh conserve <direction>`
 
+> **Superseded at edge level by `62 · consedges`.** This stage streams
+> `network_<study>_edges.tsv`, and the Pearson-only versions of those tables were
+> deleted (70 GB whose only consumer was `mcxload`), so it cannot run on the graphs the
+> analysis now uses. It is kept as the record of the merged-network result and because
+> its by-layer breakdown is the evidence on the MI layer.
+
 For each edge of network A, project both genes through orthology and ask whether
 any resulting ortholog pair is an edge in network B.
 
@@ -204,6 +210,10 @@ the MI-vs-Pearson contrast.
 
 ## 07 · trait — `./run.sh trait <study>`
 
+> **Superseded by `31 · traitblocked`.** This is the MARGINAL correlation, over the
+> merged graph's conserved-edge gene set. Kept as the record of that analysis; nothing
+> downstream reads it any more.
+
 Per-gene expression vs trait, restricted to genes on at least one conserved edge.
 
 | | |
@@ -257,6 +267,10 @@ built for, and no help at all on purple.
 ---
 
 ## 08 · conscor — `./run.sh conscor`
+
+> **Superseded at node level by `61 · consblocked`**, which applies the blocked rule on
+> the Pearson-only node universe. Its EDGE level is superseded by `62 · consedges`.
+> Kept as the record of the merged-network, marginal-rule analysis.
 
 Node-level conservation of the nitrogen response: which ortholog pairs are
 trait-correlated on both sides, and do they move in the same direction?
@@ -353,9 +367,22 @@ cannot be disturbed; with `sbm` the outputs land in `results/<study>/sbm/`.
 
 ## 14-19 · module-level analysis
 
+> **`moduletrait` now runs `53_module_trait_blocked.r`, not `19`.** The statistic is a
+> blocked Spearman **partial** correlation: eigengene and trait are both reduced to
+> midranks and residualised on the design (genotype, plus leaf segment in sugarcane), so
+> rho is the association that survives with the design in the model rather than beside
+> it. `19`'s reasoning about why one rank correlation and not three statistics still
+> stands and is not repeated in `53`. Thresholds are unchanged — only the model differs —
+> and `53` computes the MARGINAL fit on the same eigengenes so the effect of blocking is
+> a comparison of two models of one module set, never a join against a previous run
+> (module names are positional: `Module_001` under a different clustering is a different
+> gene set). Blocking doubles the responsive set and loses nothing: 527 → 588 in
+> sugarcane, 110 → 182 in purple, a strict superset both times. Sugarcane's plant-level
+> control agrees at r = +0.9486.
+
 ```
 ./run.sh eigengene    <study>          # PC1 per module -> a VST-format matrix
-./run.sh moduletrait  <study>          # Spearman rho vs the trait, on it
+./run.sh moduletrait  <study>          # blocked Spearman partial correlation (53)
 ./run.sh moduleprofile <study>         # + TF hypergeometric per module
 ./run.sh moduleheatmap <study> [mods]  # per-module gene heatmaps
 ./run.sh modulesummary <study>         # one figure: all responsive modules
@@ -491,10 +518,12 @@ requires the *complete* p-vector of every module, not just the retained terms,
 because BH takes a cumulative minimum from the largest p downwards.
 
 `MODULE_GO_MIN_ANNOTATED = 3` gates which modules are testable. It is
-deliberately low: a 3-gene module *can* reach p < 0.05 against an 8,251-gene
-background, so the gate only skips modules where the test is undefined. **In
-practice it is the binding constraint on the whole stage** — see
-[results.md](results.md). `n_annotated` is written for every module, gated ones
+deliberately low: a 3-gene module *can* reach p < 0.05 against the
+GO-annotated background, so the gate only skips modules where the test is
+undefined. It **was** the binding constraint on the whole stage when that
+background was eggNOG's 8,251 genes and only ~11% of responsive modules were
+testable; on the adopted annotation (64,178 / 109,591 annotated nodes) it is
+479 of 588 and 118 of 182 — see [results.md](results.md). `n_annotated` is written for every module, gated ones
 included, so filtering harder needs no re-run.
 
 **Two grains of output.** The joined table answers "does the responsive set have
@@ -541,15 +570,213 @@ gene set.
 
 ---
 
-## 09 · go — `./run.sh go BP|MF|CC`
+## 46-52 · the Pearson-only clustering track
+
+The analysis moved off the merged network onto the **Pearson-only** graphs at each
+species' own modularity optimum. Six stages, in order.
+
+| stage | what it does |
+|---|---|
+| `pearsonmci <study>` | streams the Pearson layer through `awk` into `mcxload`, writing `<study>.mci` + `.tab` directly. Avoids materialising the 70 GB nine-column edge table; asserts the edge count equals `n_significant_edges` and that no node has degree 0 |
+| `mclladder <study>` | one independent `mcl` run per inflation, with `clm info` scored **one partition per call** |
+| `leidensweep <study>` | Leiden CPM/modularity and Louvain, written in mcl's own cluster format so `clm info` scores every method identically |
+| `clustercompare <study>` | scores every partition in the manifest against ONE reference matrix |
+| `membership <study>` | adopts an existing partition into the clustering contract; refuses a cell whose `.inflation` sidecar disagrees |
+| `nodemetrics <study>` | per-node degree/strength and the global metrics, from the `.mci` |
+
+| | |
+|---|---|
+| writes | `<study>.mci`/`.tab` in `CLUSTER_WORK_DIR`, `mcl_sweep_<study>.tsv`, `network_<study>_{node,global}_metrics.tsv` |
+| cost | `pearsonmci` ~20 min (purple), one mcl cell ~3.5 min (sugarcane) to ~40 min (purple) |
+| env | `mcl` binaries + `r_net_env` / `pytorch` |
+
+**`clm info`'s `eff` and `mf` depend on which OTHER clusterings are in the call.**
+Measured on one fixed matrix and one fixed cluster file: `cls.knone.I6` alone gives
+eff = 0.47281, and in a batch of eight gives 0.37821. `mod` and `af` are unaffected.
+Scored one at a time, `eff` rises monotonically across the ladder; batched, it develops
+discontinuities that look like structure. Every scoring call here passes one partition.
+
+**mcl silently ignores `-I` above 30** — `-I 40` returned `-I 2`'s partition byte for
+byte — and **underflows above ~`-I 13`** (35,044 of 101,990 vectors zeroed at `-I 20`),
+returning a plausible-looking partition that is numerically meaningless. Both are
+guarded; underflowed cells are flagged and excluded from the figure.
+
+Adopted: **`-I 1.5`** (sugarcane) and **`-I 3.5`** (purple), each species' modularity
+optimum. `-I 2` retains 98.1% of peak modularity in both and is what the earlier
+analysis used.
+
+---
+
+## 31 · traitblocked — `./run.sh traitblocked <study>`
+
+The gene-level nitrogen test with the experimental design **in the model** rather than
+in the residual.
+
+    sugarcane   expr ~ genotype + segment + N            n = 48, resid df 42, Pearson
+    purple      expr ~ genotype + N        on midranks   n = 18, resid df 15, Spearman
+
+| | |
+|---|---|
+| reads | `<study>.f32` VST, the samplesheet, `network_<study>_node_metrics.tsv` |
+| writes | `<study>/gene_trait_blocked_<study>.tsv` + `_summary.tsv` |
+| cost | seconds |
+| env | `r_net_env` |
+
+**The universe is the Pearson-only network's node set** (101,990 / 170,135), not the
+merged graph's conserved-edge set (39,226 / 44,118) the first version used. That raises
+the BH denominator 2.6× and 3.9×, so its counts are not comparable with the old ones.
+
+Purple is Spearman because its trait is an **ordinal 0/2/6 mM dose** and Pearson reads
+that spacing literally. Sugarcane's trait is two-level, where Spearman on midranks is the
+same test up to a monotone relabelling. Both statistics are computed and written either
+way.
+
+The solver is `lib/common.R`'s `fit_blocked()`, shared with `53`, and
+`verify_against_lm()` aborts the run if it does not reproduce `lm()` to 1e-8. The
+**marginal** fit is computed here on the same rows — never joined from `07`'s table,
+which corrects over a different universe.
+
+Sugarcane also gets a **plant-level control**: its 48 libraries are 12 plants × 4 leaf
+segments, so segment-averaged (n = 12, resid df 9) is refitted and correlated against the
+blocked fit. They agree at r = +0.9761.
+
+Diagnostic to read every time: the p-value histogram. Purple's marginal one **rises** in
+its last decile (12.5%), which a mixture of a uniform null and real signal cannot do.
+Blocking takes it to 10.2% — better, still not flat.
+
+---
+
+## 61 · consblocked — `./run.sh consblocked [0|1]`
+
+Which ortholog genes are nitrogen-correlated in **both** species. Node level, blocked
+rule, on the Pearson-only networks. `ARG=1` runs the directed variant (discover in
+sugarcane, re-correct purple over the candidate orthologs only).
+
+| | |
+|---|---|
+| reads | `gene_trait_blocked_*`, `gene_trait_ushape_purple.tsv`, node lists, `Orthogroups.tsv` |
+| writes | `conservation/conserved_correlated_*_blocked_nodes*.tsv`, `<study>_status_blocked_nodes.tsv` |
+| cost | ~1 min |
+| env | `r_net_env` |
+
+Universe: ortholog pairs whose **both** sides are network nodes — 114,681 pairs over
+43,390 orthogroups, asserted at run time and shared with `62`.
+
+Purple gets a second test family, the **quadratic contrast** (`30 · ushape`), because its
+three nitrogen levels let a gene respond to deficiency and excess alike. Each family is
+BH-corrected within itself over the same genes and the selections unioned; the script
+aborts if the two gene sets differ. Sugarcane's two-level design cannot express curvature
+at all, so the asymmetry is declared, not hidden.
+
+**Four statuses, kept apart**, because collapsing them makes a coverage gap look like
+biological absence: `no_ortholog`, `ortholog_not_a_node` (new — only 59.7% of sugarcane's
+VST genes are network nodes), `ortholog_not_correlated`, `conserved_correlated`.
+
+Sign concordance is tested **per orthogroup** as well as per pair: orthology is
+many-to-many, so 392 pairs are not 392 independent trials.
+
+---
+
+## 62 · consedges — `./run.sh consedges <direction>`
+
+Edge-level conservation on the Pearson-only graphs, for all edges and for the
+nitrogen-correlated subsets.
+
+| | |
+|---|---|
+| reads | `<study>.pairs` (the mcxdump edge stream), `<study>.tab`, `Orthogroups.tsv`, `61`'s status tables |
+| writes | `conserved_edges_<A>_to_<B>_pearson.tsv`, `conservation_summary_*_pearson.tsv`, `conserved_genes_<A>_pearson.txt` |
+| cost | ~20 min per direction |
+| env | `pytorch` (numpy + pandas) |
+
+**The input is the mcxdump already on disk.** `47_leiden_sweep.py` dumped each graph as
+`<study>.pairs` — one row per undirected edge, `idx1 idx2 weight` — and both files verify
+line for line against the matrices (75,333,769 and 675,955,918). Nothing is regenerated,
+and the edge **weight** comes along for free.
+
+Everything runs in integer index space; gene names are materialised only when conserved
+edges are written. The target adjacency is one sorted `int64` key array
+(`min << 32 | max`, 5 GB for purple), built once and reused by the observed pass and every
+null replicate.
+
+**Only conserved edges are written** (7.8 M and 10.2 M rows, ~1 GB), not every edge with a
+TRUE/FALSE column (~36 GB here) that every consumer filtered immediately.
+
+Three strata in one pass — all edges, both endpoints responsive in the source species,
+both endpoints responsive in both — crossed with rank-based **weight deciles**, which
+replace the by-layer breakdown that a single-layer graph makes vacuous.
+
+**Each stratum's null uses the edge set it can afford**, and this is not a detail: a
+Bernoulli sample sized for a 676 M-edge network catches ~46 of purple's 5,692 `resp_both`
+edges, and if none happens to be conserved the stratum reports **fold 0.0 against a true
+rate of 5.9%**. The responsive strata therefore use the **complete** stratum and only
+`all` is sampled; every output row carries a `null_basis` column naming its set.
+
+`verify_edge_join.py` checks the join by an independent route — gene names through a fresh
+`Orthogroups.tsv` parse, membership confirmed by one `awk` pass over the raw dump. 4,000
+of 4,000 conserved edges confirmed, 0 of 4,000 non-conserved wrongly matched.
+
+---
+
+## 63 · degreego — `./run.sh degreego <study> [BP|MF|CC]`
+
+What hubs are for, and what the periphery is for.
+
+| | |
+|---|---|
+| reads | `network_<study>_node_metrics.tsv`, `gene2go_<study>.tsv` |
+| writes | `<study>/degree_go_<study>.tsv` |
+| cost | ~30 s per direction |
+| env | `topGO_env` |
+
+Every GO-annotated network node is ranked by degree, and each GO term tested for
+concentration at one end by a **Kolmogorov–Smirnov statistic under `weight01`**. Two
+readings of one ranking: `rank(-degree)` for hubs, `rank(+degree)` for the periphery.
+
+**The ranking is used whole.** Degree spans four orders of magnitude (sugarcane p10 = 2,
+median 53, p90 = 6,677), so a decile cut is arbitrary and discards the middle. `weight01`
+is kept rather than moving to `fgsea` because it decorrelates the GO DAG — without it a
+parent and its children score on the same genes.
+
+**An effect size is written beside every p**, because at n = 64,178 a KS test is
+significant on shifts that do not matter: `carbohydrate metabolic process` clears
+p = 2.6e-08 at 1.04× the background median degree, against `trehalose biosynthetic
+process` at 0.15×.
+
+`CLEAN_EXPECT_ANNOTATED` makes the stage **refuse** to run on a universe other than the
+one `09 · go` tests against (64,178 / 109,591). This panel is a control on figure 4 panel
+B, and a control on a different background controls nothing.
+
+> `data.table`'s auto-indexing **segfaults** in `topGO_env` —
+> `d[gene %chin% names(gene2GO)]` dies in `forderv → setkeyv → setindexv`. The script is
+> base R throughout for that reason.
+
+---
+
+## 09 · go — `./run.sh go BP|MF|CC [conserved|nonconserved]`
 
 topGO **weight01** Fisher, once per ontology, thresholded on the **raw**
 weight01 p-value (`GO_P`, default 0.05) — not on an FDR.
 
+**Two gene sets, one partition.** `conserved` is the genes on at least one conserved
+edge; `nonconserved` is the exact complement — network nodes with NO conserved edge.
+Together they partition the node set (sugarcane 37,867 + 64,123 = 101,990) and share a
+background, so the two runs are one gene set split two ways. `CLEAN_GENE_SET` drives the
+gene list, the output directory **and** every output filename, so the two cannot collide.
+
+> The literal alternative — "genes on at least one NON-conserved edge" — was measured and
+> rejected: at a mean degree near 1,477 it is 101,256 of 101,990 sugarcane nodes (99.3%),
+> i.e. the background itself.
+
+**GO comes from the adopted table**, not the eggNOG column: `CLEAN_GENE2GO_*` and
+`parse_gene2go()`, the same reader `18` uses. `CLEAN_CONS_SET` selects the `_pearson`
+(current) or `_FULL` (merged-network) gene lists; they are different gene sets from
+different networks and must not be mixed.
+
 | | |
 |---|---|
-| reads | eggNOG annotations, `conserved_genes_*_FULL.txt`, `network_*_node_metrics.tsv` |
-| writes | `results/conservation/enrichment_conserved/<study>/GO_<ont>_*` + comparison files |
+| reads | `gene2go_<study>.tsv`, `{conserved,nonconserved}_genes_*_pearson.txt`, `network_*_node_metrics.tsv` |
+| writes | `results/conservation/enrichment_{conserved,nonconserved}/` + comparison files |
 | cost | minutes |
 | env | `topGO_env` |
 
@@ -571,6 +798,56 @@ Two deliberate choices, both departures from what this pipeline did before:
 An earlier version also ran BH over only the terms already at `p < 0.05`, which
 makes the adjusted values anti-conservative (BH's *m* must be the number of tests
 performed). Fixed; see [results.md](results.md) for what the counts did.
+
+---
+
+## 54-60 · the GO annotation, and why there is only one source
+
+Every GO-consuming stage reads one table: `annotation/<study>/gene2go_<study>.tsv`,
+derived from a **full local InterProScan 5.78 over all 17 member databases** via the GO
+Consortium's pinned `interpro2go`/`pfam2go`, normalised to most-specific terms.
+
+| stage | |
+|---|---|
+| `54_build_gene2go.sh` | InterPro accessions + Pfam domains → GO |
+| `56_run_eggnog_all.sh` | eggNOG re-annotation (`--go_evidence all`, `--tax_scope auto`) |
+| `57_run_interproscan.sh` | chunked, resumable full scan; the long pole at ~8 h |
+| `58_curated_transfer.sh` | Swiss-Prot Viridiplantae, experimental evidence codes only |
+| `60_normalise_gene2go.r` | strips the ancestor closure so every source is most-specific |
+| `55_go_coherence.r` | **the judge** — Sørensen–Dice homogeneity above a size-matched null |
+
+Coverage went 8.0% / 7.2% of network genes to **62.9% / 64.4%**.
+
+**The merge was rejected by its own judge, which is why one source and not four.** On a
+fixed gene set — identical genes, identical modules, so only the annotation varies:
+
+| annotation | H excess over null, sugarcane | purple |
+|---|---|---|
+| nfcore5db (InterPro, 5 DBs) | +0.0755 | — |
+| **ipsfull (InterPro, 17 DBs)** | **+0.0748** | **+0.0361** |
+| union (everything merged) | +0.0671 | +0.0264 |
+| eggnog_auto | +0.0650 | +0.0316 |
+
+Merging **lowers** coherence in both species, so a tiered table would have cost a
+`source`/`tier` column on every pair to buy negative signal. Two things the table says
+that the headline does not: eggNOG's **raw** H is 2.6× InterPro's while its excess is
+lower (what raw H measures is term density, 16.7 terms/gene against 2.1 — without a
+size-matched null it would have been adopted on sight); and the two InterPro tables are
+**tied**, 0.9% apart, so the 17-DB scan was adopted for **reach**, not coherence.
+
+`60_normalise_gene2go.r` is not optional: eggNOG ships GO **pre-propagated to the DAG
+roots** (69.9 terms/gene, `biological_process` on 75,696 genes), which would both win the
+Dice test on shared generalities and make topGO double-count, since topGO propagates
+internally.
+
+**PANNZER2 is out** and its 6.1 GB deleted. It never finished — purple completed
+(242/242 chunks, 5.2 M predictions) but sugarcane stopped at 174/195, with 21 chunks
+killed by `ConnectTimeout` to the public SANS service — and it was never scored. The
+runner stays (`59_run_pannzer.sh`, hardened in `b283178`: partial chunks quarantined,
+bounded retry passes).
+
+Non-adopted tables carry a `.notused` suffix; `annotation/README.md` records which is
+live and one line per source on why it is not.
 
 ---
 
@@ -683,7 +960,7 @@ position on this plane and not a value on either axis.
 
 **C — the gene funnel**: annotated and quantified → surviving the CV filter →
 nodes in the network, with the fraction retained. A reader who sees only
-"103,336 nodes" cannot tell whether that is most of the annotation or a tenth.
+"101,990 nodes" cannot tell whether that is most of the annotation or a tenth.
 
 **D — PCA per study** on the 2,000 most variable genes (`PCA_NTOP`).
 **What each axis tracks is measured, not assumed** — the script regresses each
@@ -791,16 +1068,26 @@ being combined with `%v%`, which would force them onto one axis.
 |---|---|
 | cost | ~20 s |
 | env | `r_env` (ggplot2, patchwork, scico, svglite, scales) |
-| inputs | node metrics, global metrics, MCL module summaries, the merge step's `edges.summary.json` |
+| inputs | node metrics, global metrics, MCL module summaries, `degree_go_<study>.tsv` |
 
-**No edge table is read.** The two edge files are 76 M and 706 M rows; every
-number here comes from the small per-study summaries.
+**No edge table is read.** Every number comes from the small per-study summaries.
 
 Its job is to stop a reader importing intuitions from sparse biological
-networks. These are dense thresholded correlation graphs — mean degree ~1,500
-and ~8,300, edge density 1.4% and 4.8%, and purple is a **single** connected
-component. Every later claim about hubs, modules or centrality has to be read
-against that.
+networks. These are dense thresholded correlation graphs — mean degree ~1,477
+and ~7,946, edge density 1.4% and 4.7%. Every later claim about hubs, modules or
+centrality has to be read against that.
+
+Three panels: **A** degree CCDF, **B** module-size CCDF, **C** what hubs versus the
+periphery are enriched for (from `63 · degreego`; point size is the median-degree ratio,
+so a term that is significant but flat is visibly small).
+
+Two panels were dropped on 2026-09-12: mean weight against degree, as uninformative, and
+edge composition by layer, which is a single 100% bar on a Pearson-only graph.
+
+> **Purple is NOT one connected component** on Pearson edges alone — it has **43**, with
+> the giant holding 99.95% of nodes; sugarcane has **958**. The single-component claim was
+> true of the merged graph, and the MI layer was what joined those pieces. The legend now
+> reads the counts from the data.
 
 **A and D are complementary CDFs**, not frequency histograms. At this size the
 upper tail of a histogram holds one node per bin and reads as noise; a CCDF is
@@ -824,6 +1111,17 @@ nodes each.
 > legend quotes its flat span.
 
 ### `figconservation` — what transfers between the two networks
+
+> **Rebuilt 2026-09-13 on the Pearson-only graphs.** Panels: **A** observed conserved-edge
+> rate against each direction's own null; **B** GO of the genes on a conserved edge
+> against the exact complement; **C** conservation against edge strength, in weight
+> deciles on a log axis; **D** the funnel. The old panel C (edge composition by layer) is
+> gone — one layer. Sources are `62 · consedges`, `61 · consblocked` and `09 · go`.
+>
+> **Panels B and C of figure 3 are entangled and both legends say so.** Genes on a
+> conserved edge are hubs (median degree 228 vs 18 in sugarcane), partly by arithmetic,
+> so B's housekeeping/regulation split and figure 3 panel C's hub/periphery split are one
+> contrast seen twice. Neither is independent evidence for the other.
 
 ```
 ./run.sh figconservation  # -> results/figures/figure<N>_conservation.{png,pdf,svg}
@@ -902,6 +1200,11 @@ orthology or conservation.
 > for.
 
 ### `figmodules` — the nitrogen response at module level
+
+> The statistic is the **blocked Spearman partial correlation** (`53`), not `19`'s
+> marginal rho. Its panels have been current since the 2026-09-10 rebuild; its legend
+> carried the old gene-level testing burden (39,226 / 44,118) until 2026-09-14 and now
+> reads it from the blocked gene-trait tables.
 
 ```
 ./run.sh figmodules       # -> results/figures/figure<N>_modules.{png,pdf,svg}
@@ -990,6 +1293,15 @@ weak signal drawn from the ~11% of modules that are individually testable.
 follows in C.
 
 ### `figmodule20` — Muñoz's Module 20 in purple
+
+> **Three panels since 2026-09-12.** **A** the module in sugarcane with the nine
+> AtMYB59-anchor copies marked and named — the focus gene is a PURPLE gene and has no row
+> there, but the same locus does, and the figure's whole contrast is a claim about those
+> rows. **B** the purple copies with a **TF annotation column** (the same annotation the
+> per-module heatmaps carry; 2 of 27 copies are called transcription factors, and the
+> independent domain call agrees on all 27). **C** the one expressed copy on its own. The
+> old bar panel — mapped genes per Arabidopsis anchor — was dropped; its numbers are in
+> the legend and `_stats.tsv`.
 
 ```
 ./run.sh figmodule20      # -> results/figures/figure<N>_module20.{png,pdf,svg}

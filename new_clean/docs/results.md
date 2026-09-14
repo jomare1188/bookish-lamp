@@ -98,6 +98,15 @@ Independent checks that passed:
 
 ## The network
 
+> **Superseded on 2026-09-10 by the Pearson-only rebuild.** This section records how
+> the MERGED (Pearson + MI) network was built and what it contained, which is still the
+> provenance of the graph the Pearson layer was taken from. The analysis now runs on the
+> **Pearson-only** subset: 75,333,769 sugarcane edges and 675,955,918 purple, built
+> directly into MCL's matrix format by `46_pearson_mci.sh`. The MI layer is not used
+> anywhere downstream. Do not quote the edge counts or the layer breakdown below against
+> anything after "The module analysis, rebuilt".
+
+
 | study | total edges | pearson only | both | mi only | size |
 |---|---|---|---|---|---|
 | sugarcane | **76,200,344** | 73,329,192 (96.23%) | 2,004,577 (2.63%) | **866,575 (1.14%)** | 8.27 GB |
@@ -139,6 +148,15 @@ reproduces the post-hoc filter.
 ---
 
 ## Topology
+
+> **Superseded on 2026-09-12.** The node, edge, component and density figures below are
+> the MERGED network's. Recomputed on the Pearson-only graphs by
+> `52_pearson_node_metrics.sh`: sugarcane **101,990** nodes / 75,333,769 edges / density
+> 0.01448468 / **958** components (giant 99,851); purple **170,135** / 675,955,918 /
+> 0.04670502 / **43** components (giant 170,046, 99.95%). Purple is NOT one connected
+> component on Pearson edges alone — the MI layer was what joined those 43 pieces.
+> Figure 3 is drawn from the current numbers.
+
 
 | study | nodes | edges | components | giant component | density |
 |---|---|---|---|---|---|
@@ -883,6 +901,15 @@ Machinery: `scripts/46`–`50`, `verify_cluster_roundtrip.py`, `run.sh` stages
 
 ## Conservation
 
+> **Superseded on 2026-09-13 by "Edge-level conservation, on the Pearson-only networks"
+> below.** Everything here is the MERGED network under `06_conservation_join.r`, and its
+> organising question — whether MI-only edges conserve as well as Pearson ones — is
+> vacuous on a single-layer graph. The current answer is 10.36% and 1.51% against
+> ortholog-shuffle nulls of 1.69× and 1.71×, from `62_conserved_edges_pearson.py`. The
+> reasoning below about why the two directions are not comparable to each other still
+> stands and is not repeated there.
+
+
 Each direction streams one network and looks its edges up in the other. **The two
 directions therefore test different MI layers** — `sugarcane_to_purple` tests
 sugarcane's 866,575 MI-only edges, `purple_to_sugarcane` tests purple's
@@ -969,6 +996,14 @@ the most robust one after.
 ---
 
 ## Gene–trait correlation and node-level conservation
+
+> **Superseded on 2026-09-12 by "The gene analysis, rebuilt" below.** This is the
+> MARGINAL test (`07_gene_trait_cor.r`) over the merged graph's conserved-edge gene set
+> (39,226 / 44,118 genes). The gene level now uses a BLOCKED model over the Pearson-only
+> node set (101,990 / 170,135), and the node-level conservation answer comes from
+> `61_conserved_blocked_nodes.r`. The counts below are not comparable with those: both
+> the model and the BH denominator changed.
+
 
 Per-gene expression vs trait, restricted to genes on a conserved edge.
 
@@ -1597,6 +1632,47 @@ response.
 > for a gene that does exactly that.
 
 ---
+
+---
+
+## Where the analysis stands (2026-09-14)
+
+Everything above this line describes the **merged (Pearson + MI)** network at `-I 2`, or
+the marginal statistics computed on it. Everything below describes the current analysis.
+The five sections that follow are the current result; the sections above are kept for the
+reasoning that produced them and carry their own superseded banners.
+
+| | current |
+|---|---|
+| network | **Pearson-only**, \|r\| ≥ 0.8, unpruned. 101,990 nodes / 75,333,769 edges (sugarcane); 170,135 / 675,955,918 (purple) |
+| clustering | MCL at each species' modularity optimum — `-I 1.5` and `-I 3.5` |
+| gene-level trait test | **blocked**, over the network node universe |
+| module-level trait test | **blocked Spearman partial correlation** |
+| GO | **one source**: full InterProScan, 17 DBs. 62.9% / 64.4% of network nodes |
+| conservation | node level (`61`) and edge level (`62`), both on the Pearson-only graphs |
+
+| | sugarcane | purple |
+|---|---|---|
+| responsive genes (blocked) | 8,737 | 3,854 |
+| responsive modules (blocked) | 588 of 3,627 | 182 of 7,493 |
+| modules testable for GO | 479 | 118 |
+| BP terms clearing cross-module BH | 164 | 9 |
+| edges with a conserved partner | 10.36% (fold 1.69) | 1.51% (fold 1.71) |
+| genes on a conserved edge | 37,867 | 42,194 |
+| responsive on both sides of an ortholog pair | 326 | 311 |
+
+**Three findings and one non-finding**, in one place:
+
+1. **Conservation rises with edge strength**, monotonically across all ten weight deciles
+   in both directions, in rate *and* in fold over null.
+2. **The network core is housekeeping, the periphery is regulation** — visible both from
+   edge conservation (figure 4B) and from degree (figure 3C). The two are entangled and
+   neither is independent evidence for the other.
+3. **Direction of the nitrogen response is conserved** where the response itself is:
+   59.5% of orthogroups agree in sign, p = 0.0022.
+4. **The number of nitrogen-responsive genes shared between the species does not beat
+   chance** — 1.08× at p = 0.071, and below the null under the directed design. Only the
+   *pair* count beats it, and that is ortholog multiplicity.
 
 ---
 
@@ -2341,7 +2417,19 @@ side turns back up.
   0.94x under the directed design. Only the *pair* count does (1.25x), and that is
   ortholog multiplicity. The conservation claim rests on **direction** (59.5% of
   orthogroups, p 0.0022), not on how many genes respond in both species.
-- **Purple's 79 responsive modules are not 79 independent findings.** Its
-  permutation null reaches 244 in the worst of 1,000 shuffles because the network
-  is one dense component. Any per-module claim from purple needs the module
-  looked at, not just the padj.
+- **Purple's 182 responsive modules are not 182 independent findings.** Its
+  permutation null reached 244 in the worst of 1,000 shuffles under the previous
+  build, because the network is one dense component. Any per-module claim from purple
+  needs the module looked at, not just the padj.
+- **The MI layer is no longer used anywhere**, so the two open items above about
+  purple's MI floor are now historical rather than actionable. They describe the
+  merged build.
+- **Edge conservation and degree are not separated.** Genes on a conserved edge are
+  hubs (median degree 228 vs 18 in sugarcane), partly by arithmetic, so figure 4B's
+  conserved/non-conserved GO split and figure 3C's hub/periphery split are one
+  contrast seen twice. Whether cross-species edge conservation selects housekeeping
+  genes *over and above* their being hubs would need a degree-matched comparison,
+  which is not done here.
+- **`10_go_semantic.r` is the last stage on the old annotation.** It clusters terms
+  from the 7.7% eggNOG GO column. Every other GO-consuming stage moved to the adopted
+  InterProScan table on 2026-09-13/14.
