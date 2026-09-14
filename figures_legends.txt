@@ -53,8 +53,8 @@ these metrics.
 (C) Genes surviving each stage from annotation to network, per study, with the percentage of
 the annotated set retained above each bar. Of 190,973 annotated and quantified genes in
 sugarcane, 170,790 (89%) clear the coefficient-of-variation filter used to build the network
-and 103,336 (54%) end up as nodes; for purple the same three numbers are 215,183, 170,740 (79%)
-and 170,736 (79%). The CV filter removes a similar share from both, but the step from filtered
+and 101,990 (53%) end up as nodes; for purple the same three numbers are 215,183, 170,740 (79%)
+and 170,135 (79%). The CV filter removes a similar share from both, but the step from filtered
 genes to network nodes does not: a gene becomes a node only by carrying at least one edge above
 the significance threshold, and at n = 18 that threshold is far softer, which is why purple
 retains nearly all of its filtered genes as nodes and sugarcane does not. This panel is the

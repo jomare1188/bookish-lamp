@@ -23,6 +23,8 @@ Everything displaced is in `_pre_pearson_20260910/`.
 | `conservation/conserved_edges_<A>_to_<B>_pearson.tsv` | **edge-level** conservation on the Pearson-only graphs, conserved edges only with weights (7.8 M and 10.2 M rows) |
 | `conservation/conservation_summary_<A>_to_<B>_pearson.tsv` | rates by stratum and by weight decile, each against its own ortholog-shuffle null, with a `null_basis` column |
 | `conservation/conserved_genes_<A>_pearson.txt` | genes on a conserved Pearson-only edge (37,867 / 42,194) — **not** a filter for any stage |
+| `figures/figure1_dataset_qc.*` | rebuilt 2026-09-14; the gene funnel reads the Pearson-only node sets (101,990 / 170,135), not the merged graph's 103,336 / 170,736 |
+| `figures/figure2_reproduction.*` | verified 2026-09-14 — re-rendering is byte-identical. Its inputs are study-intrinsic (TPM, expression ANOVA, variance partition) and unaffected by the network rebuild |
 | `figures/figure4_conservation.*` | rebuilt 2026-09-13 on the Pearson-only graphs: rates vs null, conserved-set GO on the adopted annotation, the **strength curve** (replacing the dead layer panel), the funnel |
 | `conservation/enrichment_conserved/`, `enrichment_nonconserved/` | GO (BP/MF/CC) for the genes on a conserved edge and for the exact complement, on the `_pearson` gene sets and the adopted InterProScan annotation |
 | `conservation/nonconserved_genes_<study>_pearson.txt` | network nodes with NO conserved edge — the complement of `conserved_genes_<study>_pearson.txt`, together an exact partition |
