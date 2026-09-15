@@ -1,21 +1,49 @@
 panel	study	quantity	value
-B	purple	AT3G55960: called MYB	 0
-B	purple	AT4G10770: called MYB	 0
-B	purple	AT5G59780: called MYB	 2
-B	sugarcane	AT3G55960: called MYB	 0
-B	sugarcane	AT4G10770: called MYB	 0
-B	sugarcane	AT5G59780: called MYB	 9
-B	purple	AT3G55960: not MYB	12
-B	purple	AT4G10770: not MYB	12
-B	purple	AT5G59780: not MYB	 1
-B	sugarcane	AT3G55960: not MYB	14
-B	sugarcane	AT4G10770: not MYB	10
-B	sugarcane	AT5G59780: not MYB	 0
-D	purple	Soffic.09G0001580-9H, 51NG3, control	10.8 TPM
-D	purple	Soffic.09G0001580-9H, 51NG3, high N	47.4 TPM
-D	purple	Soffic.09G0001580-9H, 51NG3, low N	124.1 TPM
-D	purple	Soffic.09G0001580-9H, TAGZ, control	40.0 TPM
-D	purple	Soffic.09G0001580-9H, TAGZ, high N	75.6 TPM
-D	purple	Soffic.09G0001580-9H, TAGZ, low N	65.5 TPM
-D	purple	Soffic.09G0001580-9H U-contrast, 51NG3	est +5.39, p 0.0078
-D	purple	Soffic.09G0001580-9H U-contrast, TAGZ	est +1.86, p 0.1420
+-	purple	AT3G55960: called MYB	 0
+-	purple	AT4G10770: called MYB	 0
+-	purple	AT5G59780: called MYB	 2
+-	sugarcane	AT3G55960: called MYB	 0
+-	sugarcane	AT4G10770: called MYB	 0
+-	sugarcane	AT5G59780: called MYB	 9
+-	purple	AT3G55960: not MYB	12
+-	purple	AT4G10770: not MYB	12
+-	purple	AT5G59780: not MYB	 1
+-	sugarcane	AT3G55960: not MYB	14
+-	sugarcane	AT4G10770: not MYB	10
+-	sugarcane	AT5G59780: not MYB	 0
+B	purple	Soffic.09G0001580-9H TF call	TF
+B	purple	Soffic.05G0021340-5A TF call	TF
+B	purple	Soffic.05G0022030-5F TF call	not TF
+B	purple	Soffic.03G0031630-3F TF call	not TF
+B	purple	Soffic.03G0030830-3A TF call	not TF
+B	purple	Soffic.09G0014920-9G TF call	not TF
+B	purple	Soffic.09G0016060-9B TF call	not TF
+B	purple	Soffic.03G0030930-3H TF call	not TF
+B	purple	Soffic.03G0031200-3D TF call	not TF
+B	purple	Soffic.09G0014970-9E TF call	not TF
+B	purple	Soffic.09C0016350-9C TF call	not TF
+B	purple	Soffic.03F0031590-3F TF call	not TF
+B	purple	Soffic.03G0029470-3G TF call	not TF
+B	purple	Soffic.03G0031750-3E TF call	not TF
+B	purple	Soffic.03G0029950-3C TF call	not TF
+B	purple	Soffic.10G0001790-10A TF call	not TF
+B	purple	Soffic.10G0001830-10B TF call	not TF
+B	purple	Soffic.10E0001590-10E TF call	not TF
+B	purple	Soffic.10G0002510-10C TF call	not TF
+B	purple	Soffic.10F0000950-10F TF call	not TF
+B	purple	Soffic.10G0001580-10B TF call	not TF
+B	purple	Soffic.10G0002620-10H TF call	not TF
+B	purple	Soffic.10G0001910-10D TF call	not TF
+B	purple	Soffic.10G0002440-10H TF call	not TF
+B	purple	Soffic.10G0001590-10A TF call	not TF
+B	purple	Soffic.10G0002520-10C TF call	not TF
+B	purple	Soffic.10G0001570-10E TF call	not TF
+A	sugarcane	AT5G59780 copies marked in panel A	9
+C	purple	Soffic.09G0001580-9H, 51NG3, control	10.8 TPM
+C	purple	Soffic.09G0001580-9H, 51NG3, high N	47.4 TPM
+C	purple	Soffic.09G0001580-9H, 51NG3, low N	124.1 TPM
+C	purple	Soffic.09G0001580-9H, TAGZ, control	40.0 TPM
+C	purple	Soffic.09G0001580-9H, TAGZ, high N	75.6 TPM
+C	purple	Soffic.09G0001580-9H, TAGZ, low N	65.5 TPM
+C	purple	Soffic.09G0001580-9H U-contrast, 51NG3	est +5.39, p 0.0078
+C	purple	Soffic.09G0001580-9H U-contrast, TAGZ	est +1.86, p 0.1420

@@ -3,34 +3,44 @@ module's nitrogen response reproduces in the study's own data. This figure asks 
 in the other species, and the answer is not less of the same thing -- it is a different
 response shape, in one copy, that every monotone test in this work is blind to.
 
+WHAT THE 12 PUBLISHED MEMBERS ACTUALLY ARE, since every panel below depends on it. They are
+TransDecoder transcripts from a de novo assembly; mapped into each reference proteome by
+reciprocal DIAMOND blastp through Arabidopsis they resolve to only THREE anchors, and the
+mapped genes are haplotype COPIES of those few loci rather than 12 independent genes -- 33
+sugarcane genes from 10 members and 27 purple genes from 6. Only the AtMYB59 anchor carries a
+MYB call under our own Pfam/PlnTFDB rules, at 9 of 9 copies in sugarcane and 2 of 3 in purple,
+while the AT3G55960 and OPT7 anchors -- which supply most of the mapped genes in both species
+-- are not transcription factors at all. The AtMYB48 anchor maps to nothing in either network.
+The per-anchor counts are in figure7_module20_stats.tsv.
+
 (A) The module as reported, reproduced: all 33 mapped sugarcane genes across all 48 libraries
-as per-gene z-scores, split by nitrogen. It is small because it is the premise rather than the
-result -- the rest of the figure is what happens to this when it is carried into the other
-species.
+as per-gene z-scores, split by nitrogen. It is the premise rather than the result -- the rest
+of the figure is what happens to this when it is carried into the other species. The 9 rows
+marked and named are the sugarcane copies of the AtMYB59 anchor, i.e. THE SAME LOCUS as the
+focus gene in panels B and C, which is itself a purple gene and so has no row here. They are
+marked because the comparison this figure rests on is a claim about those particular rows:
+every one of them is monotonically REPRESSED by nitrogen (log2 fold change -1.8 to -3.4,
+BH-adjusted p ~ 1e-08 in the responsive genotype RB975375), which is visible as the band of
+high z at low N that goes uniformly low at high N. Unmarked, they are nine anonymous rows among
+33.
 
-(B) What the 12 published members actually are. They are TransDecoder transcripts from a de
-novo assembly; mapped into each reference proteome by reciprocal DIAMOND blastp through
-Arabidopsis they resolve to only THREE anchors, and the mapped genes are haplotype COPIES of
-those few loci rather than 12 independent genes -- 33 sugarcane genes from 10 members and 27
-purple genes from 6. Fill is our own Pfam/PlnTFDB domain call, which agrees with the source
-study on their proteins but not on the orthologs we map to: only the AtMYB59 anchor carries a
-MYB call, at 9 of 9 copies in sugarcane and 2 of 3 in purple, while the AT3G55960 and OPT7
-anchors -- which supply most of the mapped genes in both species -- are not transcription
-factors at all. The AtMYB48 anchor maps to nothing that is in either network. So the module's
-MYB identity is thin where it survives and absent where it does not.
+(B) The same module in purple, as a per-gene Z-SCORE, split by GENOTYPE as well as nitrogen,
+with rows grouped by Arabidopsis anchor and ordered by mean expression, and with the TF
+ANNOTATION COLUMN at the right. Only the responding copy is labelled; the other 26 ids would be
+unreadable at this size. Three choices, each deliberate. The Z-SCORE is what makes that copy
+legible at all: on an absolute scale it is a bright row among dim ones and the SHAPE of its
+response cannot be seen. Splitting by GENOTYPE is what makes the dominant structure visible --
+in purple these genes vary far more between the two species than across nitrogen, and a panel
+split by nitrogen alone hides that and invites the reader to attribute the variation to the
+treatment. The TF COLUMN is the same annotation the per-module heatmaps carry (from the
+network's own TF table), and it is here because the module is published as ~75% MYB or
+MYB-related: of the 27 purple copies, 2 are called transcription factors (Soffic.09G0001580-9H,
+Soffic.05G0021340-5A), both at the AtMYB59 anchor. Our independent domain call in the network
+table agrees with the TF table on every one of the 27 copies. Most copies are also flat or
+near-silent: 8 of the 27 run below 1 TPM, and the AtMYB59 block is nearly empty -- of its 3
+copies two sit at 0.01 and 0.00 TPM, i.e. they are not expressed in leaf at all.
 
-(C) The same module in purple, as a per-gene Z-SCORE and split by GENOTYPE as well as nitrogen;
-rows are grouped by Arabidopsis anchor and ordered by mean expression, and only the responding
-copy is labelled because the other 26 ids would be unreadable at this size. Both choices are
-deliberate. The Z-SCORE is what makes that copy legible at all: on an absolute scale it is a
-bright row among dim ones and the SHAPE of its response cannot be seen. Splitting by GENOTYPE
-is what makes the dominant structure visible -- in purple these genes vary far more between the
-two species than across nitrogen, and a panel split by nitrogen alone hides that and invites
-the reader to attribute the variation to the treatment. Most copies are flat or near-silent: 8
-of the 27 run below 1 TPM, and the AtMYB59 block is nearly empty -- of its 3 copies two sit at
-0.01 and 0.00 TPM, i.e. they are not expressed in leaf at all.
-
-(D) That copy on its own; points are libraries, lines join the means. Soffic.09G0001580-9H is
+(C) That copy on its own; points are libraries, lines join the means. Soffic.09G0001580-9H is
 the only AtMYB59-anchor copy expressed in purple (60.8 TPM against 0.01 and 0.00 for the other
 two) and is called MYB both by the source study and by our own domain rules. Its response is a
 U CENTRED ON THE CONTROL: in 51NG3 it runs at 124.1 TPM under nitrogen starvation, 10.8 at the
@@ -41,13 +51,14 @@ TAGZ shows the same shape more weakly (65.5, 40, 75.6 TPM).
 Because 2 N is the CONTROL and 0 N and 6 N are stresses in opposite directions, this is a gene
 induced by nitrogen stress in EITHER direction. That is exactly the shape a monotone rank
 correlation cannot see -- it is why the module-level analysis reports this gene's module as
-unresponsive, and why the U-shape contrast exists as a separate test. For contrast, the nine
-expressed copies at the same anchor in SUGARCANE are every one monotonically REPRESSED by
-nitrogen (log2 fold change -1.8 to -3.4, BH-adjusted p ~ 1e-08 in the responsive genotype
-RB975375) -- but sugarcane's design has no control level, only Low and High, so what it can
-observe is one arm of a curve. The two studies are therefore consistent rather than
-contradictory: sugarcane sees the low-nitrogen arm of the same response, and only purple's
-three-level design shows that the high-nitrogen side turns back up.
+unresponsive, and why the U-shape contrast exists as a separate test. Sugarcane's design has no
+control level, only Low and High, so what panel A can observe is ONE ARM of such a curve. The
+two studies are therefore consistent rather than contradictory: sugarcane sees the low-nitrogen
+arm of the same response, and only purple's three-level design shows that the high-nitrogen
+side turns back up.
 
 THE LIMIT. This rests on ONE expressed copy in one species, at a p-value that does not clear BH
-over the 27 purple Module-20 genes tested. It is a candidate worth following, not a finding.
+over the 27 purple Module-20 genes tested. Run genome-wide over every gene in the purple
+network the same contrast returns a SINGLE gene past FDR and this is not it -- it sits at padj
+0.48, in the top 0.5% by raw p but nowhere near surviving correction. It is a candidate worth
+following, not a finding.
