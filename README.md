@@ -10,12 +10,22 @@ The secondary goal, and the reason the data are public ones, is to show what can
 be recovered from reusing existing sugarcane RNA-seq rather than generating new
 libraries.
 
-Networks are built from **two layers**: Pearson correlation (linear) and
-Kraskov–Stögbauer–Grassberger mutual information (non-linear), thresholded at the
-same per-edge false-positive rate so their union is legitimate, with every edge
-labelled by which layer found it. That label is what makes the central
-methodological question answerable — *does non-linear co-expression behave
-differently from linear co-expression?*
+Networks are **Pearson-only**, at |r| ≥ 0.8 with no degree reduction, built from
+the variance-stabilised matrix of each study.
+
+They were not always. The project began with **two layers** — Pearson and
+Kraskov–Stögbauer–Grassberger mutual information, thresholded at the same per-edge
+false-positive rate so their union was legitimate, with every edge labelled by the
+layer that found it. That label existed to answer the central methodological
+question: *does non-linear co-expression behave differently from linear
+co-expression?*
+
+**It was answered, and the answer was no.** MI-only edges were 1.1% of sugarcane's
+network and 4.2% of purple's, and they were conserved across species no better than
+linear ones. The layer was dropped rather than quietly kept. The threshold argument
+that licensed the union is still in
+[`docs/thresholds.md`](new_clean/docs/thresholds.md), because a negative result is
+only readable if the thing that produced it is still on record.
 
 ---
 
@@ -27,7 +37,9 @@ differently from linear co-expression?*
 | the results, with caveats | [`new_clean/docs/results.md`](new_clean/docs/results.md) |
 | why it is built this way | [`new_clean/docs/decisions.md`](new_clean/docs/decisions.md) |
 | what each stage does | [`new_clean/docs/methods.md`](new_clean/docs/methods.md) |
-| the MI threshold argument | [`new_clean/docs/thresholds.md`](new_clean/docs/thresholds.md) |
+| the MI threshold argument (historical) | [`new_clean/docs/thresholds.md`](new_clean/docs/thresholds.md) |
+| which GO annotation is live, and why | [`annotation/README.md`](annotation/README.md) |
+| what in `results/` is stale | [`new_clean/docs/results_tree_STALE.md`](new_clean/docs/results_tree_STALE.md) |
 | whether sequence evolution follows network conservation | [`new_clean/docs/dnds.md`](new_clean/docs/dnds.md) |
 | the U-shaped MYB, gene by gene | [`new_clean/docs/gene_Soffic_09G0001580_9H.md`](new_clean/docs/gene_Soffic_09G0001580_9H.md) |
 | the paper figures and their legends | [`figures_legends.txt`](figures_legends.txt) |
@@ -80,214 +92,197 @@ edge tables, take about **5.5 hours**; everything through clustering about **9**
 | | sugarcane (n=48) | purple (n=18) |
 |---|---|---|
 | genes after CV ≥ 15 filter | 170,790 | 170,740 |
-| **edges** | **76,200,344** | **705,571,723** |
-| nodes | 103,336 | 170,736 |
-| components / giant | 939 / 101,253 | 1 / 170,736 |
-| pearson only | 73,329,192 (96.2%) | 625,775,930 (88.7%) |
-| both layers | 2,004,577 (2.6%) | 50,179,988 (7.1%) |
-| **MI only** | **866,575 (1.1%)** | **29,615,805 (4.2%)** |
-| MCL modules | 10,309 | 9,881 |
-| modularity Q (unweighted) | 0.1005 | 0.1631 |
+| **nodes** | **101,990** | **170,135** |
+| **edges** | **75,333,769** | **675,955,918** |
+| edge density | 0.0145 | 0.0467 |
+| components / giant | 958 / 99,851 | **43** / 170,046 (99.95%) |
+| mean normalised weight | 0.288 | 0.380 |
+| adopted MCL inflation | **-I 1.5** | **-I 3.5** |
+| modules (≥ 1 gene / ≥ 3 genes) | 5,650 / 3,627 | 14,024 / 7,493 |
+| largest module | 23,439 (23.0%) | 39,230 (23.1%) |
 
-**The MCL partition has a diagnosed defect.** Its largest module holds 19% of the
-sugarcane network and 28% of purple's, and mcl's own jury synopsis — discarded to
-`/dev/null` until 2026-09-03 — grades the pruning behind the shipped sugarcane
-partition **"deplorable" (39.2/100)**. The cause is node degree, not inflation:
-purple's median degree is 859 against the <=100 that mcl's co-expression protocol
-recommends. A `#knn(180)` reduction at the same inflation takes sugarcane's
-largest module from 18.97% to **0.57%**, modularity from 0.0819 to 0.2692, and
-the jury to "adequate". Nothing is adopted yet — see
-[docs/results.md](new_clean/docs/results.md#the-giant-module-is-a-node-degree-artefact-and-mcl-had-been-saying-so)
-and figure 10.
+Only 59.7% of sugarcane's CV-filtered genes reach the network, against 99.6% of
+purple's. That asymmetry runs through everything downstream and is the reason
+per-study percentages are always quoted against the **node** set, never the
+proteome.
 
-Purple's larger MI share is **not** more non-linear biology: at n = 18 the
-p-value implied by |r| = 0.8 is 6.7e-05 against 9.0e-12 at n = 48, so its matched
-floor is far softer. Purple is also a single connected component with mean degree
-8,265 — dense enough that its module structure should be read cautiously.
+**Purple is not one connected component.** It has 43 on Pearson edges alone, with
+the giant holding 99.95% of nodes; the single-component claim in earlier versions
+of this file was true of the merged graph, and the MI layer was what joined those
+pieces.
+
+### The clustering, and why the giant module is not a bug
+
+Earlier versions of this file called the MCL partition defective, on the strength
+of mcl's own jury synopsis grading its pruning "deplorable" and of a `#knn(180)`
+degree reduction that cut the largest module from 18.97% to 0.57%. **That is no
+longer the reading.**
+
+Inflation was swept independently at every setting on the unpruned Pearson-only
+graphs and scored by Newman modularity — the only one of `clm info`'s four criteria
+with an interior optimum, since mass fraction, area fraction and efficiency are each
+maximised at a grid boundary. Modularity peaks at **-I 1.5** in sugarcane and
+**-I 3.5** in purple, and those are what the pipeline adopts. `-I 2`, used
+throughout the earlier work, keeps 98.1% of peak modularity in both.
+
+Leiden (CPM and modularity objectives) and Louvain were run on the same graphs and
+scored by the same `clm info` calls. They do not remove the giant: Louvain reaches
+Q = 0.1386 and Leiden-modularity 0.1399 in sugarcane, both with giants of 41–43%.
+**A large module is what modularity maximisation wants on a graph this dense**, not
+an artefact of MCL. The k-NN reduction that appeared to fix it was scoring each `k`
+against its own reduced graph; scored against one fixed graph the finding inverts.
+
+Two mcl behaviours are worth knowing if you re-run this: it **silently ignores
+`-I` above 30** (`-I 40` returns `-I 2`'s partition byte for byte), and it
+**underflows above ~`-I 13`** — 35,044 of 101,990 vectors zeroed at `-I 20` — while
+still returning a plausible-looking partition.
 
 ### Cross-species edge conservation
 
-Both directions run **~2.5× above** a permutation null that preserves orthology
-fan-out and coverage, so conservation is real:
+An edge is **conserved** when both its genes have orthologs in the other species and
+those orthologs are joined by an edge there. Scored against a permutation null that
+destroys only the orthology *assignment*, preserving every gene's fan-out, which genes
+have any ortholog, and the multiset of targets.
 
-| direction | observed | null | fold | 
-|---|---|---|---|
-| sugarcane → purple | 10.76% | 4.18% | **2.57** |
-| purple → sugarcane | 1.52% | 0.61% | **2.46** |
+| direction | edges | conserved | fold over null | p |
+|---|---|---|---|---|
+| sugarcane → purple | 75,333,769 | 7,806,379 (**10.36%**) | **1.69** | 0.0099 |
+| purple → sugarcane | 675,955,918 | 10,196,172 (**1.51%**) | **1.71** | 0.0099 |
 
-The raw rates differ 7× only because purple has 9.3× more edges. **The fold over
-null is the comparable quantity** and the two directions agree on it.
+The raw rates differ ~7× because purple's edge density is 3.2× sugarcane's. **Each
+direction is read only against its own null**; they are not comparable to each other.
 
-**Edges found by both estimators are better conserved** than Pearson-only edges
-(1.08× and 1.20× over null). **MI-only edges are not** — 1.005 and 0.921 once
-opportunity is accounted for. An apparent MI advantage in the raw rates turned
-out to be opportunity bias: MI-only edges connect genes with more orthologs, so
-they had more chances to match by accident.
+The folds are lower than the 2.5× earlier versions of this file reported, and that is a
+**stricter null, not a weaker signal**: it now draws only from ortholog pairs with both
+sides in-network (114,681 pairs over 43,390 orthogroups), where the old one included
+genes that could never have matched.
+
+**Conservation rises with edge strength, monotonically, in both species** — and so does
+the fold over null, which is what rules out the alternative that strong edges merely join
+better-orthologued genes:
+
+| weight decile | sugarcane → purple | purple → sugarcane |
+|---|---|---|
+| D1 (weakest) | 9.72% (fold 1.57) | 1.17% (fold 1.39) |
+| D10 (strongest) | **11.30%** (fold 1.85) | **2.16%** (fold 2.30) |
+
+On a relative reading purple's effect is the larger: +84% across the deciles against
+sugarcane's +16%.
+
+**What transfers is housekeeping; what does not is regulation.** GO on the genes carrying
+a conserved edge against the exact complement — the two partition the node set and share
+a background — gives translation, protein folding and transport, photosynthesis and
+splicing on one side, and transcriptional regulation, auxin and ethylene signalling,
+ubiquitination and the cell cycle on the other.
+
+> Read that with the caveat: genes on a conserved edge **are hubs** (median degree 228
+> against 18 in sugarcane), partly by arithmetic, since one conserved edge out of 6,677
+> is near-certain at a 10.4% per-edge rate and unlikely out of 2. Ranking the same genes
+> by degree instead reproduces nearly the same split, so the two are one contrast seen
+> twice and neither is independent evidence for the other.
 
 ### Nitrogen response
 
-"Trait-responsive" here means: a gene sitting on **at least one conserved edge**
-(any layer) that is also associated with nitrogen. Association is tested by
-Pearson **and** by mutual information, and the selection rule is configurable
-(`TRAIT_SELECTION`, default `union`) — because a Pearson-only search returning
-nothing cannot distinguish "no shared response" from "no *linear* shared
-response".
+The gene-level test puts the **experimental design in the model** rather than in the
+residual. The project's own QC records genotype at R² = 0.999 of PC1 in purple and 0.998
+in sugarcane, and leaf segment at 0.802 of PC2 — so the largest variance component in
+either matrix used to sit in the residual of every nitrogen test.
+
+    sugarcane   expr ~ genotype + segment + N            n = 48, resid df 42, Pearson
+    purple      expr ~ genotype + N        on midranks   n = 18, resid df 15, Spearman
+
+Purple is Spearman because its trait is an **ordinal 0/2/6 mM dose** and Pearson reads
+that spacing literally. The universe is the network's node set, so the BH denominator is
+101,990 and 170,135.
 
 | | sugarcane | purple |
 |---|---|---|
-| genes on conserved edges | 39,226 | 44,118 |
-| responsive — Pearson | 1,361 | **30** |
-| responsive — MI | 3,221 | **5** |
-| responsive — union | 3,265 | **32** |
-| \|r\| needed to clear FDR | 0.378 (the 0.6 cut binds) | **0.799** (FDR binds) |
+| genes tested | 101,990 | 170,135 |
+| responsive, **blocked** | **8,737** | **3,854** |
+| responsive, marginal, same genes | 3,238 | 882 |
+| \|r\| at the BH boundary | 0.366 | 0.720 |
 
-**Node level — conserved correlated ortholog pairs: 1 (Pearson), 0 (MI), 2 (union)**,
-against ≈4.4 expected by chance.
+Blocking is a **strict superset** in both species — no marginal call is lost — so the
+block is removing noise rather than absorbing signal. The diagnostic that motivated it:
+purple's marginal p-value histogram *rises* in its last decile (12.5%), which a mixture
+of a uniform null and real signal cannot do. Blocking takes it to 10.2% — better, and
+still not flat.
 
-**Edge level — 0, under every selection rule.** Conserved edges joining two genes
-responsive in *sugarcane* are plentiful, and the MI layer contributes a real share
-of them:
+Purple also gets a **non-monotone tier**, because three nitrogen levels let a gene
+respond to deficiency and excess alike, which every monotone test is blind to. Over
+170,135 genes it selects **one**. The aggregate excess is real (17,507 raw hits against
+8,507 expected) and n = 18 cannot say which genes carry it.
 
-| selection | conserved edges, both endpoints responsive in sugarcane | of which `pearson` / `both` / **`mi`** |
+### Do the two species respond in the same genes?
+
+Over the 114,681 ortholog pairs with both sides in-network:
+
+| | genome-wide | directed (discover in sugarcane) |
 |---|---|---|
-| Pearson | 5,894 | 4,761 / 1,065 / **68** |
-| union | 35,761 | 26,170 / 6,993 / **2,598** |
+| conserved correlated **pairs** | 392 (270 orthogroups) | 616 (419) |
+| null | 314.3, **fold 1.25**, p 0.001 | 573.8, fold 1.07 |
+| sugarcane **genes** responsive in both | **326** | 502 |
+| null | 301.9, **fold 1.08**, p **0.071** | 536.3, fold **0.94** |
 
-But **not one of them has a purple counterpart whose endpoints are also
-responsive**, because an edge needs *two* genes responsive on both sides and there
-are only 1 (Pearson) or 2 (union) such genes in the whole analysis — and they are
-not connected.
+**The pair count beats chance; the gene count does not.** Orthology is many-to-many —
+one orthogroup contributes 6 pairs from 3 × 2 genes — so most of the pair excess is
+multiplicity. The pair row must never be quoted without the gene row beside it.
 
-So the funnel does not close at the edges, or at the MI layer. It closes at
-**purple's 30–32 responsive genes**, which is a power result: at n = 18 over
-44,118 genes a gene needs |r| ≈ 0.80 merely to clear the FDR. A mutual-information
-gene–trait test was built specifically to attack this and **did not fix it** — it
-*shrinks* purple's set (30 → 5 alone).
-
-### The two species' responsive genes are independent in ortholog space
-
-Testing purple genome-wide is the wrong burden for a comparative question, so the
-test was repeated **directed**: correct purple's p-values over only the 4,745
-orthologs of sugarcane-responsive genes rather than over all 44,118
-(`./run.sh conscor 1`). That drops the |r| a gene must reach from ≈0.88 to ≈0.84.
-
-It found **fewer**, not more — 1 gene against 2 under the genome-wide burden on
-the identical candidate set. The reason is the finding:
-
-> Of purple's **32** genome-wide nitrogen-responsive genes, only **2** are
-> orthologs of a sugarcane-responsive gene. Of purple's top 30 genes by p-value,
-> 2 are candidates against ~3.2 expected if the two sets were independent.
-
-**The nitrogen-responsive gene sets of the two species are, in ortholog space,
-independent — marginally below chance overlap.** The candidate set is therefore
-*depleted* of purple's strongest signal, and BH is adaptive: shrinking the
-denominator does not compensate for losing that company.
-
-And the signal is genuinely absent rather than hidden by a threshold. Among all
-4,745 candidates the best |r| is **0.854** against a required 0.844, and only
-**3** reach |r| ≥ 0.8 at all. No choice of denominator turns three genes into a
-conserved responsive edge, which needs two connected genes responsive on both
-sides. (At raw p ≤ 0.05 and |r| ≥ 0.6 — no multiple-testing correction — 128
-candidates qualify; that is the most generous reading available and should be
-labelled uncorrected.)
-
-**It also survives a non-monotone test.** Every rule above is monotone, and
-purple's design is stress-control-stress, so a gene induced by both deficiency
-and excess is invisible to all of them. The U-shape contrast c(+1,-2,+1) run
-genome-wide at gene level (170,740 genes, blocked on genotype, residual df 14)
-finds **1** gene surviving BH and **0** conserved responsive ortholog pairs under
-either the genome-wide or the directed burden. The blind spot was real -- there
-are **2.05x** more genes at raw p <= 0.05 than chance, ~9,000 genes' worth of
-excess non-monotone signal -- but at n = 18 almost none of it resolves
-individually. `Soffic.09G0001580-9H`, the Module-20 copy that motivated the test,
-lands at rank **890 of 170,740** (top 0.52%) with padj **0.485**. See
-[`new_clean/docs/results.md`](new_clean/docs/results.md).
-
-**The zero survives three selection rules, two correction burdens and both
-conservation directions.** n = 18 with 0/2/6 mM in triplicate is a design limit,
-not a method limit.
+What does hold up is **direction**. Of the concordant pairs 94 are up in both species and
+150 down in both, and the agreement survives a per-orthogroup test that treats each
+orthogroup as one vote rather than counting non-independent pairs: **59.5% of 269
+orthogroups, p = 0.0022** (57.7% of 418 under the directed design).
 
 ### Module-level nitrogen response
 
-The gene level dies on a testing burden of 39,226 / 44,118 genes. One eigengene
-per MCL module cuts that to ~6,500 tests, and a module signal can survive where a
-single gene cannot. Each eigengene is tested against nitrogen by **Spearman's rho
-alone** — `padj <= 0.05` and `|rho| >= 0.6`, the same two thresholds the gene
-level uses.
+One eigengene per MCL module of ≥ 3 genes cuts the testing burden from 101,990 and
+170,135 genes to **3,627 and 7,493**, and a module signal can survive where a single
+gene cannot.
 
-**Not Pearson, and not MI.** The trait is ordinal — purple's nitrogen levels are
-0/2/6 mM and Pearson reads that spacing as arithmetic the design never claimed.
-MI at this resolution was an omnibus test firing on two-library quirks, and its
-effect-size floor could only be calibrated against the linear one, never derived.
-On the identical eigengenes at identical thresholds:
-
-| | Pearson | **Spearman** | Spearman only | Pearson only |
-|---|---|---|---|---|
-| sugarcane (n=48) | 408 | **465** | 71 | 14 |
-| **purple (n=18)** | **38** | **79** | **45** | 4 |
-
-**Purple's responsive set more than doubles** — and purple is the study with the
-gradient, which is exactly where the ordinal argument predicts the gain.
+The statistic is a **blocked Spearman partial correlation** — eigengene and trait both
+reduced to midranks, then residualised on the design — at `padj ≤ 0.05` and
+`|rho| ≥ 0.6`, the same thresholds the gene level uses. Only the model changes.
 
 | | sugarcane | purple |
 |---|---|---|
-| modules tested | 6,576 | 6,318 |
-| **responsive** | **465** (242 up, 223 down) | **79** (32 up, 47 down) |
-| which threshold binds | \|rho\| ≥ 0.6 (BH never binds at n=48) | padj (274 clear \|rho\| ≥ 0.6) |
-| median \|rho\| | 0.695 | 0.787 |
-| label-permutation null | 0 of 1,000 shuffles reach 465 | 2 of 1,000 reach 79 (p = 0.002) |
-| TF-enriched | **3.23% vs 1.24%, OR 2.65, p = 0.0016** | 0 of 79 |
-| GO-testable (≥3 annotated genes) | 49 (11%) | 10 (13%) |
+| modules tested | 3,627 | 7,493 |
+| responsive, **blocked** | **588** | **182** |
+| responsive, marginal, same eigengenes | 527 | 110 |
 
-Two things came back that the three-statistic call had buried. **TF enrichment**
-was a null spread across classes too small to separate (`both` at OR 1.96,
-p = 0.061); pooled into one responsive set it is OR 2.65, p = 0.0016, and it sits
-in the modules that go *down* with nitrogen. And the responsive set is now
-*cleaner* than the background it is drawn from — 20% of responsive modules have
-two of 48 samples carrying over a quarter of the eigengene variance, against 50%
-of non-responsive ones. The old `mi_only` class ran the other way, at 35%.
+Blocking is again a strict superset, and purple gains most — 110 → 182 — which is where
+the ordinal-trait argument predicts it. Sugarcane's 48 libraries are 12 plants × 4 leaf
+segments, so a **plant-level control** (segments averaged, n = 12) is computed alongside
+and agrees with the blocked fit at r = +0.9486.
 
-Sugarcane's testable modules find nitrogen assimilation repeatedly and
-independently — nitrate assimilation (Module_026, Module_100), the ammonia
-assimilation cycle and glutamate biosynthesis (Module_440), ammonium metabolism
-and the polyamines (Module_469), proline and asparagine biosynthesis — **all
-rising with nitrogen**, and MF independently names the enzymes BP inferred from
-the processes (nitrate reductase, glutamate synthase). Purple's 10 testable
-modules give phenylpropanoid biosynthesis, cellulose biosynthesis and sulfate
-assimilation; that is a report of ten gene sets, not a characterisation of its
-nitrogen response.
+### What the responsive modules do
 
-**Purple's 79 modules are not 79 independent findings.** Its network is one dense
-component, so its eigengenes are strongly correlated and one lucky label shuffle
-in a thousand produced 244 "responsive" modules against 79 observed. The signal
-is real at p = 0.002; no single purple module should be believed on its padj alone.
+GO comes from **one source**: a full local InterProScan over all 17 member databases,
+mapped through the GO Consortium's pinned `interpro2go`/`pfam2go`. Coverage of network
+nodes went from 8.0% / 7.2% under the original eggNOG GO column to **62.9% / 64.4%**.
 
-### What the responsive modules do — and the two directions do different things
+**Merging sources was rejected by its own judge.** On a fixed gene set — identical genes,
+identical modules — the union of InterPro and eggNOG scores +0.0671 in sugarcane against
++0.0748 for InterPro alone, and +0.0264 against +0.0361 in purple. Merging *lowers*
+module coherence in both species, so there is no tiered table. eggNOG's raw homogeneity
+is 2.6× InterPro's while its excess over the null is lower — what the raw figure measures
+is term density (16.7 terms/gene against 2.1), not shared function.
 
-One topGO enrichment per responsive module names individual modules, but the
-annotation gate is brutal: **49 of 465** sugarcane modules carry enough
-GO-annotated members to be testable at all (10 of 79 in purple), biased toward
-the large ones.
+| | responsive | testable | BP | MF | CC |
+|---|---|---|---|---|---|
+| sugarcane | 588 | **479** | 164 | **272** | 22 |
+| purple | 182 | **118** | 9 | **17** | 1 |
 
-So the modules that **rise** with nitrogen are also tested as one set against the
-modules that **fall**. Pooling dissolves the gate — every module contributes —
-and the two directions turn out to be **almost disjoint in function**:
+*(terms clearing cross-module BH)*
 
-| sugarcane BP terms | rises with N | falls with N | both |
-|---|---|---|---|
-| enriched at raw p ≤ 0.05 | **74** | **23** | 6 |
+The annotation gate that once left only ~11% of responsive modules testable now leaves
+81% and 65%. **MF is the stronger ontology** — expected for a domain-derived annotation,
+which names what a protein *does* more sharply than what process it is in. BP stays
+primary because the question is about a response.
 
-| rises with nitrogen | falls with nitrogen |
-|---|---|
-| **nitrate assimilation**, nitric oxide biosynthesis | flavonoid biosynthesis |
-| **proline**, asparagine, spermidine biosynthesis | raffinose-family oligosaccharides |
-| reactive oxygen species biosynthesis | triglyceride biosynthesis, cold response |
-| defence: fungus, bacterium, chitin, monoterpenes | skotomorphogenesis, flowering time |
-
-Nitrogen assimilation and the metabolism that consumes it go up; the low-nitrogen
-carbon programme goes down. **Neither of the other two grains recovers this** —
-the per-module grain sees 11% of the modules, and pooling all responsive modules
-averages the two directions away.
+**Purple's 9 BP terms are the honest negative of this section.** More annotation did not
+fix it: the count went 14 → 8 → 9 across three successive annotations while coverage went
+7.2% → 55.5% → 64.4%. The constraint there is n = 18 and a network that is one dense
+component, not the annotation.
 
 ### Module 20 in purple — one copy responds, and not monotonically
 
@@ -314,15 +309,41 @@ can only observe one arm of the same curve. The two studies are consistent, not
 contradictory.
 
 It rests on one expressed copy at a p that does **not** clear BH over the 27
-purple Module-20 genes: a candidate, not a finding.
+purple Module-20 genes, and the U-shape reaches significance in only **one of the two
+purple genotypes** (51NG3 p = 0.008; TAGZ p = 0.142, same direction). Run genome-wide
+over every purple network gene, the same contrast returns one gene past FDR and this is
+not it — it sits at padj 0.48, in the top 0.5% by raw p.
+
+**As a network object it does not corroborate the expression evidence either.** It is not
+a hub — 635 neighbours, the **48.2nd** degree percentile, below purple's median — while
+Muñoz define Module 20 as high-betweenness on their own network.
+
+The nine sugarcane copies are one locus only by Arabidopsis anchor: OrthoFinder splits
+them across at least four orthogroups, and only `06Ag012300` (OG0088735) pairs 1:1 with
+the purple gene. Projecting each copy's neighbourhood through orthology and intersecting
+with the purple gene's 635 neighbours, against a degree-matched null, **nothing clears
+BH** — and the 1:1 ortholog is *specifically* indistinguishable from chance (11 shared
+genes against 8.4 expected, z = 0.53, p = 0.29). No copy recovers more than 1.9%.
+
+The measure is not at fault: within sugarcane those same copies share up to **83%** of
+the smaller neighbourhood. And the neighbourhoods do different things — the purple gene's
+is stress and specialised metabolism (tryptophan and terpene synthase, innate immune
+response, wounding), its sugarcane ortholog's is core housekeeping (vesicle fusion,
+translation initiation, TCA cycle).
+
+So: **a candidate worth following, not a finding** — and the reasons for caution are now
+independent, the expression evidence being thin *and* the network evidence not
+corroborating it.
 
 ### Function and H1 readouts
 
-- **GO** (topGO weight01, raw p ≤ 0.05, background = each network's own nodes):
-  **69 shared BP terms** (106 sugarcane, 155 purple), 39 MF, 24 CC. Shared
-  processes despite ~no shared responsive genes — an ordinary evolutionary
-  pattern, but note the power gap between the two tests before reading it as
-  agreement.
+- **GO of the conserved gene sets** (topGO weight01, raw p ≤ 0.05, background = each
+  network's own GO-annotated nodes, on the adopted annotation): **111 shared BP terms**
+  (165 sugarcane, 207 purple), 119 MF, 31 CC. Semantic clustering puts every one of the
+  12 BP macro-themes in both species — protein folding, photosynthesis, organelle
+  organisation, vesicle transport, splicing. The convergence is about **themes, not
+  terms**: the shared fraction is under half in every ontology, so the two species rarely
+  enrich the identical term and land in the same regions of GO space.
 - **Transcription factors**: 7,183 (sugarcane) and 12,197 (purple) TF genes in
   the networks, 68 and 67 families.
 - **MYB61**: purple's 15 copies sit on cross-species conserved edges far more than
@@ -333,9 +354,17 @@ purple Module-20 genes: a candidate, not a finding.
   nitrogen response transfers between studies; its network position does not.
   See above for the one purple copy that does respond.
 
-### An alternative clustering is being tested — MCL vs a block model
+### An alternative clustering, tested on the previous network
 
-Every module-level result above rests on MCL's partition, and that partition has
+> **This section describes the PRE-PEARSON clustering** — MCL at `-I 2` on the merged
+> network, 10,309 modules. It is kept because the comparison was real and the
+> annotation-gate argument is what motivated the GO work that followed. The clustering
+> question was settled differently in the end: see
+> [The clustering, and why the giant module is not a bug](#the-clustering-and-why-the-giant-module-is-not-a-bug)
+> above. The SBM was never re-fitted on the Pearson-only graphs, and the numbers below
+> are **not** comparable with anything in the sections above.
+
+Every module-level result at the time rested on MCL's partition, and that partition had
 an awkward shape: **10,309 modules with a median of 3 genes**, one holding 19% of
 the network. A median of 3 sits below the GO annotation gate almost by
 construction, which is why only 49 of the 465 responsive modules could be tested
@@ -362,11 +391,13 @@ times more responsive modules, of which nine in ten cannot be tested for
 function; the SBM finds 23, of which almost all can, and they return more GO
 terms than MCL's 465 do.
 
-**Nothing has been switched.** MCL remains the default, and **purple has no fit
-yet** — it is running on another machine. Until it lands the comparison is
-sugarcane-only, and a decision that changes every module-level figure should not
-rest on one species. See `new_clean/docs/decisions.md` and
-`new_clean/results/figures/figure8_clustering_sugarcane.png`.
+**Nothing was switched.** MCL remained the default then and still is — though for a
+different reason than "the SBM never finished". Sweeping inflation on the unpruned
+Pearson-only graphs and scoring Leiden and Louvain on the same footing showed the giant
+module is what modularity maximisation *wants* on a graph this dense, not a defect MCL
+introduced. The annotation gate that motivated this whole comparison was then largely
+closed from the other end: GO coverage went from 8% to 63%, and 81% of sugarcane's
+responsive modules are now testable rather than 11%.
 
 ## Repository layout
 
@@ -398,13 +429,38 @@ china/, run1/         nf-core/rnaseq output for the two studies (gitignored)
 
 ```bash
 cd new_clean
-./run.sh validate                # correctness suite — must pass first
-./run.sh build sugarcane         # VST -> both layers -> network
+./run.sh validate                     # correctness suite — must pass first
+./run.sh build sugarcane              # VST -> Pearson layer -> network
 ./run.sh build purple
-# then: stats, mcl, conserve, conservenull, trait, traitmi, conscor, go, gosem
-# module level, per study (~5 min):
-#   eigengene, moduletrait, moduleprofile, modulego, moduleheatmap, modulesummary
+
+# the Pearson-only graph, clustering, and node metrics, per study
+./run.sh pearsonmci  <study>          # Pearson layer -> MCL matrix, direct
+./run.sh mclladder   <study>          # inflation ladder, scored one cell per call
+./run.sh membership  <study>          # adopt the chosen cell (-I 1.5 / -I 3.5)
+./run.sh nodemetrics <study>
+
+# gene level (blocked), per study
+./run.sh traitblocked <study>
+./run.sh ushape purple                # the non-monotone tier
+
+# module level, per study
+./run.sh eigengene moduletrait moduleprofile modulego moduleheatmap modulesummary
+
+# conservation, on the Pearson-only graphs
+./run.sh consblocked 0                # node level; 1 = the directed variant
+./run.sh consedges sugarcane_to_purple
+./run.sh consedges purple_to_sugarcane
+
+# function
+./run.sh go BP [conserved|nonconserved]
+./run.sh gosem
+./run.sh degreego <study>             # what hubs vs the periphery are for
 ```
+
+`conserve`, `conservenull`, `trait` and `conscor` are the **merged-network** stages,
+kept as the record of that analysis. They cannot run on the current graphs — the
+gene-name edge tables were deleted — and are superseded by `consedges`, `consblocked`
+and `traitblocked`.
 
 `new_clean/README.md` has the full stage list with measured runtimes. Every stage
 logs to `new_clean/logs/`, and the GPU sweeps checkpoint per tile so a killed run
@@ -418,9 +474,11 @@ resumes.
    *supply*, not whether it responds to nitrogen *stress* — a gene moved the same
    way by both extremes is invisible to it. At module level that costs one
    module; `Soffic.09G0001580-9H` is a concrete example of what it misses.
-2. **n = 18 limits purple everywhere.** Its MI network threshold is soft, its
-   trait selection is FDR-bound rather than effect-size-bound, and its module
-   structure is one dense component.
+2. **n = 18 limits purple everywhere.** Its trait selection is FDR-bound rather than
+   effect-size-bound (|rho| 0.720 at the boundary against sugarcane's 0.366), its
+   non-monotone tier resolves one gene out of 170,135, its module GO clears 9 BP terms,
+   and its network is effectively one dense component. Almost every thin purple result in
+   this repository traces back to that number.
 3. **The previous networks contained ~47,000 sugarcane edges below their own
    0.8 threshold**, admitted because the correlation matrix was stored as text
    rounded to 4 decimals. Fixed here; the affected results are archived under
@@ -429,22 +487,37 @@ resumes.
    as a linear r of this size". Never read it without the `source` column.
 5. **Raw conservation rates are not comparable between directions.** Use the fold
    over null.
-6. **MI is a network layer, not a universal choice.** It earns its place at the
-   edge level, where the question is whether non-linear co-expression exists at
-   all. At the module level, where the question is whether one eigengene tracks
-   one ordinal trait, it was dropped for Spearman — see
-   `new_clean/docs/decisions.md`. The two are consistent; the resolution differs.
-7. **The MI layer's value is not settled.** It adds ~0.9 M sugarcane edges the
-   linear layer cannot see, but those edges are not better conserved. What is
-   robust is that edges *both* estimators find are better conserved than either
-   alone.
-8. **GO annotation coverage, not statistics, limits the module-level function
-   results.** Only 8,251 of sugarcane's 103,336 network nodes and 12,255 of
-   purple's 170,736 carry any eggNOG GO term. Combined with a median responsive
-   module of 5 genes, that leaves 11% of responsive modules testable (49 of 465;
-   63% have *zero* annotated members). The per-module GO section describes those
-   49, not the responsive set.
+6. ~~**The MI layer's value is not settled.**~~ **Settled, and it lost.** MI-only edges
+   were 1.1% and 4.2% of the two networks and conserved no better than linear ones. The
+   layer is not used anywhere in the current analysis; `docs/thresholds.md` keeps the
+   argument that licensed it.
+7. ~~**GO annotation coverage limits the module-level function results.**~~ **Largely
+   fixed.** Coverage went from 8.0% / 7.2% of network nodes to **62.9% / 64.4%** on a
+   full 17-database InterProScan, and testable responsive modules from 11% to **81% and
+   65%**. What did *not* follow is significance in purple: 9 BP terms clear cross-module
+   BH, and that count went 14 → 8 → 9 across three successive annotations. The limit
+   there is n = 18, not the annotation.
+8. **Edge conservation and degree are not separated.** Genes on a conserved edge are hubs
+   (median degree 228 against 18 in sugarcane), partly by arithmetic. So the
+   conserved/non-conserved functional split and the hub/periphery split are one contrast
+   seen twice. Whether conservation selects housekeeping genes *over and above* their
+   being hubs would need a degree-matched comparison, which is not done.
 9. **Purple's module count is not a count of independent findings.** Its
    permutation null reaches 244 in the worst of 1,000 shuffles against 79
    observed, because the network is a single dense component. Look at the module,
    not only the padj.
+
+
+10. **The conserved *gene* count does not beat chance.** 1.08× at p = 0.071 genome-wide,
+    and 0.94× — below the null — under the directed design. Only the *pair* count beats
+    it (1.25×), and that is ortholog multiplicity. The conservation claim rests on
+    **direction** (59.5% of orthogroups agree in sign, p = 0.0022), not on how many genes
+    respond in both species.
+11. **Purple's blocked p-value histogram is still not flat.** Blocking took its last
+    decile from 12.5% to 10.2%, but the shape dips to 5.4% and rises again. Genotype plus
+    nitrogen does not account for everything at n = 18, and any purple gene-level claim
+    should be read with that in mind.
+12. **`Soffic.09G0001580-9H` is a candidate, not a result.** Its U-shaped response holds
+    in one of two purple genotypes, does not survive genome-wide correction, and its
+    network neighbourhood does not corroborate it — see
+    [Module 20 in purple](#module-20-in-purple--one-copy-responds-and-not-monotonically).
