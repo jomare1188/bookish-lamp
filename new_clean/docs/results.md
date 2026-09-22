@@ -2063,8 +2063,16 @@ rising is the part that matters: if strong edges were merely joining better-anno
 genes, the rate would rise and the fold would not. Purple's effect is the larger one —
 its strongest decile is conserved 1.8× as often as its weakest.
 
-Weight ranges are reported per bin because the [0.01, 1] rescaling is per-study: a
-decile in sugarcane and a decile in purple do not stand for the same |r|.
+Weight ranges are reported per bin because a decile in sugarcane and a decile in purple
+do not stand for the same |r|. **Not because the scale differs — it does not.** Both
+networks map |r| onto [0.01, 1] with the same bounds (0.8 → 0.01, 0.9999 → 1), so a
+given weight means the same |r| in either species. The deciles differ because they are
+**rank-based** and purple's weights sit higher overall (mean 0.380 against 0.288):
+sugarcane's strongest decile begins at |r| 0.918, purple's at 0.948.
+
+> An earlier version of this paragraph, and of figure 4's legend, attributed the
+> difference to a "per-study rescaling". There is none; the conclusion was right and
+> the stated reason was not.
 
 ### The nitrogen-correlated edges — and what the null does to them
 

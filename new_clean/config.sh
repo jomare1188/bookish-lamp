@@ -478,8 +478,10 @@ TRAIT_NULL_SEED=1188
 CONS_EDGE_CHUNK=5000000
 # Conservation against edge STRENGTH replaces the old by-layer breakdown, which is
 # vacuous on a single-layer graph. Bins are RANK-based, so each holds a tenth of the
-# edges; their weight ranges are reported because the [0.01, 1] rescaling is
-# per-study and a decile does not stand for the same |r| in both species.
+# edges; their weight ranges are reported because a decile does not stand for the
+# same |r| in both species. The weight SCALE is shared (0.8 -> 0.01, 0.9999 -> 1 in
+# both networks); the deciles differ because they are rank-based and purple's
+# weights sit higher overall.
 CONS_WEIGHT_BINS=10
 # Replicates for the edge-level ortholog-shuffle null. NOT TRAIT_NULL_REPS (1000):
 # at gene level a replicate is a join over a few hundred thousand pairs, here it is

@@ -30,7 +30,8 @@
 # STRENGTH, in rank-based weight deciles, nearly free from the same stream and the
 # question that matters here: do the strongest co-expression edges survive across
 # species? Bins are rank-based so they hold equal numbers of edges, and each bin's
-# weight RANGE is reported -- the [0.01, 1] rescaling is per-study, so a decile in
+# weight RANGE is reported -- the [0.01, 1] SCALE is shared by both networks, but the
+# deciles are rank-based and purple's weights sit higher overall, so a decile in
 # sugarcane and a decile in purple do not stand for the same |r|.
 # ---------------------------------------------------------------------------
 #
