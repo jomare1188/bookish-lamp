@@ -67,6 +67,12 @@ new_clean/results/figures/*
 # the vector need for submission.
 new_clean/logs/
 
+# docs/data/ holds lookup tables dumped from R annotation packages, not notes.
+# go_terms.tsv is 2.3 M of GO.db (ID, term, ontology) and
+# `./run_all.sh 09` in scripts/11_readouts/module20 rebuilds it in seconds, so it
+# falls under the rule above: regenerable, therefore not tracked.
+new_clean/docs/data/
+
 # --- sbm/: the block-model fits, which live outside the pipeline --------------
 # 24 GB, nearly all of it serialised graph-tool graphs (the purple input alone is
 # 14 GB). The pipeline reads only <tag>_node_blocks.tsv from here and converts it

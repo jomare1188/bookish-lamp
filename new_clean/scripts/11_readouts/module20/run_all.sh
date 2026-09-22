@@ -39,6 +39,14 @@ run 06 06_myb59_neighbourhoods.py "$PYTORCH"
 run 07 07_myb59_neighbour_go.r    "conda-topgo"
 run 08 08_myb59_readout_figure.r  "$RSCRIPT_PLOT"
 
+# 09-11: the same neighbourhoods packaged for someone who will open them by hand --
+# annotated tables (GO in words, domains, degree, N response) and Cytoscape files.
+# 09 needs GO.db from topGO_env; 10 streams both merged edge tables for the SIGN of
+# r, which the .pairs dumps do not keep, and takes ~40 min.
+run 09 09_myb59_go_ontology.r     "conda-topgo"
+run 10 10_myb59_annotate.py       "$PYTORCH"
+run 11 11_myb59_cytoscape.py      "$PYTORCH"
+
 echo
 echo "======================================================================"
 echo "Done. Key outputs in ${OUTDIR}:"
@@ -58,4 +66,7 @@ echo "  myb59_neighbour_overlap.tsv          cross-species neighbourhood overlap
 echo "  myb59_within_sugarcane_overlap.tsv   copy-vs-copy overlap (they are not independent)"
 echo "  myb59_neighbour_go.tsv               BP/MF/CC enrichment of each neighbourhood"
 echo "  myb59_copies_readout.{png,pdf}       the four-panel readout"
+echo "  myb59_annotated/                     one annotated row per seed and neighbour"
+echo "  myb59_cytoscape/                     |r| >= 0.85 core, nodes + edges + ortholog links"
+echo "  README_for_collaborator.md           how to open the two of those, generated"
 echo "======================================================================"
