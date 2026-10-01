@@ -1650,6 +1650,7 @@ reasoning that produced them and carry their own superseded banners.
 | module-level trait test | **blocked Spearman partial correlation** |
 | GO | **one source**: full InterProScan, 17 DBs. 62.9% / 64.4% of network nodes |
 | conservation | node level (`61`) and edge level (`62`), both on the Pearson-only graphs |
+| **unit** | the **gene**. A parallel ORTHOGROUP track (`64`-`70`, 63,271 shared vertices) is described at the end of this document and does not replace anything here |
 
 | | sugarcane | purple |
 |---|---|---|
@@ -2499,6 +2500,243 @@ is a candidate worth following and not a result.** What the readout adds is that
 reasons to be cautious are independent: the expression evidence is thin *and* the network
 evidence does not corroborate it.
 
+## The inferential replicates, and the orthogroup as the unit (2026-10-01)
+
+Everything above treats the **gene** as the vertex and `|r| >= 0.8` as the threshold in
+both species. This section is the answer to two things that were entangled with every
+cross-species claim in it: how much of a gene's count is read-assignment guesswork, and
+whether the gene was the right unit at all.
+
+### The replicates were already on disk
+
+`run_rnseq.sh:18` passed `--numGibbsSamples 30`, so every one of the 66 libraries has 30
+replicate count vectors in `aux_info/bootstrap/`. Nothing had read them — a repo-wide grep
+for `tximeta`, `dropInfReps`, `infRep` returns zero hits before 2026-10-01. **No
+re-quantification was needed for any of what follows.**
+
+tximport reproduces the pipeline's own counts exactly: with
+`countsFromAbundance = "lengthScaledTPM"` over **all** samples it matches
+`salmon.merged.gene_counts_length_scaled.tsv` to 4.7e-10 and `counts(dds)` at rounded
+deviation **0**. The scaling is dataset-wide, so a subset of samples gives different
+counts; this is asserted at run time rather than assumed.
+
+### What the quantifier was unsure about
+
+| | sugarcane | purple |
+|---|---|---|
+| genes | 190,973 | 215,183 |
+| within-orthogroup pairs tested | 160,267 | 178,056 |
+| of those, `determined` (no contention at all) | 19,896 | 40,231 |
+| **read-stealing** (`boot_r_within` < −0.5) | **1.92%** | **5.13%** |
+| expression-matched null, median | **−0.0002** | **−0.0004** |
+| `infrv` median / 90th pct | 0.224 / 2.11 | 0.257 / **4.15** |
+| `infrv_gain` median (multi-copy groups) | 1.287 | **1.803** |
+| groups where collapsing reduces uncertainty | 63.7% | 69.5% |
+
+Purple is about twice as uncertain on every axis, which is what n = 18 and 45.5% of copies
+having no unique 31-mer predict.
+
+`boot_r_within` is the correlation of two genes' counts **across the 30 replicates within
+one sample**. It is strongly negative exactly when the EM is trading reads between two
+copies, and its null sits at zero to four decimal places.
+
+### The diagnostic tracks sequence identity, which is how it is validated
+
+Read-stealing rate against CDS identity, sugarcane / purple:
+
+| CDS identity | % read-stealing | median `boot_r_within` |
+|---|---|---|
+| ≤ 0.95 | 0.00 / 0.11 | −0.016 / −0.011 |
+| 0.95–0.98 | 0.04 / 0.28 | −0.034 / −0.023 |
+| 0.98–0.99 | 0.21 / 0.24 | −0.064 / −0.036 |
+| 0.99–0.999 | 6.01 / 2.58 | −0.152 / −0.085 |
+| **≥ 0.999** | **23.21 / 25.69** | **−0.253 / −0.253** |
+
+Monotone in both species, and essentially zero below 98% identity. A statistic that fired
+on unrelated genes, or failed to fire on identical ones, would be measuring something else.
+
+### THE KEYSTONE SURVIVES, and the artefact hypothesis is refuted
+
+`dnds/decoupling_tests.tsv`'s headline — near-identical copies differ **8.2-fold in
+degree** and sit in different modules **77.6%** of the time — had one serious threat, and
+`frac_unique_min`'s coefficient (−1.53, p 6.8e-08 sugarcane; −1.85, p 1.6e-31 purple) is
+the shape of that threat: less mappable, more apparent divergence. The old control was 300
+of 8,562 and 714 of 53,264 pairs, where the effect shrank from 8.4× to 6.3× and 7.1× to
+3.7×.
+
+Split instead by whether the quantifier can separate the copies at all (near-identical
+pairs, `pid_cds >= 0.99`):
+
+| | n | median degree fold-difference | % different module |
+|---|---|---|---|
+| sugarcane, separable | 3,549 | **8.59×** | 78.9 |
+| sugarcane, read-stealing | 451 | 5.40× | 75.2 |
+| purple, separable | 26,324 | **7.40×** | 66.6 |
+| purple, read-stealing | 4,358 | 6.57× | 61.6 |
+
+**The divergence is larger where the copies are cleanly separable, in both species.** The
+artefact hypothesis predicts the opposite, so it is refuted rather than merely
+unsupported. The join is on the gene pair, which is namespace-free; it covers 26–27% of the
+decoupling table because the families are 3-species groups that merge 2-species ones, but
+near-identical pairs — the ones at issue — are **89.8% / 92.0%** inside a single 2sp group.
+
+### One statistic, one grouping, three quantities, and they disagree
+
+`icc_oneway()` has been in the tree since the dN/dS stage, applied only to ω. Ported to R
+(verified against the published 0.940211 / 0.938674 to their written precision) and pointed
+at other quantities over the same orthogroups:
+
+| quantity | sugarcane | purple |
+|---|---|---|
+| ω against sorghum | **0.940** | **0.939** |
+| nitrogen response (`r_partial`) | 0.682 | 0.351 |
+| log degree | **0.242** | **0.226** |
+
+**Sequence constraint is a property of the orthogroup. Network position is not.** This is
+the project's central negative expressed as one number per quantity rather than as a
+collection of separate nulls, and it is the argument for changing the unit.
+
+### Is an orthogroup one signal? The 2×2
+
+Expression concordance on blocked residuals, against a **size-matched** null (two unrelated
+genes do not score 0), crossed with separability:
+
+| | sugarcane | purple |
+|---|---|---|
+| uniform / separable | 11,740 (43.8%) | 8,742 (31.5%) |
+| **divergent / separable** | **13,902 (51.9%)** | **16,271 (58.7%)** |
+| uniform / inseparable | 214 (0.8%) | 330 (1.2%) |
+| divergent / inseparable | 924 (3.5%) | 2,401 (8.7%) |
+| groups classified | 26,780 | 27,744 |
+
+`uniform` means above the 95th percentile of random same-size sets, so 43.8% / 32.7%
+against a 5% expectation is an **8.9× / 6.5× enrichment**. Only 3.5% / 8.7% of divergence
+sits in the cell where read-stealing could explain it.
+
+Two independent checks that the axes mean what they claim. `infrv_gain` — computed from
+InfRV, not from `boot_r_within` — is **10.4 / 19.2** in the inseparable cells against
+**1.14 / 1.75** in the separable ones: groups whose copies trade reads are exactly the ones
+collapsing rescues. And purple's divergent/inseparable groups have sign concordance
+**0.500**, their members disagreeing about the direction of the nitrogen response at
+chance, against 1.000 for the uniform cells.
+
+> **`uniform` is about shared expression profile, not shared wiring, and the two are
+> nearly independent.** In sugarcane the *uniform*/separable cell carries a **larger**
+> median degree fold-range (18.8×) than divergent/separable (16.0×). Two copies can be
+> tightly co-expressed with each other and still each keep company with very different
+> numbers of other genes. That is the log-degree ICC seen from another direction.
+
+### The orthogroup matrix, and one shared vertex set
+
+| | |
+|---|---|
+| orthogroups with an expressed gene in both species | 71,543 |
+| CV ≥ 15 keeps | 66,929 sugarcane (93.6%) / 65,393 purple (91.4%) |
+| **shared row set after intersecting** | **63,271** |
+| groups each species gives up to the intersection | 3,658 / 2,122 |
+| genes with no orthogroup, dropped | 39,289 / 34,724 — **14.2% / 14.8% of the counts** |
+
+Both matrices carry the same 63,271 rows in the same order, asserted before the stage
+exits. That is the property the whole design exists for: edge conservation becomes a
+comparison of two graphs on identical vertices, with no many-to-many projection and so none
+of the multiplicity that inflated the gene-level conserved-pair count to 1.25×.
+
+Aggregation is **sum of raw counts, then transform** — counts add, VST values do not, and
+the sum is also what salmon can resolve when it cannot split the copies.
+
+### |r| is not evidence, and the two trees disagree about which network is denser
+
+At n = 48, `|r| >= 0.8` is p = 9.02e-12. At n = 18 it is p = **6.72e-05** — seven orders of
+magnitude looser. Purple needs `|r| >= 0.9742` to carry sugarcane's per-edge evidence, so
+both networks were built twice:
+
+| | floor | edges | mean degree |
+|---|---|---|---|
+| sugarcane | 0.8 | 10,086,347 | 318.8 |
+| purple, `results_og` | 0.8 | 118,874,423 | **3,757.4** |
+| purple, `results_og_matched` | 0.9742 | 2,208,657 | **69.8** |
+
+**The threshold decides which species looks denser.** At a shared `|r|` purple is 11.8×
+denser than sugarcane; at shared evidence it is 4.6× sparser. Neither is "the" answer:
+n = 18 cannot support a network comparable to n = 48's, and any statement about purple's
+topology has to say which of these it is about.
+
+### Conservation on identical vertices
+
+With one vertex set the ortholog-shuffle null of `61`/`62` has nothing left to permute, so
+the null is a **degree-matched node relabelling** of the target graph — which also
+separates conservation from degree, the confound flagged as unseparated at gene level.
+
+| | `results_og` (0.8 / 0.8) | `results_og_matched` (0.8 / 0.9742) |
+|---|---|---|
+| edges shared | 1,746,359 | 71,407 |
+| Jaccard | 0.013728 | 0.005842 |
+| % of sugarcane / of purple | 17.314 / 1.469 | 0.708 / 3.233 |
+| degree Spearman | 0.150 (p 1.0e-189) | 0.149 (p 1.4e-63) |
+| null mean (degree-matched) | 1,617,920 ± 3,521 | 59,156 ± 2,561 |
+| **fold over null** | **1.079** | **1.207** |
+| distance in null SDs | 36.5 | 4.8 |
+
+**The raw conservation percentage is nearly uninterpretable on its own**, because it tracks
+the *target* graph's density: at `|r| >= 0.8` sugarcane's edges conserve 17.3% and purple's
+1.5%, while at matched evidence it is 0.71% and 3.23% — the asymmetry reverses with the
+threshold.
+
+**And the fold is small.** 1.079× and 1.207×: unambiguous statistically — 36.5 and 4.8 null
+standard deviations — but a long way from the 1.69× / 1.71× the gene level reports. The
+difference is the null, not the unit. `13_conservation_null.r`, `61` and `62` permute the
+**ortholog assignment**, which never controlled for degree; this null permutes node labels
+**within degree strata**. So most of the gene-level excess was degree, which is what
+`results.md`'s own open item suspected and could not test ("whether cross-species edge
+conservation selects housekeeping genes *over and above* their being hubs would need a
+degree-matched comparison, which is not done here"). It is done here, and the answer is
+mostly no.
+
+> The empirical p is **0.0476 in both trees, and that is the floor** for 20 replicates:
+> no null replicate reached the observed value in either. Read `null_z`, not `p_empirical`.
+> Raising `OG_CONS_NULL_REPS` is the only way to resolve further, and at ~90 s per
+> replicate on the `|r| >= 0.8` tree that is the cost to weigh.
+
+What does survive both trees and both directions is the **strength trend**: conservation
+rises monotonically across all ten `|r|` deciles, in `results_og` from 15.1% to 21.6%
+(sugarcane → purple) and 1.0% to 2.6% (purple → sugarcane), and in the matched tree from
+0.57% to 1.15% and 2.94% to 3.91%. That reproduces the gene-level finding on a vertex set
+that needs no projection, and it is the one positive result in this section that does not
+depend on the threshold.
+
+### The nitrogen test with uncertainty propagated
+
+Swish run beside the blocked fit, never instead of it:
+
+| | sugarcane | purple |
+|---|---|---|
+| genes swish tested / blocked tested | 121,114 / 101,990 | 115,941 / 170,135 |
+| intersection | 76,278 | 115,412 |
+| swish-responsive / blocked-responsive | 33,561 / 8,716 | 1,680 / 3,689 |
+| **called by both** | **8,707** | **1,361** |
+| of the blocked calls | **99.90%** | 36.89% |
+| Spearman, `r_partial` vs swish stat | 0.949 | 0.943 |
+
+**Sugarcane's blocked calls are essentially all confirmed** — 8,707 of 8,716, nine
+exceptions. Swish's fourfold excess is not a disagreement: **every one of the 24,854
+swish-only genes has `|r_partial| < 0.6`**, so they fail the blocked rule's effect-size
+floor, which swish has no analogue for.
+
+**Purple's are not**, and two causes contribute. Swish cannot block on genotype for an
+ordinal dose (it forbids a covariate alongside a correlation test unless the design is
+paired), so the pooled run is unblocked and underpowered at n = 18. But the unconfirmed
+calls are also genuinely more uncertain: median `meanInfRV` **0.612** against **0.515** for
+the confirmed ones, Wilcoxon p = **0.0022**. The confident set is additionally **5.7×**
+more likely to replicate across purple's two genotypes (4.92% vs 0.86%). So quantification
+uncertainty is a real contributor to purple's gap, and not the whole of it.
+
+One thing fell out of running purple per genotype: **only 106 genes are nitrogen-responsive
+in both**, against 984 in *S. robustum* (51NG3) and 3,370 in *S. officinarum* (TAGZ) alone.
+At n = 9 per genotype that is underpowered, but purple's nitrogen response is largely
+genotype-specific and TAGZ carries most of it.
+
+---
+
 ## Open items
 
 - The 47,192 spurious sugarcane edges were present in every downstream result of
@@ -2556,12 +2794,41 @@ evidence does not corroborate it.
 - **The MI layer is no longer used anywhere**, so the two open items above about
   purple's MI floor are now historical rather than actionable. They describe the
   merged build.
-- **Edge conservation and degree are not separated.** Genes on a conserved edge are
-  hubs (median degree 228 vs 18 in sugarcane), partly by arithmetic, so figure 4B's
-  conserved/non-conserved GO split and figure 3C's hub/periphery split are one
-  contrast seen twice. Whether cross-species edge conservation selects housekeeping
-  genes *over and above* their being hubs would need a degree-matched comparison,
-  which is not done here.
+- ~~**Edge conservation and degree are not separated.**~~ **CLOSED 2026-10-01 at the
+  ORTHOGROUP level, and the answer is mostly "no".** Genes on a conserved edge are hubs
+  (median degree 228 vs 18 in sugarcane), partly by arithmetic, so figure 4B's
+  conserved/non-conserved GO split and figure 3C's hub/periphery split are one contrast
+  seen twice. `69_og_conservation.py` runs the degree-matched comparison that was missing:
+  on a shared vertex set, with node labels permuted WITHIN degree strata, the fold over
+  null is **1.079** (both species at |r| >= 0.8) and **1.207** (purple at matched
+  evidence) — against the **1.69 / 1.71** the gene level reports from a null that permutes
+  the ortholog assignment and never controlled for degree. So most of the gene-level excess
+  was degree. **The gene-level folds in this document should be read with that in mind**;
+  they are not re-derived here, because the degree-matched null needs a shared vertex set
+  and the gene level does not have one.
 - ~~**`10_go_semantic.r` is the last stage on the old annotation.**~~ **CLOSED
   2026-09-14** — re-run on the adopted table; every GO-consuming stage is now on one
   annotation.
+
+- **The orthogroup conservation p-value is floored.** `OG_CONS_NULL_REPS = 20` puts the
+  empirical floor at 1/21 = 0.0476, and no null replicate reached the observed value in
+  either tree, so both report exactly 0.0476. The effects are 36.5 and 4.8 null standard
+  deviations out; read `null_z`. Resolving further costs ~90 s per replicate on the
+  |r| >= 0.8 tree.
+- **14.2% of sugarcane's and 14.8% of purple's counts sit in genes with no orthogroup**
+  and are therefore absent from every orthogroup-level result. 39,289 and 34,724 genes.
+  That is a floor on what the orthogroup unit can see, and it is not a filter that can be
+  loosened — OrthoFinder either placed a gene or it did not.
+- **Purple's nitrogen response is largely genotype-specific.** Run within each genotype,
+  swish calls 984 genes in 51NG3 (*S. robustum*) and 3,370 in TAGZ (*S. officinarum*), with
+  only **106 in both**. At n = 9 per genotype this is underpowered and the asymmetry could
+  be power alone, but every pooled purple claim is averaging over two genotypes that
+  largely do not agree, and TAGZ carries most of the signal.
+- **The orthogroup networks have no clustering yet**, so module correspondence between the
+  species (ARI / NMI on a shared vertex set — the one comparison the gene level could never
+  make cleanly) is not measured. It needs `mcxload` + the MCL toolchain pointed at
+  `results_og`, with `CLUSTER_WORK_DIR` redirected.
+- **`infrv_gain` is quoted over two different universes** and the numbers differ: 1.287 /
+  1.803 in `65`'s summary, over the quantified gene set, and 1.428 / 2.284 in `67`'s, over
+  the CV-filtered network-input set. Both are correct for their denominator; neither is
+  wrong, but they must not be mixed.
