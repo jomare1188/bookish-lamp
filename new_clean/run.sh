@@ -56,6 +56,10 @@
 #   ./run.sh infreps <study>                 InfRV + read-stealing from the Gibbs reps
 #   ./run.sh oguniformity <study>            is an orthogroup one signal or several
 #   ./run.sh swishtrait <study>              the N test with quantification uncertainty
+#   ./run.sh ogmatrix                        orthogroup expression matrix, both species
+#   ./run.sh ognetwork <study>               Pearson layer on the orthogroup matrix
+#   ./run.sh ogconservation                  two-graph conservation on shared vertices
+#   ./run.sh ogreadout                       the keystone re-tested, and three ICCs
 #   ./run.sh go        BP|MF|CC              GO enrichment
 #   ./run.sh gosem                           GO semantic clustering
 #   ./run.sh tfs       <study>               TFs in the network (step 04 only)
@@ -616,6 +620,86 @@ main() {
     CLEAN_TRAIT_PADJ_THR="$TRAIT_PADJ_THR" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_NET" "${SCRIPTS}/31_gene_trait_blocked.r"
+    ;;
+
+  # The keystone decoupling result recomputed separately for gene pairs the
+  # quantifier CAN and CANNOT separate, plus the three ICCs side by side. Reads
+  # the MAIN tree: the decoupling pairs and the read-stealing verdicts are
+  # gene-level, so this does not belong to an orthogroup results tree.
+  ogreadout)
+    CLEAN_STUDIES="$STUDIES" \
+    CLEAN_RESULTS="${CLEAN}/results" \
+    CLEAN_DNDS_DIR="$DNDS_DIR" \
+    CLEAN_OUT_DIR="${CLEAN}/results/conservation" \
+    CLEAN_STEAL_THR="$OG_STEAL_THR" \
+      "$RSCRIPT_NET" "${SCRIPTS}/70_og_readout.r"
+    ;;
+
+  # Edge conservation as set intersection, because 68 put both networks on the
+  # same vertices. The ortholog-shuffle null of 61/62 has nothing left to permute,
+  # so the null here is a DEGREE-MATCHED node relabelling -- which also separates
+  # conservation from degree, the confound docs/results.md flags as unseparated at
+  # gene level. Reads whichever tree RESULTS points at.
+  ogconservation)
+    CLEAN_OG_PREFIX_SUGARCANE="$(main_og_prefix sugarcane)" \
+    CLEAN_OG_PREFIX_PURPLE="$(main_og_prefix purple)" \
+    CLEAN_LAYER_SUGARCANE="$(layer_out sugarcane pearson).edgelist.tsv" \
+    CLEAN_LAYER_PURPLE="$(layer_out purple pearson).edgelist.tsv" \
+    CLEAN_OUT_DIR="${RESULTS}/conservation" \
+    CLEAN_NULL_REPS="$OG_CONS_NULL_REPS" \
+    CLEAN_WEIGHT_BINS="$CONS_WEIGHT_BINS" \
+    CLEAN_DEGREE_STRATA="$OG_CONS_DEGREE_STRATA" \
+    CLEAN_SEED="$INFREPS_SEED" \
+      "$PYTORCH" "${SCRIPTS}/69_og_conservation.py"
+    ;;
+
+  # The Pearson layer on the ORTHOGROUP matrix. Pearson only -- no KSG, so no
+  # merge: the MI layer is used nowhere in the current analysis, and a single-layer
+  # graph is what 40_pearson_only_network.sh produces for the gene-level track too.
+  #
+  # Run it into a PARALLEL tree, which is what RESULTS is for:
+  #   RESULTS=$PWD/results_og          STAT_MIN=0.8   ./run.sh ognetwork <study>
+  #   RESULTS=$PWD/results_og_matched  STAT_MIN=0.974 ./run.sh ognetwork purple
+  # The matrix itself comes from main_og_prefix(), which ignores RESULTS, so both
+  # trees read the one copy 68 wrote and only the layers differ.
+  ognetwork)
+    check_study "$ARG"
+    [ "${FORCE:-0}" = "1" ] || assert_threshold \
+      "$(layer_out "$ARG" pearson).summary.json" "$STAT_MIN" "--match-pearson"
+    M="$(main_og_prefix "$ARG")"
+    [ -f "${M}.f32" ] || die "no orthogroup matrix at ${M}.f32 -- run ./run.sh ogmatrix first"
+    mkdir -p "${RESULTS}/${ARG}/layers"
+    "$PYTORCH" -u "${SCRIPTS}/02_network_engine.py" \
+      --matrix "$M" \
+      --out    "$(layer_out "$ARG" pearson)" \
+      --estimator pearson \
+      --alpha "$ALPHA" \
+      --cand-pearson "$CAND_PEARSON" \
+      --gpu-mem-gb "$GPU_MEM_GB" \
+      --ram-limit-gb "$RAM_LIMIT_GB" \
+      --resume \
+      --match-pearson "$STAT_MIN" --max-value "$STAT_MAX" "${EXTRA[@]}"
+    ;;
+
+  # The expression matrix with the ORTHOGROUP as the row. BOTH species in one
+  # invocation, deliberately: the whole point is one shared row set, and that is a
+  # joint property which cannot be produced one study at a time.
+  ogmatrix)
+    CLEAN_STUDIES="$STUDIES" \
+    CLEAN_ORTHOGROUPS="$ORTHOGROUPS" \
+    CLEAN_MIN_CV="$MIN_CV" \
+    CLEAN_OG_BOTH_SPECIES_ONLY="$OG_BOTH_SPECIES_ONLY" \
+    CLEAN_DDS_SUGARCANE="$DDS_sugarcane" \
+    CLEAN_DDS_PURPLE="$DDS_purple" \
+    CLEAN_COLS_SUGARCANE="$COLS_sugarcane" \
+    CLEAN_COLS_PURPLE="$COLS_purple" \
+    CLEAN_STRIP_VERSION_SUGARCANE="$STRIP_VERSION_sugarcane" \
+    CLEAN_STRIP_VERSION_PURPLE="$STRIP_VERSION_purple" \
+    CLEAN_OG_SPECIES_SUGARCANE="$OG_SPECIES_sugarcane" \
+    CLEAN_OG_SPECIES_PURPLE="$OG_SPECIES_purple" \
+    CLEAN_OG_PREFIX_SUGARCANE="$(og_prefix sugarcane)" \
+    CLEAN_OG_PREFIX_PURPLE="$(og_prefix purple)" \
+      "$RSCRIPT_DESEQ" "${SCRIPTS}/68_og_matrix.r"
     ;;
 
   # The nitrogen test again, over the 30 Gibbs replicates, run BESIDE the blocked

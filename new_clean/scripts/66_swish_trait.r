@@ -24,10 +24,17 @@
 #
 # THE DESIGNS MIRROR THE BLOCKED FIT AS CLOSELY AS SWISH ALLOWS
 #
-#   purple      x = treatment (0/2/6 mM, numeric), cov = genotype, cor = spearman
+#   purple      x = treatment (0/2/6 mM, numeric), cor = spearman, NO cov
 #               The blocked test is Spearman here for the same reason: the dose is
 #               ORDINAL in a stress-control-stress design where 2 mM is the
-#               control, so Pearson's literal spacing is unjustified.
+#               control, so Pearson's literal spacing is unjustified. swish FORBIDS
+#               a covariate alongside a correlation unless the design is paired,
+#               and purple is not paired -- so the genotype term cannot enter the
+#               way 31_gene_trait_blocked.r enters it. Purple is therefore run
+#               three ways, pooled and once within each genotype, and all three
+#               are written. PART OF ANY POOLED/BLOCKED DISAGREEMENT IS THAT LOST
+#               BLOCKING, not quantification uncertainty; the per-genotype columns
+#               and meanInfRV are what let the two causes be told apart.
 #   sugarcane   x = treatment (high/low), cov = genotype:segment interaction
 #               Swish takes ONE stratifying covariate, so the two blocks of the
 #               blocked model (genotype + segment) are crossed into 8 strata of 6
@@ -148,15 +155,34 @@ mk <- function(mats, ids) {
 }
 cm <- txi$counts; dimnames(cm) <- list(genes, samples)
 lm_ <- txi$length; dimnames(lm_) <- list(genes, samples)
+# swish wants a 2-LEVEL FACTOR for the two-group test (`stopifnot(is.factor(
+# condition))`, `nlevels == 2`) and a NUMERIC for the correlation test. Levels are
+# sorted ascending so the second is the higher nitrogen dose and log2FC reads
+# high-over-low rather than the other way round.
+trait_col <- if (CORMODE == "none") {
+  f <- factor(y_num, levels = sort(unique(y_num)))
+  if (nlevels(f) != 2L)
+    stop("the two-group test needs exactly 2 trait levels, got ", nlevels(f),
+         " (", paste(levels(f), collapse = "/"), ") -- set SWISH_COR_", STUDY,
+         " to spearman for an ordinal dose", call. = FALSE)
+  f
+} else {
+  y_num
+}
 se <- SummarizedExperiment(
   assays = c(list(counts = cm, length = lm_), mk(txi$infReps, genes)),
   colData = DataFrame(row.names = samples, sample = samples,
-                      trait = y_num, stratum = strat))
+                      trait = trait_col, stratum = strat))
 rm(txi); invisible(gc())
 say(sprintf("SummarizedExperiment: %s genes x %d samples x %d replicates",
             fmt_n(nrow(se)), ncol(se), N_REP))
 
 # --- the swish flow, in its published order ---------------------------------
+# computeInfRV() before any filtering, so the uncertainty attached to each gene
+# describes the gene and not the subset that survived labelKeep. swish() does not
+# populate meanInfRV by itself; without this the column comes back all NA, and the
+# whole point is to be able to ask whether an unconfirmed call was an uncertain one.
+se <- computeInfRV(se)
 se <- scaleInfReps(se, quiet = TRUE)
 se <- labelKeep(se)
 n_all <- nrow(se)

@@ -411,6 +411,18 @@ SWISH_COR_purple=spearman
 SWISH_NPERMS=100
 SWISH_QTHR=0.05
 
+# The orthogroup networks' node set (68). TRUE keeps only groups with an expressed
+# gene in BOTH species, which is what makes the two networks share vertices and
+# turns edge conservation into a direct two-graph comparison.
+OG_BOTH_SPECIES_ONLY=1
+
+# Two-graph conservation (69). The null relabels the target graph's vertices
+# WITHIN degree strata, so it keeps both degree sequences and destroys only which
+# orthogroup is which -- separating conservation from degree, which the gene-level
+# analysis could not do. 20 strata over 63,271 vertices is ~3,160 per stratum.
+OG_CONS_NULL_REPS=20
+OG_CONS_DEGREE_STRATA=20
+
 # The three-species run, read ONLY through the crosswalk (64_og_crosswalk.py).
 # Its ids are a DIFFERENT NAMESPACE: OG0000017 exists in both runs and means
 # different gene sets. Measured 2026-10-01: 2sp -> 3sp is 95.8% one-to-one,
@@ -802,6 +814,17 @@ module_dir()  {
   else echo "$(study_dir "$1")/${CLUSTERING}"; fi
 }
 vst_prefix()  { echo "${RESULTS}/$1/vst/$1"; }
+# The ORTHOGROUP matrix, written by 68_og_matrix.r in the same three-file contract
+# as vst_prefix() -- row-major float32 + one id per line + meta.json -- because
+# that format is label-agnostic and drops straight into 02_network_engine.py and
+# every read_vst() consumer with no code change.
+og_prefix()   { echo "${RESULTS}/$1/og_vst/$1_og"; }
+
+# The orthogroup matrix as an INPUT, which must not follow RESULTS -- exactly the
+# reason main_layer_out() exists. The matrix is source data shared by every
+# orthogroup track, so a parallel tree (results_og, results_og_matched) reads the
+# one copy in the main tree and writes only its own layers. Use it only for inputs.
+main_og_prefix() { echo "${CLEAN}/results/$1/og_vst/$1_og"; }
 layer_out()   { echo "${RESULTS}/$1/layers/$1_$2"; }
 # The Pearson/MI layers are SOURCE data, shared by every track: they are what the
 # GPU engine produced and no parallel tree recomputes them. A tree redirected with
