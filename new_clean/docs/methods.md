@@ -753,6 +753,320 @@ B, and a control on a different background controls nothing.
 
 ---
 
+## 64 · ogcrosswalk — `./run.sh ogcrosswalk`
+
+Bridges the **two orthogroup namespaces**, joining on gene membership rather than on the
+id string.
+
+| | |
+|---|---|
+| reads | `Orthogroups.tsv` (2-species), `orthofinder_3sp/.../Orthogroups.tsv`, `families_*`, `kmer_uniqueness_*`, `percopy_omega_*` |
+| writes | `conservation/og_crosswalk.tsv` (94,229 rows) |
+| cost | ~5 s |
+| env | `pytorch` (stdlib only) |
+
+**There are two OrthoFinder runs and their ids are not comparable.** The 2-species run
+(`Results_Jun04_2`, 94,229 groups) backs every conservation result; the 3-species run
+(`Results_Aug31`, 50,494) backs `families_*`, `kmer_uniqueness_*` and `percopy_omega_*`.
+`OG0000017` exists in both and means **different gene sets**, so joining on the id would
+be silently wrong.
+
+Measured: **2sp → 3sp is 95.8% one-to-one** (84,852 of 88,593 mappable groups), 3sp → 2sp
+only **59.1%**. Adding sorghum *merged* groups the two-species run kept apart, so the
+2-species run is the finer partition and stays the unit of analysis. 38,586 genes have no
+3sp group at all.
+
+Only **group-level** attributes need the crosswalk — the sorghum anchor and the family
+class. Gene-level ones (`frac_unique`, per-copy ω) are keyed on the gene and join
+straight on, with no ambiguity. That is why the ambiguous 4.2% costs little: it withholds
+an anchor, never a mappability. Those rows get `ambiguous = TRUE` and an empty `og_3sp`;
+picking the largest overlap would invent a fact.
+
+The 2sp file is **CRLF on every line** and sugarcane is its last column, so an empty
+sugarcane cell reads as `"\r"` — testing `$3 != ""` counts 12,422 phantom genes. The
+reader strips CRLF in binary, as `29_dnds/08_homeolog_families.py:50` does.
+
+---
+
+## 65 · infreps — `./run.sh infreps <study>`
+
+What the quantifier was **unsure** about, from the 30 Gibbs replicates salmon has been
+writing all along.
+
+| | |
+|---|---|
+| reads | `<quant>/<sample>/quant.sf` + `aux_info/bootstrap/`, `salmon.merged.tx2gene.tsv`, `Orthogroups.tsv` |
+| writes | `<study>/infreps/<study>_{infrv,readsteal_pairs,readsteal_null,og_uncertainty,infreps_summary}.tsv` |
+| cost | ~3 min purple, ~5 min sugarcane |
+| env | `swish_env` (fishpond 2.16.0, tximport 1.38.2) |
+
+`run_rnseq.sh:18` passed `--numGibbsSamples 30`, so every library has 30 replicate count
+vectors in `aux_info/bootstrap/`. Nothing in the pipeline read them until 2026-10-01 — a
+repo-wide grep for `tximeta`, `dropInfReps`, `infRep` returned zero hits.
+
+**Three measurements.** `infrv` is fishpond's inferential relative variance per gene, via
+`computeInfRV()` — the published definition, not reimplemented. `boot_r_within` is the
+correlation of two genes' counts **across the 30 replicates within one sample**, averaged
+over samples: when the EM cannot separate two copies it moves reads between them, so one
+rises exactly as the other falls while their sum stays put, and **strongly negative means
+not separately estimable**. `infrv_gain` is a group's mean member InfRV over the InfRV of
+its summed profile — how much uncertainty collapsing removes.
+
+A pair with `n_samples_usable == 0` is **not missing data**: in every sample one of the two
+genes had identical counts in all 30 replicates, because its reads were never in
+contention. That is the strongest evidence of unambiguous quantification available, so it
+is carried as `verdict = determined` rather than dropped as NA.
+
+**The null is not optional** — `boot_r_within` is a correlation of 30 numbers and has a
+distribution between unrelated genes. Expression-decile-matched random pairs, drawn as
+`29_dnds/12_decoupling_test.r:149-172` draws its own, must centre on ≈ 0; the script
+aborts if the median exceeds 0.15. Measured: **−0.0002** (sugarcane) and **−0.0004**
+(purple).
+
+Pairs are capped at `INFREPS_MAX_OG_COPIES = 20` copies per group — `29_dnds`'s own
+`MAX_FAMILY_COPIES`, for its reasons. At 20, only 88 sugarcane and 326 purple groups are
+skipped.
+
+> **tximport is run over ALL samples at once, with `countsFromAbundance =
+> "lengthScaledTPM"`.** That reproduces `salmon.merged.gene_counts_length_scaled.tsv` to
+> 4.7e-10 and `counts(dds)` exactly after rounding — asserted at run time against the
+> merged table, so no DESeq2 is needed. The scaling depends on mean transcript length
+> across the whole dataset, so **a subset of samples gives different counts** and this
+> cannot be chunked by sample.
+
+---
+
+## 66 · swishtrait — `./run.sh swishtrait <study>`
+
+The nitrogen test again, over the inferential replicates, run **beside** the blocked fit.
+
+| | |
+|---|---|
+| reads | the same quantification as `65`, plus `gene_trait_blocked_<study>.tsv` |
+| writes | `<study>/gene_trait_swish_<study>.tsv`, `_agreement.tsv`, `_summary.tsv` |
+| cost | ~8 min sugarcane, ~12 min purple (three swish runs) |
+| env | `swish_env` |
+
+`31 · traitblocked` stays the primary test. What it cannot do is know how sure salmon was
+about a gene's counts, and in an 8–12× polyploid that is not a detail. **The useful output
+is the agreement table**, not a new gene list: a gene called by both is responsive in a way
+that does not depend on how the reads were split.
+
+**The designs mirror the blocked fit as closely as swish allows, and one place it does
+not.** `swish`'s guards are `if (correlation & !paired) stopifnot(!cov_given)`, so a
+*continuous* trait admits a stratifying covariate only in a paired design. Purple is
+2 genotypes × 3 doses × 3 replicates — not paired — so its dose correlation **cannot be
+blocked on genotype**. Rather than drop the term silently, purple is run three ways:
+pooled, and once within each genotype, with all three written.
+**Part of any pooled/blocked disagreement is therefore that lost blocking, not
+quantification uncertainty**; the per-genotype columns and `meanInfRV` are what separate
+the two causes. Sugarcane's trait is two-level, so correlation is off and
+`cov = genotype:segment` stratifies into 8 strata of 6 as intended.
+
+`computeInfRV()` runs **before** `labelKeep()`, so the uncertainty attached to a gene
+describes the gene and not the subset that survived filtering. `swish()` does not populate
+`meanInfRV` by itself.
+
+**The universes differ and that is reported.** `labelKeep()` drops low-count genes, so
+swish tests fewer genes than the blocked fit's node universe; the agreement table is
+computed on the intersection and the gap printed, because a gene absent from one test is
+not evidence against the other. Note also that the blocked rule carries an effect-size
+floor (`|r| >= 0.6`) and swish has no analogue — which is the whole of sugarcane's
+apparent excess.
+
+---
+
+## 67 · oguniformity — `./run.sh oguniformity <study>`
+
+Is an orthogroup one signal or several, and when its copies disagree, is that biology or
+the quantifier?
+
+| | |
+|---|---|
+| reads | the VST triple, `Orthogroups.tsv`, `gene_trait_blocked_*`, node metrics, membership, `65`'s tables, `og_crosswalk.tsv` |
+| writes | `<study>/og_uniformity_<study>.tsv`, `og_classification_<study>.tsv`, `_summary.tsv`, `_null.tsv` |
+| cost | ~2.5 min |
+| env | `r_net_env` |
+
+Crossing **expression concordance** with `65`'s **separability** gives a 2×2 whose
+bottom-left cell — divergent signal, separable copies — is real post-polyploidy
+regulatory divergence, and whose bottom-right is divergence that was read-assignment
+artefact.
+
+`expr_concordance` is the mean pairwise Spearman between member profiles on **blocked
+residuals** (`blocked_residuals()`, `common.R`). Only the design blocks come out; **the
+trait is left in**, because removing nitrogen would measure agreement in the leftover
+noise when the question is agreement in the biology.
+
+Computed by identity, not by `cor()` per group: for *n* row-standardised rows the mean
+pairwise correlation is exactly `(‖Σz‖² − n) / (n(n−1))`, one `colSums` per group. Verified
+against `cor()` to 1e-16. That is what makes 28,000–34,000 groups plus a 200-replicate
+null affordable.
+
+**The concordance has a size-matched null, and needs one** — two unrelated genes do not
+score 0. A group is `uniform` when it clears the `OG_UNIFORM_QUANTILE = 0.95` quantile of
+random gene sets **of its own size**. So `pct_uniform` of 44.6% / 32.7% is against a 5%
+expectation: an 8.9× / 6.5× enrichment.
+
+> **`uniform` means shared expression profile, not shared wiring.** The two are nearly
+> independent: in sugarcane the *uniform*/separable cell carries a **larger** median degree
+> fold-range (18.8×) than divergent/separable (16.0×). That is the ICC result seen from
+> another angle and is the reason the axis is named for concordance rather than for
+> similarity in general.
+
+**Per group vs global.** Concordance, sign concordance and the degree spread are per
+orthogroup and go in the main table. ICC is a between-vs-within decomposition over all
+groups at once — one number per species — so it goes in the summary. An ICC per group
+would be a category error.
+
+---
+
+## 68 · ogmatrix — `./run.sh ogmatrix`
+
+The expression matrix whose rows are **orthogroups**, for both species, on one **shared**
+row set.
+
+| | |
+|---|---|
+| reads | both `dds` objects, `Orthogroups.tsv` |
+| writes | `<study>/og_vst/<study>_og.{f32,genes.txt,meta.json}`, `og_matrix_summary.tsv` |
+| cost | ~40 s for both species |
+| env | `cor_env` |
+
+**Both species in one invocation, breaking the one-study-per-call habit deliberately.**
+The point is that the two networks end up on identical vertices, so conservation becomes a
+direct two-graph comparison with no projection. A shared row set is a joint property and
+cannot be produced one study at a time: the CV filter drops different groups in each, so
+the two survivor sets are intersected explicitly and both costs printed.
+
+Measured: **71,543** groups have an expressed gene in both species; CV ≥ 15 keeps 66,929
+(93.6%) in sugarcane and 65,393 (91.4%) in purple; intersecting leaves **63,271 rows,
+identical and in the same order**, asserted before the stage exits. Sugarcane gives up
+3,658 groups it would have kept alone, purple 2,122.
+
+The honest cost is elsewhere: **39,289 sugarcane and 34,724 purple genes have no
+orthogroup at all** and are dropped, carrying 14.2% and 14.8% of the counts.
+
+**Aggregation is sum of raw counts, then transform.** VST is log-like, so averaging VST
+values is not averaging expression and summing them is meaningless; counts add. The sum is
+also the quantity salmon can resolve even when it cannot split the copies, which is why
+collapsing removes uncertainty at all.
+
+> **The transform is `varianceStabilizingTransformation()`, not `vst()`.** Measured
+> 2026-10-01: the former reproduces nf-core's stored `assay(dds, "vst")` at
+> `max|diff| = 0` and `cor = 1.0000000000`; the faster `vst()` approximation differs by a
+> **median of 1.706 units**. `01 · export` reads the stored assay and never recomputes;
+> this stage must recompute, because the rows are new, so it recomputes the same way.
+
+The output is the **same three-file contract** as `vst_prefix()` — row-major float32, one
+id per line, `meta.json`. That format is label-agnostic, so the matrix drops into
+`02_network_engine.py` and every `read_vst()` consumer with no code change.
+
+---
+
+## ognetwork — `./run.sh ognetwork <study>`
+
+The Pearson layer on the orthogroup matrix. Pearson only, so no merge.
+
+| | |
+|---|---|
+| reads | `main_og_prefix(<study>)` — the matrix in the **main** tree, which ignores `RESULTS` |
+| writes | `$RESULTS/<study>/layers/<study>_pearson.*` |
+| cost | 0.6 min sugarcane, 8.7 min purple |
+| env | `pytorch` (GPU) |
+
+Run into a parallel tree, which is what `RESULTS` is for:
+
+```sh
+RESULTS=$PWD/results_og         STAT_MIN=0.8    ./run.sh ognetwork <study>
+RESULTS=$PWD/results_og_matched STAT_MIN=0.9742 ./run.sh ognetwork purple
+```
+
+`main_og_prefix()` ignores `RESULTS` for the same reason `main_layer_out()` does: the
+matrix is source data shared by every orthogroup track, so both trees read the one copy
+`68` wrote and only the layers differ.
+
+**Two trees, because |r| is not evidence.** At n = 48, |r| ≥ 0.8 is p = 9.02e-12; at
+n = 18 it is p = 6.72e-05 — seven orders of magnitude apart. `results_og` cuts both at 0.8
+for continuity with every gene-level number; `results_og_matched` raises purple to
+**0.9742**, the |r| carrying sugarcane's per-edge evidence at n = 18. The two disagree
+about which network is denser, which is the point:
+
+| | edges | mean degree |
+|---|---|---|
+| sugarcane, 0.8 | 10,086,347 | 318.8 |
+| purple, 0.8 | 118,874,423 | 3,757.4 |
+| purple, 0.9742 | 2,208,657 | 69.8 |
+
+---
+
+## 69 · ogconservation — `./run.sh ogconservation`
+
+Edge conservation as **set intersection**, because `68` put both networks on the same
+vertices.
+
+| | |
+|---|---|
+| reads | both `og_vst/*.genes.txt`, both Pearson edgelists + their `summary.json` |
+| writes | `$RESULTS/conservation/og_conservation_{summary,by_decile,null}.tsv`, `og_degree_both.tsv` |
+| cost | ~20 min at \|r\| ≥ 0.8, ~3 min matched |
+| env | `pytorch` (numpy, scipy) |
+
+`61` and `62` exist to project an edge through orthology — many-to-many, which is what
+inflated the conserved-pair count to 1.25× by multiplicity. That projection is unavoidable
+while the vertex is a gene. `68` removed the problem instead of correcting for it, so here
+the projection is the identity.
+
+**The old null has nothing left to permute, and that is the point.** `61`/`62` permute the
+ortholog assignment; on a shared vertex set there is no assignment. The replacement is a
+**degree-matched node relabelling** of the target graph — each vertex swapped for another
+of similar degree, over `OG_CONS_DEGREE_STRATA = 20` strata — so both degree sequences are
+preserved and only *which group is which* is destroyed. Overlap above that is conservation
+degree alone does not explain, which is the confound `results.md` flags as unseparated at
+gene level.
+
+The empirical p is **floored at 1/(reps+1)**, so at 20 replicates it cannot go below
+0.0476 and a many-sigma effect still prints as marginal. `null_z` is carried beside it for
+that reason — not a second test, just the distance in null standard deviations.
+
+> **The completeness check is not optional.** The engine streams its edgelist for minutes
+> (8.7 for purple's 118,874,423 edges) and a reader that starts while it is still writing
+> gets a **silently truncated** graph. That happened on 2026-10-01: this stage read
+> 90,032,320 of those edges — 76% — and produced conservation rates that looked entirely
+> plausible. `summary.json` is written only after the edgelist closes, so `load_edges()`
+> reads `n_significant_edges` from it and aborts on disagreement.
+
+---
+
+## 70 · ogreadout — `./run.sh ogreadout`
+
+The keystone decoupling result re-tested against quantification uncertainty, and the three
+ICCs side by side.
+
+| | |
+|---|---|
+| reads | `dnds/decoupling_pairs_*`, `<study>/infreps/*_readsteal_pairs.tsv`, `og_uniformity_*_summary.tsv`, `percopy_omega_icc_*` |
+| writes | `conservation/{keystone_by_separability,readsteal_by_cds_identity,icc_three_quantities}.tsv` |
+| cost | ~10 s |
+| env | `r_net_env` |
+
+`29_dnds/12_decoupling_test.r` splits on `distinguishable`, a k-mer proxy scoped **within
+the family**, and only 300 of 8,562 sugarcane and 714 of 53,264 purple near-identical
+pairs qualify — too few to settle whether the keystone is an artefact, and in those
+subsets the effect shrinks from 8.4× to 6.3× and 7.1× to 3.7×.
+
+`65`'s `boot_r_within` replaces that proxy genome-wide. The join is **on the gene pair**,
+which is namespace-free, so the 2sp/3sp mismatch cannot intrude. Most decoupling pairs do
+not join, because the families are 3sp groups that merge 2sp ones — but near-identical
+pairs, the ones that matter, are **89.8% / 92.0% inside one 2sp group**, so the join
+covers the question even though it does not cover the table.
+
+**The artefact hypothesis is falsifiable and was falsified.** It predicts that the
+read-stealing pairs carry the inflated divergence. The stage writes the comparison and
+states the verdict in the log rather than asserting it, so a rebuild can overturn it.
+
+---
+
 ## 09 · go — `./run.sh go BP|MF|CC [conserved|nonconserved]`
 
 topGO **weight01** Fisher, once per ontology, thresholded on the **raw**

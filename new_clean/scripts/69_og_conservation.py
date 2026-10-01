@@ -142,8 +142,30 @@ A, B = STUDIES
 say("")
 
 # --- observed overlap --------------------------------------------------------
-shared_keys = np.intersect1d(E[A], E[B], assume_unique=False)
-n_shared = len(shared_keys)
+# Both edge sets must carry each undirected pair ONCE, or counting overlap by
+# membership and by intersection would disagree. The engine writes one row per
+# pair, so a duplicate means something upstream changed.
+for s in STUDIES:
+    if len(np.unique(E[s])) != len(E[s]):
+        sys.exit(f"FATAL: {s} has duplicate edge keys -- the edgelist is not one "
+                 f"row per undirected pair")
+
+
+def count_in(query_sorted, target_sorted):
+    """How many of `query_sorted` appear in `target_sorted`. Both sorted, unique.
+
+    searchsorted rather than np.intersect1d: intersect1d runs unique() on both
+    inputs and sorts their concatenation, which at 118.9M edges is three extra
+    sorts of ~1 GB per call -- and the null calls it once per replicate.
+    """
+    if len(target_sorted) == 0:
+        return 0
+    pos = np.searchsorted(target_sorted, query_sorted)
+    np.clip(pos, 0, len(target_sorted) - 1, out=pos)
+    return int(np.count_nonzero(target_sorted[pos] == query_sorted))
+
+
+n_shared = count_in(E[A], E[B])
 union = len(E[A]) + len(E[B]) - n_shared
 say(f"edges in both      {n_shared:>12,}")
 say(f"jaccard            {n_shared / union:>12.6f}")
@@ -160,7 +182,8 @@ say(f"\ndegree spearman    {rho:>12.4f}  (p = {p_rho:.3g}, "
 # --- rate by weight decile, in the source species ---------------------------
 rows = []
 for src, tgt in ((A, B), (B, A)):
-    in_t = np.isin(E[src], E[tgt], assume_unique=False)
+    pos = np.clip(np.searchsorted(E[tgt], E[src]), 0, max(len(E[tgt]) - 1, 0))
+    in_t = E[tgt][pos] == E[src] if len(E[tgt]) else np.zeros(len(E[src]), bool)
     q = np.quantile(W[src], np.linspace(0, 1, N_BINS + 1))
     q[0], q[-1] = -np.inf, np.inf
     binid = np.clip(np.searchsorted(q, W[src], side="right") - 1, 0, N_BINS - 1)
@@ -194,12 +217,21 @@ for rep in range(NULL_REPS):
     for st in strata:
         perm[st] = st[rng.permutation(len(st))]
     pk = np.sort(pack(perm[src_b], perm[dst_b]))
-    null_counts[rep] = len(np.intersect1d(E[A], pk, assume_unique=False))
+    null_counts[rep] = count_in(E[A], pk)
 nm = float(null_counts.mean())
+nsd = float(null_counts.std(ddof=1)) if NULL_REPS > 1 else float("nan")
 fold = n_shared / nm if nm > 0 else float("inf")
 p_emp = (int((null_counts >= n_shared).sum()) + 1) / (NULL_REPS + 1)
-say(f"  observed {n_shared:,} | null mean {nm:,.1f} "
-    f"(sd {null_counts.std():,.1f}) | fold {fold:.3f} | p {p_emp:.4g}")
+# THE EMPIRICAL p IS FLOORED AT 1/(reps+1). With 20 replicates it cannot go below
+# 0.0476, so an effect many standard deviations out still reports as "p = 0.048"
+# and looks marginal when it is not. The z is carried beside it for that reason --
+# it is not a second test, just the distance in null standard deviations.
+z = (n_shared - nm) / nsd if nsd and nsd == nsd and nsd > 0 else float("nan")
+say(f"  observed {n_shared:,} | null mean {nm:,.1f} (sd {nsd:,.1f}) | "
+    f"fold {fold:.3f} | z {z:.2f} | p {p_emp:.4g}"
+    + (f"  [p is at the {NULL_REPS}-replicate floor of "
+       f"{1 / (NULL_REPS + 1):.4g}; raise CLEAN_NULL_REPS to resolve further]"
+       if int((null_counts >= n_shared).sum()) == 0 else ""))
 
 # --- write -------------------------------------------------------------------
 summ = pd.DataFrame(dict(metric=[
@@ -207,13 +239,14 @@ summ = pd.DataFrame(dict(metric=[
     "mean_degree_" + B, "n_edges_shared", "jaccard",
     "pct_of_" + A, "pct_of_" + B, "degree_spearman", "degree_spearman_p",
     "n_both_degree_gt0", "null_reps", "degree_strata", "null_mean", "null_sd",
-    "fold_over_null", "p_empirical"],
+    "fold_over_null", "null_z", "p_empirical", "p_empirical_floor"],
     value=[N, len(E[A]), len(E[B]), f"{2 * len(E[A]) / N:.2f}",
            f"{2 * len(E[B]) / N:.2f}", n_shared, f"{n_shared / union:.6f}",
            f"{100 * n_shared / len(E[A]):.4f}", f"{100 * n_shared / len(E[B]):.4f}",
            f"{rho:.4f}", f"{p_rho:.3g}", int(both_present.sum()), NULL_REPS,
-           DEG_STRATA, f"{nm:.1f}", f"{null_counts.std():.1f}",
-           f"{fold:.4f}", f"{p_emp:.4g}"]))
+           DEG_STRATA, f"{nm:.1f}", f"{nsd:.1f}",
+           f"{fold:.4f}", f"{z:.2f}", f"{p_emp:.4g}",
+           f"{1 / (NULL_REPS + 1):.4g}"]))
 summ.to_csv(f"{OUT_DIR}/og_conservation_summary.tsv", sep="\t", index=False)
 pd.DataFrame(dict(rep=np.arange(1, NULL_REPS + 1), n_conserved=null_counts)).to_csv(
     f"{OUT_DIR}/og_conservation_null.tsv", sep="\t", index=False)

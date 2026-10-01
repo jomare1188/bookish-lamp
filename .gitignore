@@ -54,6 +54,11 @@ china/**
 # test) was sitting untracked at 37 GB before this was added.
 new_clean/results_r09/
 new_clean/results_pearson/
+# The ORTHOGROUP tracks (68-70). results_og is |r| >= 0.8 in both species;
+# results_og_matched raises purple to |r| >= 0.9742, the threshold that carries
+# sugarcane's per-edge evidence at n = 18. purple's edgelist alone is 5.7 GB.
+new_clean/results_og/
+new_clean/results_og_matched/
 
 new_clean/results/*
 !new_clean/results/figures/
