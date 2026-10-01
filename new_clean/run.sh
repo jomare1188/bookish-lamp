@@ -52,6 +52,10 @@
 #   ./run.sh traitblocked <study>            gene-trait with the design in the model
 #   ./run.sh consblocked  [0|1]              conserved N response at NODE level, blocked
 #   ./run.sh consedges <direction>           edge-level conservation, Pearson-only
+#   ./run.sh ogcrosswalk                     bridge the 2sp/3sp orthogroup namespaces
+#   ./run.sh infreps <study>                 InfRV + read-stealing from the Gibbs reps
+#   ./run.sh oguniformity <study>            is an orthogroup one signal or several
+#   ./run.sh swishtrait <study>              the N test with quantification uncertainty
 #   ./run.sh go        BP|MF|CC              GO enrichment
 #   ./run.sh gosem                           GO semantic clustering
 #   ./run.sh tfs       <study>               TFs in the network (step 04 only)
@@ -612,6 +616,84 @@ main() {
     CLEAN_TRAIT_PADJ_THR="$TRAIT_PADJ_THR" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_NET" "${SCRIPTS}/31_gene_trait_blocked.r"
+    ;;
+
+  # The nitrogen test again, over the 30 Gibbs replicates, run BESIDE the blocked
+  # fit. The useful output is the agreement table: a gene called by both is
+  # responsive in a way that does not depend on how the reads were split.
+  swishtrait)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_QUANT_DIR="$(cfg QUANT "$ARG")" \
+    CLEAN_META="$(cfg META "$ARG")" \
+    CLEAN_GENETRAIT="${RESULTS}/${ARG}/gene_trait_blocked_${ARG}.tsv" \
+    CLEAN_TRAITS="$(cfg TRAITS "$ARG")" \
+    CLEAN_OUT_FILE="${RESULTS}/${ARG}/gene_trait_swish_${ARG}.tsv" \
+    CLEAN_SELECT_TRAIT="$SELECT_TRAIT" \
+    CLEAN_BLOCK="$(cfg TRAIT_BLOCK "$ARG")" \
+    CLEAN_STRIP_VERSION="$(cfg STRIP_VERSION "$ARG")" \
+    CLEAN_SWISH_COR="$(cfg SWISH_COR "$ARG")" \
+    CLEAN_SWISH_NPERMS="$SWISH_NPERMS" \
+    CLEAN_SWISH_QTHR="$SWISH_QTHR" \
+    CLEAN_SEED="$INFREPS_SEED" \
+      "$RSCRIPT_SWISH" "${SCRIPTS}/66_swish_trait.r"
+    ;;
+
+  # Is an orthogroup one signal or several, and when its copies disagree is that
+  # biology or the quantifier? Crosses expression concordance (against a
+  # size-matched null) with 65's read-stealing diagnostic.
+  oguniformity)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_VST_PREFIX="$(vst_prefix "$ARG")" \
+    CLEAN_META="$(cfg META "$ARG")" \
+    CLEAN_ORTHOGROUPS="$ORTHOGROUPS" \
+    CLEAN_OG_SPECIES="$(cfg OG_SPECIES "$ARG")" \
+    CLEAN_GENETRAIT="${RESULTS}/${ARG}/gene_trait_blocked_${ARG}.tsv" \
+    CLEAN_INFREP_DIR="${RESULTS}/${ARG}/infreps" \
+    CLEAN_CROSSWALK="${RESULTS}/conservation/og_crosswalk.tsv" \
+    CLEAN_NODE_METRICS="$(node_list "$ARG")" \
+    CLEAN_MEMBERSHIP="$(clus_prefix "$ARG")_membership.tsv" \
+    CLEAN_OUT_DIR="${RESULTS}/${ARG}" \
+    CLEAN_BLOCK="$(cfg TRAIT_BLOCK "$ARG")" \
+    CLEAN_SELECT_TRAIT="$SELECT_TRAIT" \
+    CLEAN_MAX_OG_COPIES="$INFREPS_MAX_OG_COPIES" \
+    CLEAN_NULL_SETS="$OG_NULL_SETS" \
+    CLEAN_STEAL_THR="$OG_STEAL_THR" \
+    CLEAN_UNIFORM_QUANTILE="$OG_UNIFORM_QUANTILE" \
+    CLEAN_SEED="$INFREPS_SEED" \
+      "$RSCRIPT_NET" "${SCRIPTS}/67_og_uniformity.r"
+    ;;
+
+  # What the quantifier was UNSURE about: per-gene InfRV and the per-pair
+  # read-stealing diagnostic, from the 30 Gibbs replicates salmon already wrote.
+  # Needs fishpond, so it is the one stage in swish_env.
+  infreps)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_QUANT_DIR="$(cfg QUANT "$ARG")" \
+    CLEAN_META="$(cfg META "$ARG")" \
+    CLEAN_ORTHOGROUPS="$ORTHOGROUPS" \
+    CLEAN_OG_SPECIES="$(cfg OG_SPECIES "$ARG")" \
+    CLEAN_OUT_DIR="${RESULTS}/${ARG}/infreps" \
+    CLEAN_STRIP_VERSION="$(cfg STRIP_VERSION "$ARG")" \
+    CLEAN_MAX_OG_COPIES="$INFREPS_MAX_OG_COPIES" \
+    CLEAN_NULL_PAIRS="$INFREPS_NULL_PAIRS" \
+    CLEAN_SEED="$INFREPS_SEED" \
+      "$RSCRIPT_SWISH" "${SCRIPTS}/65_infreps_atlas.r"
+    ;;
+
+  # The 2sp <-> 3sp orthogroup bridge, joined on GENE MEMBERSHIP because the two
+  # OrthoFinder runs are different namespaces (OG0000017 exists in both and means
+  # different gene sets). Annotates each two-species orthogroup with the sorghum
+  # anchor, the family class, frac_unique and per-copy omega. Every orthogroup-unit
+  # stage reads this rather than joining the runs itself.
+  ogcrosswalk)
+    CLEAN_ORTHOGROUPS="$ORTHOGROUPS" \
+    CLEAN_ORTHOGROUPS_3SP="$ORTHOGROUPS_3SP" \
+    CLEAN_DNDS_DIR="$DNDS_DIR" \
+    CLEAN_OUT_FILE="${RESULTS}/conservation/og_crosswalk.tsv" \
+      "$PYTORCH" "${SCRIPTS}/64_og_crosswalk.py"
     ;;
 
   # Which ortholog genes are nitrogen-correlated in BOTH species -- NODE level,

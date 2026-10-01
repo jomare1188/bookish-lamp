@@ -224,6 +224,62 @@ fit_blocked <- function(Y, y, blocks) {
        r = tt / sqrt(tt^2 + df), p = 2 * pt(-abs(tt), df = df), df = df)
 }
 
+# The residual matrix from the SAME design fit_blocked() uses, which computes it
+# internally and returns only summaries. Shared rather than forked so the two can
+# never drift apart.
+#
+# WHICH TERMS COME OUT, AND WHY IT MATTERS. By default only the BLOCKS are
+# removed and the trait is LEFT IN. Residualising the trait out as well would
+# measure agreement in the leftover noise, when the question -- do two copies of
+# one orthogroup move together? -- is about agreement in the biology, nitrogen
+# response included. Pass `y` only when the trait genuinely must be removed.
+blocked_residuals <- function(Y, blocks, y = NULL) {
+  n <- ncol(Y)
+  X <- if (length(blocks) && !is.null(y))
+         model.matrix(~ ., data = cbind(data.frame(blocks), .trait = y))
+       else if (length(blocks))
+         model.matrix(~ ., data = as.data.frame(blocks))
+       else if (!is.null(y)) model.matrix(~ y)
+       else return(Y - rowMeans(Y))
+  qrX <- qr(X)
+  if (n - qrX$rank <= 0) stop("no residual degrees of freedom", call. = FALSE)
+  RES <- t(t(Y) - X %*% qr.coef(qrX, t(Y)))
+  dimnames(RES) <- dimnames(Y)
+  RES
+}
+
+# One-way ICC(1) with the Shrout-Fleiss correction for unequal group sizes: the
+# fraction of total variance that sits BETWEEN groups rather than within them.
+#
+# A PORT, NOT A NEW STATISTIC. 29_dnds/11_percopy_omega.py:117-130 has carried
+# this for per-copy omega since the dN/dS stage, and it is already generic over
+# the measured quantity -- only the language was missing. The port is verified
+# against that script's published output (sugarcane 0.940211, purple 0.938674);
+# see scripts/verify_icc_port.r. Do not "improve" it without re-running that.
+#
+# Returns NULL rather than a number when fewer than 10 groups have >= 2 members,
+# which is the Python's own refusal and the honest answer for a thin grouping.
+icc_oneway <- function(values, groups) {
+  ok <- is.finite(values) & !is.na(groups)
+  v <- as.numeric(values[ok]); g <- as.character(groups[ok])
+  sz <- table(g)
+  keep <- names(sz)[sz >= 2L]
+  if (length(keep) < 10L) return(NULL)
+  sel <- g %in% keep
+  v <- v[sel]; g <- factor(g[sel], levels = keep)
+  ni <- as.numeric(table(g))
+  mi <- as.numeric(tapply(v, g, mean))
+  n <- sum(ni); k <- length(ni)
+  grand <- sum(v) / n
+  msb <- sum(ni * (mi - grand)^2) / (k - 1)
+  msw <- sum((v - mi[as.integer(g)])^2) / (n - k)
+  k0 <- (n - sum(ni^2) / n) / (k - 1)            # Shrout-Fleiss, unequal n
+  denom <- msb + (k0 - 1) * msw
+  list(icc = if (denom > 0) (msb - msw) / denom else NA_real_,
+       ms_between = msb, ms_within = msw,
+       mean_group_size = k0, n_groups = k, n_values = n)
+}
+
 # Refit a spread of rows with lm() and ABORT on disagreement. The vectorised
 # solver is fast because it skips every check lm() makes; this is what licenses
 # trusting it.

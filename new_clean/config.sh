@@ -33,6 +33,12 @@ RSCRIPT_NET="/home/genomics/miniconda3/envs/r_net_env/bin/Rscript"
 RSCRIPT_PLOT="/home/genomics/miniconda3/envs/r_env/bin/Rscript"
 PYTORCH="/home/genomics/miniconda3/envs/docling/bin/python"
 
+# swish_env is the ONLY env with fishpond (2.16.0) + tximport (1.38.2), which the
+# inferential-replicate stages need. Built 2026-10-01; deliberately WITHOUT
+# tximeta -- its linkedTxome machinery wants a transcriptome checksum and a GTF,
+# and salmon.merged.tx2gene.tsv already exists beside every quantification.
+RSCRIPT_SWISH="/home/genomics/miniconda3/envs/swish_env/bin/Rscript"
+
 # GO stages need their own envs and are launched via `conda run`.
 CONDA_TOPGO="topGO_env"
 CONDA_CLUSTERPROFILER="r_clusterprofiler"
@@ -46,6 +52,10 @@ TPM_sugarcane="${BASE}/run1/salmon/salmon.merged.gene_tpm.tsv"
 SALMONQC_sugarcane="${BASE}/run1/multiqc/multiqc_report_data/multiqc_salmon.txt"
 META_sugarcane="${BASE}/samplesheet.csv"
 STRIP_VERSION_sugarcane=1          # R570 ids carry a .v2.1 suffix
+# The salmon directory itself, for the stages that read quant.sf and the 30 Gibbs
+# replicates in aux_info/bootstrap/ rather than the dds. TPM_* and DDS_* both sit
+# inside it, but neither carries the per-sample tree or salmon.merged.tx2gene.tsv.
+QUANT_sugarcane="${BASE}/run1/salmon"
 
 # purple: Ta Quang Kiet 2025, LA purple reference, 18 leaf libraries.
 #
@@ -65,6 +75,7 @@ TPM_purple="${BASE}/china/run2_onlyL/salmon/salmon.merged.gene_tpm.tsv"
 SALMONQC_purple="${BASE}/china/run2_onlyL/multiqc/multiqc_report_data/multiqc_salmon.txt"
 META_purple="${BASE}/china/samplesheet_china.csv"
 STRIP_VERSION_purple=0             # LA purple ids are already bare
+QUANT_purple="${BASE}/china/run2_onlyL/salmon"
 
 # --- network construction ----------------------------------------------------
 MIN_CV=15                 # CV filter on RAW counts; matches the original pipeline
@@ -353,6 +364,12 @@ COMPUTE_TRANSITIVITY=0
 # --- conservation ------------------------------------------------------------
 ORTHOGROUPS="${BASE}/files/fix_orthofinder/proteins/OrthoFinder/Results_Jun04_2/Orthogroups/Orthogroups.tsv"
 
+# The two species COLUMN NAMES in that table -- they are the proteome filenames
+# OrthoFinder was given, not the study names. 61 and 62 have carried these as
+# script-side defaults; they belong here, since this file is the source of truth.
+OG_SPECIES_sugarcane="sugarcane_one_transcript"
+OG_SPECIES_purple="one_transcript_purple_proteins"
+
 # DO NOT REPOINT ORTHOGROUPS. Every conservation number this pipeline reports
 # was computed from the two-species run above. The dN/dS stage (scripts/29_dnds)
 # adds a Sorghum bicolor outgroup through a SEPARATE three-species OrthoFinder
@@ -361,6 +378,52 @@ ORTHOGROUPS="${BASE}/files/fix_orthofinder/proteins/OrthoFinder/Results_Jun04_2/
 # describe the same genes. Its own paths live in scripts/29_dnds/config.sh, which
 # is where that stage's parameters belong -- this file stays the source of truth
 # for the stages run.sh drives directly.
+
+# --- inferential replicates (65, 66) ----------------------------------------
+# Salmon was run with --numGibbsSamples 30 (run_rnseq.sh:18), so every library has
+# 30 replicate count vectors in aux_info/bootstrap/. Nothing read them until 2026-10-01.
+#
+# Pairs for the read-stealing statistic are capped at this many copies per
+# orthogroup. 20 is 29_dnds/08_homeolog_families.py's own MAX_FAMILY_COPIES, for
+# its reasons: R570 is ~10-12x and LA purple ~8x, so past 20 these are lumped
+# superfamilies, and they are quadratically expensive. At 20 only 97 sugarcane and
+# 379 purple groups are skipped, leaving 169,070 and 247,441 pairs.
+INFREPS_MAX_OG_COPIES=20
+INFREPS_NULL_PAIRS=200000
+INFREPS_SEED=1
+
+# Orthogroup uniformity (67). A group counts as "uniform" when its members'
+# expression concordance clears this quantile of SIZE-MATCHED random gene sets --
+# a null is needed because two unrelated genes do not score 0. It counts as
+# "inseparable" when at least half its measurable pairs trade reads at or below
+# OG_STEAL_THR.
+OG_NULL_SETS=200
+OG_STEAL_THR=-0.5
+OG_UNIFORM_QUANTILE=0.95
+
+# Swish (66). The correlation mode mirrors the blocked fit's own choice of
+# statistic per species, and for the same reason: purple's trait is an ORDINAL
+# 0/2/6 mM dose in a stress-control-stress design, so its literal spacing is
+# unjustified; sugarcane's is two-level, where a stratified Wilcoxon is the
+# natural test and no correlation mode is needed.
+SWISH_COR_sugarcane=none
+SWISH_COR_purple=spearman
+SWISH_NPERMS=100
+SWISH_QTHR=0.05
+
+# The three-species run, read ONLY through the crosswalk (64_og_crosswalk.py).
+# Its ids are a DIFFERENT NAMESPACE: OG0000017 exists in both runs and means
+# different gene sets. Measured 2026-10-01: 2sp -> 3sp is 95.8% one-to-one,
+# 3sp -> 2sp only 59.1%, because adding sorghum MERGED groups the two-species run
+# kept apart. So the two-species run above is the finer partition and stays the
+# unit of analysis; this one contributes the sorghum anchor and the family class.
+# Never join the two on the id string.
+ORTHOGROUPS_3SP="${BASE}/files/orthofinder_3sp/out/Results_Aug31/Orthogroups/Orthogroups.tsv"
+
+# Where the dN/dS stage's per-gene tables live (families_*, kmer_uniqueness_*,
+# percopy_omega_*). Mirrors scripts/29_dnds/config.sh:22, which owns the stage.
+DNDS_DIR="${CLEAN}/results/dnds"
+
 CHUNK_SIZE=2000000
 
 # Permutation null for the conservation rate (13_conservation_null.r).
