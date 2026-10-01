@@ -1067,6 +1067,76 @@ states the verdict in the log rather than asserting it, so a rebuild can overtur
 
 ---
 
+## 71 · ogmodules — `./run.sh ogmodules`
+
+Do the two species put the same orthogroups in the same module?
+
+| | |
+|---|---|
+| reads | both `mcl_<study>_membership.tsv` in the tree `RESULTS` points at |
+| writes | `conservation/og_module_correspondence{,_summary}.tsv`, `og_module_best_match{,_by_size}.tsv` |
+| cost | ~5 s |
+| env | `r_net_env` (igraph) |
+
+ARI and NMI need two clusterings **of the same things**, which the gene level never had.
+Only orthogroups that are a node in **both** networks are compared: an orthogroup isolated
+in one species has no module there, and scoring it as its own cluster would manufacture
+agreement that both species "placed it alone". The discarded counts are reported.
+
+**Two nulls, because the indices answer different worries.** `label` permutes one
+partition's module labels, keeping both size distributions — the standard null. `degree`
+relabels nodes within degree strata, as `69` does, and asks whether the agreement exceeds
+what two graphs of similar degree structure give anyway.
+
+**No fold is reported for ARI.** It is chance-corrected, so its null mean is 0 by
+construction (−5e-05 measured) and a ratio against that produced −1133 in the first run.
+Excess over the null is the interpretable quantity; NMI is not chance-corrected, so it
+keeps its fold.
+
+The best-match table is reported **stratified by module size**, because 77% of modules hold
+2–3 orthogroups and a two-of-three overlap scores 67% by arithmetic. The unstratified
+median is printed immediately above the stratification rather than omitted, since it is
+what a reader would otherwise compute and misread.
+
+---
+
+## ogmci — `./run.sh ogmci <study>`
+
+`mcxload` the orthogroup Pearson layer into a native MCL matrix.
+
+| | |
+|---|---|
+| reads | `layer_out(<study>, pearson).edgelist.tsv` + its summary json |
+| writes | `$MCL_WORK_DIR/<study>.{mci,tab}` |
+| cost | 5 s sugarcane, ~5 min purple at \|r\| >= 0.8 |
+| env | bash + `mcxload` |
+
+A separate branch from `pearsonmci` for one reason: that one reads `main_layer_out()`,
+which **ignores `RESULTS`** because the gene-level layers are shared source data. The
+orthogroup layers are one per tree, so this uses `layer_out()` and follows `RESULTS`. It
+also refuses to write into `mcl_work` or `mcl_work_cluster`.
+
+From here the existing chain works with env overrides alone — `nodemetrics`, `mclsweep`,
+`membership` — provided `CLUSTER_WORK_DIR`, `MCL_WORK_DIR` and `CLUSTER_SWEEP_TREE` all
+point at the orthogroup track:
+
+```sh
+OGW=/dados04/jorge/tmp/mcl_work_og_matched
+E="RESULTS=$PWD/results_og_matched MCL_WORK_DIR=$OGW CLUSTER_WORK_DIR=$OGW"
+env $E ./run.sh ogmci sugarcane
+env $E ./run.sh nodemetrics sugarcane
+env $E CLUSTER_SWEEP_TREE=$PWD/results_og_matched \
+       MCL_SWEEP_I_NONE_sugarcane="1.2 1.3 1.4 1.5 1.6 2 3 4 6" ./run.sh mclsweep sugarcane
+env $E CLUSTER_SWEEP_TREE=$PWD/results_og_matched \
+       MCL_INFLATION_sugarcane=1.4 ./run.sh membership sugarcane
+```
+
+> `MCL_INFLATION_<study>` used to be set **unconditionally** in `config.sh`, so the override
+> on that last line was silently discarded and the partition came back at the gene-level
+> inflation. Both keys are now conditional.
+
+---
+
 ## 09 · go — `./run.sh go BP|MF|CC [conserved|nonconserved]`
 
 topGO **weight01** Fisher, once per ontology, thresholded on the **raw**

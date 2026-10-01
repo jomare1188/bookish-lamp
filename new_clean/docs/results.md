@@ -2704,6 +2704,75 @@ rises monotonically across all ten `|r|` deciles, in `results_og` from 15.1% to 
 that needs no projection, and it is the one positive result in this section that does not
 depend on the threshold.
 
+### MCL on the orthogroup networks, and whether the modules correspond
+
+Clustered with the same toolchain and the same modularity sweep the gene level
+used. Each species' optimum is interior, so it was found rather than assumed:
+
+| | inflation | modules | largest | singletons | Q |
+|---|---|---|---|---|---|
+| sugarcane (both trees) | **1.4** | 1,840 | 25.0% | 0 | **0.1955** |
+| purple, matched | **2** | 2,902 | 16.2% | 12 | 0.1191 |
+| purple, \|r\| >= 0.8 | **3** | 5,332 | 26.2% | 2,553 | 0.2226 |
+
+**The orthogroup graph is 2.4x more modular than the gene graph** — Q 0.1955 against
+0.0821 at the gene-level sugarcane optimum — while the optimum inflation barely moves
+(1.4 against 1.5). Collapsing copies produced a better-structured network, which is a
+point in the unit's favour that has nothing to do with conservation. The giant module is
+not fixed by it: 25.0% of connected nodes against 23.0% at gene level.
+
+Note how many orthogroups are connected at all, because it is the threshold again:
+sugarcane **38,583 of 63,271 (61.0%)**, purple **62,165 (98.3%)** at `|r| >= 0.8` and
+**18,663 (29.5%)** at matched evidence.
+
+> Purple's `|r| >= 0.8` graph has mean degree **3,824** against mcl's `-scheme 7` working
+> cap of 1200 neighbours, so that clustering is partly measuring mcl's pruner —
+> `36_mcl_sweep.sh` warns about exactly this. The matched tree, where both graphs sit
+> under the cap (523 and 237), is the clean comparison. The two agree anyway, which is
+> the reassurance that the pruner did not decide the answer.
+
+#### Module membership does not transfer
+
+ARI and NMI need two clusterings **of the same things**. At gene level there is no such
+thing — sugarcane's modules partition sugarcane genes, purple's partition purple genes,
+and the bridge is many-to-many. On the shared vertex set the question is well posed for
+the first time, over the orthogroups that are a node in **both** networks (12,627 matched;
+38,100 at `|r| >= 0.8`):
+
+| | matched | \|r\| >= 0.8 |
+|---|---|---|
+| ARI | 0.058 | 0.087 |
+| **ARI excess over a degree-matched null** | **+0.0155** | **+0.0149** |
+| NMI | 0.462 | 0.348 |
+| NMI fold over the same null | 1.10 | 1.08 |
+| z (ARI / NMI) | 10.2 / 35.4 | 17.0 / 34.0 |
+
+**The excess is +0.015 of ARI in both trees**, although purple carries 54x more edges in
+one than in the other. Statistically unmistakable, biologically negligible — the same
+shape as the edge conservation, and from an independent measurement.
+
+A fold is not reported for ARI: it is already chance-corrected, so its null mean is 0 by
+construction (measured −5e-05) and a ratio against that is meaningless.
+
+#### The apparent exception is module size
+
+For each sugarcane module, the purple module overlapping it most, as a fraction of the
+sugarcane module (matched tree):
+
+| module size | modules | median overlap | at >= 50% |
+|---|---|---|---|
+| 2–3 | 953 | **100.0%** | 89.9% |
+| 4–5 | 108 | 25.0% | 21.3% |
+| 6–10 | 90 | 20.0% | 5.6% |
+| 11–25 | 55 | 15.4% | 1.8% |
+| **>25** | 35 | **13.1%** | **0.0%** |
+
+Unstratified this reads "71.4% of modules find a partner holding at least half of them",
+which is **an artefact of size**: 77% of modules hold 2–3 orthogroups, where a two-of-three
+overlap scores 67% by arithmetic. Above five members the best partner holds 13–25%, and
+not one of the 35 modules above 25 members has a partner holding half. The `|r| >= 0.8`
+tree decays the same way, from 50% to 22%.
+
 ### The nitrogen test with uncertainty propagated
 
 Swish run beside the blocked fit, never instead of it:
@@ -2824,10 +2893,24 @@ genotype-specific and TAGZ carries most of it.
   only **106 in both**. At n = 9 per genotype this is underpowered and the asymmetry could
   be power alone, but every pooled purple claim is averaging over two genotypes that
   largely do not agree, and TAGZ carries most of the signal.
-- **The orthogroup networks have no clustering yet**, so module correspondence between the
-  species (ARI / NMI on a shared vertex set — the one comparison the gene level could never
-  make cleanly) is not measured. It needs `mcxload` + the MCL toolchain pointed at
-  `results_og`, with `CLUSTER_WORK_DIR` redirected.
+- ~~**The orthogroup networks have no clustering yet**~~ **CLOSED 2026-10-01.** Both trees
+  are clustered at their own interior modularity optima (sugarcane 1.4, purple 2 matched /
+  3 at |r| >= 0.8) and `71_og_module_correspondence.r` measures the correspondence: ARI
+  0.058 / 0.087, an excess of **+0.015** over a degree-matched null in both trees. Modules
+  do not transfer either.
+- **Purple's |r| >= 0.8 clustering is partly mcl's pruner.** Mean degree 3,824 against
+  `-scheme 7`'s 1200-neighbour working cap. `36_mcl_sweep.sh` has a `-S` probe for this and
+  it was not run here; the matched tree (523 and 237) is the clean comparison and the two
+  agree, but the `|r| >= 0.8` purple partition should not be quoted on its own.
+- **The giant module survived the change of unit.** 25.0% of connected orthogroups in
+  sugarcane's largest module, against 23.0% at gene level, where `results.md` already
+  records it as a node-degree artefact. Aggregation made the graph more modular overall
+  (Q 0.196 vs 0.082) without breaking up the hub.
+- **`71`'s comparison discards most of the vertex set and says so**: 25,950 orthogroups are
+  a node in sugarcane but not in matched purple, and 6,030 the other way. Scoring an
+  isolated orthogroup as its own cluster would manufacture agreement, so they are dropped
+  rather than counted — which also means the ARI is computed on the better-connected fifth
+  of the shared set, not on all 63,271.
 - **`infrv_gain` is quoted over two different universes** and the numbers differ: 1.287 /
   1.803 in `65`'s summary, over the quantified gene set, and 1.428 / 2.284 in `67`'s, over
   the CV-filtered network-input set. Both are correct for their denominator; neither is
