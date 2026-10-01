@@ -60,6 +60,8 @@
 #   ./run.sh ognetwork <study>               Pearson layer on the orthogroup matrix
 #   ./run.sh ogconservation                  two-graph conservation on shared vertices
 #   ./run.sh ogreadout                       the keystone re-tested, and three ICCs
+#   ./run.sh ogmci <study>                   mcxload the orthogroup layer for MCL
+#   ./run.sh ogmodules                       do both species cluster alike (ARI/NMI)
 #   ./run.sh go        BP|MF|CC              GO enrichment
 #   ./run.sh gosem                           GO semantic clustering
 #   ./run.sh tfs       <study>               TFs in the network (step 04 only)
@@ -620,6 +622,46 @@ main() {
     CLEAN_TRAIT_PADJ_THR="$TRAIT_PADJ_THR" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_NET" "${SCRIPTS}/31_gene_trait_blocked.r"
+    ;;
+
+  # Do the two species put the same orthogroups in the same module? The one
+  # comparison the gene level could never make: ARI and NMI need two clusterings
+  # OF THE SAME THINGS, and only the shared vertex set provides that.
+  ogmodules)
+    CLEAN_STUDIES="$STUDIES" \
+    CLEAN_MEMBERSHIP_SUGARCANE="$(clus_prefix sugarcane)_membership.tsv" \
+    CLEAN_MEMBERSHIP_PURPLE="$(clus_prefix purple)_membership.tsv" \
+    CLEAN_OUT_DIR="${RESULTS}/conservation" \
+    CLEAN_NULL_REPS="$OG_MODULE_NULL_REPS" \
+    CLEAN_DEGREE_STRATA="$OG_CONS_DEGREE_STRATA" \
+    CLEAN_MIN_MODULE_SIZE="$MCL_MIN_MODULE_SIZE" \
+    CLEAN_SEED="$INFREPS_SEED" \
+      "$RSCRIPT_NET" "${SCRIPTS}/71_og_module_correspondence.r"
+    ;;
+
+  # The orthogroup Pearson layer as a native MCL matrix. A separate branch from
+  # `pearsonmci` for one reason: that one reads main_layer_out(), which ignores
+  # RESULTS by design because the gene-level layers are shared source data. The
+  # orthogroup layers are NOT shared -- there is one per tree -- so this reads
+  # layer_out() instead and follows RESULTS like everything else.
+  #
+  #   OGW=/dados04/jorge/tmp/mcl_work_og
+  #   RESULTS=$PWD/results_og MCL_WORK_DIR=$OGW CLUSTER_WORK_DIR=$OGW \
+  #     ./run.sh ogmci <study>
+  ogmci)
+    check_study "$ARG"
+    case "$MCL_WORK_DIR" in
+      */mcl_work|*/mcl_work/|*/mcl_work_cluster|*/mcl_work_cluster/)
+        die "MCL_WORK_DIR is $MCL_WORK_DIR -- that is a gene-level track. Point it at an orthogroup work dir." ;;
+    esac
+    CLEAN_STUDY="$ARG" \
+    CLEAN_LAYER="$(layer_out "$ARG" pearson).edgelist.tsv" \
+    CLEAN_LAYER_SUMMARY="$(layer_out "$ARG" pearson).summary.json" \
+    CLEAN_WORK_DIR="$MCL_WORK_DIR" \
+    CLEAN_MCL_BIN_DIR="$(dirname "$MCL_BIN")" \
+    CLEAN_FORCE="${EXTRA[0]:-0}" \
+    CLEAN_CORES="$NUM_CORES" \
+      bash "${SCRIPTS}/46_pearson_mci.sh"
     ;;
 
   # The keystone decoupling result recomputed separately for gene pairs the

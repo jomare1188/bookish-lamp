@@ -229,8 +229,18 @@ MCL_KNN_purple=""
 # maximised at a grid boundary. Densely resampled around the peak, these are it.
 # They are NOT equal, and that is the finding: purple needs a much higher
 # inflation than sugarcane to reach its own optimum.
-MCL_INFLATION_sugarcane=1.5
-MCL_INFLATION_purple=3.5
+MCL_INFLATION_sugarcane="${MCL_INFLATION_sugarcane:-1.5}"
+MCL_INFLATION_purple="${MCL_INFLATION_purple:-3.5}"
+
+# Conditional, like RESULTS and CLUSTERING above, because the ORTHOGROUP graphs
+# have their own optima and the membership stage reads these keys. Measured
+# 2026-10-01 on results_og_matched by the same modularity sweep:
+#   sugarcane  I = 1.4  Q = 0.19552  (1,840 clusters, largest 25.0%)
+#   purple     I = 2    Q = 0.11908  (2,914 clusters, largest 16.2%)
+# Both are interior optima. Note Q is 2.4x the gene-level sugarcane figure
+# (0.0821 at its own optimum of 1.5): the orthogroup graph clusters better.
+# Pass them on the command line, e.g.
+#   MCL_INFLATION_sugarcane=1.4 MCL_INFLATION_purple=2 ./run.sh membership <study>
 
 # The work dir holding the Pearson-only matrices and the inflation ladder's
 # partitions. `membership` adopts a cell from here rather than re-running mcl.
@@ -422,6 +432,10 @@ OG_BOTH_SPECIES_ONLY=1
 # analysis could not do. 20 strata over 63,271 vertices is ~3,160 per stratum.
 OG_CONS_NULL_REPS=20
 OG_CONS_DEGREE_STRATA=20
+
+# Module correspondence (71). ARI/NMI are cheap on ~13-38k nodes, so the null can
+# afford far more replicates than 69's edge null.
+OG_MODULE_NULL_REPS=100
 
 # The three-species run, read ONLY through the crosswalk (64_og_crosswalk.py).
 # Its ids are a DIFFERENT NAMESPACE: OG0000017 exists in both runs and means
