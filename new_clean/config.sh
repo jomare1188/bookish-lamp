@@ -437,6 +437,26 @@ OG_CONS_DEGREE_STRATA=20
 # afford far more replicates than 69's edge null.
 OG_MODULE_NULL_REPS=100
 
+# Orthogroup cell contrast and enrichment (72, 73). The full 17-DB InterProScan
+# table, which is the one the adopted gene2go derives from -- NOT the 5-DB nf-core
+# table at PROTEIN_ANNOT_DIR. IPR reaches 85.6%/88.4% of network nodes against GO's
+# 62.9%/64.4%, so it is the better-powered annotation for this contrast.
+ips_full_tsv() { echo "${BASE}/annotation/$1/interproscan_full/$1.interproscan_full.tsv"; }
+
+# The orthogroup-level GO table 72 builds and 73 reads. Its first column is named
+# `gene` but holds an orthogroup id, which is what lets parse_gene2go(),
+# 63_degree_go.r's reader and annFUN.gene2GO take it unchanged.
+og2go_tsv()   { echo "${BASE}/annotation/$1/og2go_$1.tsv"; }
+
+OG_CELL_NULL_REPS=200
+# Below this many annotated orthogroups a contrast is skipped rather than reported
+# underpowered -- 18_module_go.r's MIN_ANN, same reasoning.
+OG_CELL_MIN_ANNOTATED=10
+# The same floor for InterPro accessions. An accession in fewer orthogroups than
+# this cannot reach significance and only inflates the BH denominator -- the exact
+# role nodeSize plays for GO terms.
+OG_CELL_IPR_MIN_COUNT=10
+
 # The three-species run, read ONLY through the crosswalk (64_og_crosswalk.py).
 # Its ids are a DIFFERENT NAMESPACE: OG0000017 exists in both runs and means
 # different gene sets. Measured 2026-10-01: 2sp -> 3sp is 95.8% one-to-one,

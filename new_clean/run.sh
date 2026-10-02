@@ -62,6 +62,8 @@
 #   ./run.sh ogreadout                       the keystone re-tested, and three ICCs
 #   ./run.sh ogmci <study>                   mcxload the orthogroup layer for MCL
 #   ./run.sh ogmodules                       do both species cluster alike (ARI/NMI)
+#   ./run.sh ogcellcontrast <study>          what kind of family lets its copies drift
+#   ./run.sh ogcellgo <study> [BP|MF|CC] [homeolog]   GO + InterPro for the two cells
 #   ./run.sh go        BP|MF|CC              GO enrichment
 #   ./run.sh gosem                           GO semantic clustering
 #   ./run.sh tfs       <study>               TFs in the network (step 04 only)
@@ -622,6 +624,62 @@ main() {
     CLEAN_TRAIT_PADJ_THR="$TRAIT_PADJ_THR" \
     CLEAN_CORES="$NUM_CORES" \
       "$RSCRIPT_NET" "${SCRIPTS}/31_gene_trait_blocked.r"
+    ;;
+
+  # What the two cells are FOR. GO through topGO weight01 selecting on the RAW p,
+  # as every other GO stage here does; InterPro through plain Fisher selecting on
+  # BH p.adj, because flat accessions ARE an exchangeable family and weight01's
+  # reason for distrusting BH does not apply to them. Reads 72's set assignments
+  # rather than re-deriving the matching.
+  ogcellgo)
+    check_study "$ARG"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_CELL_SETS="$(study_dir "$ARG")/og_cell_sets_${ARG}.tsv" \
+    CLEAN_OG2GO="$(og2go_tsv "$ARG")" \
+    CLEAN_IPS_TSV="$(ips_full_tsv "$ARG")" \
+    CLEAN_ORTHOGROUPS="$ORTHOGROUPS" \
+    CLEAN_OG_SPECIES="$(cfg OG_SPECIES "$ARG")" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")/og_cell_go" \
+    CLEAN_ONTOLOGY="${EXTRA[0]:-BP}" \
+    CLEAN_GO_P="$GO_P" \
+    CLEAN_GO_NODESIZE="$DEGREE_GO_NODESIZE" \
+    CLEAN_OG_CELL_MIN_ANNOTATED="$OG_CELL_MIN_ANNOTATED" \
+    CLEAN_MAX_OG_COPIES="$INFREPS_MAX_OG_COPIES" \
+    CLEAN_CELL_CLASS="${EXTRA[1]:-}" \
+    CLEAN_IPR_MIN_COUNT="$OG_CELL_IPR_MIN_COUNT" \
+      conda run --no-capture-output -n "$CONDA_TOPGO" \
+        Rscript "${SCRIPTS}/73_og_cell_enrichment.r"
+    ;;
+
+  # What distinguishes an orthogroup whose copies diverged from one whose copies did
+  # not. Builds the orthogroup-level GO table (which does not exist anywhere else),
+  # measures every covariate already on disk, matches the two cells 1:1 on exact
+  # copy number, and settles whether divergence is shared between the species.
+  ogcellcontrast)
+    check_study "$ARG"
+    # `if`, not `[ ... ] && echo`: with set -e, a loop whose LAST iteration's test
+    # is false returns non-zero, the command substitution inherits it, and run.sh
+    # dies on the assignment. That killed `ogcellcontrast purple` silently --
+    # silently because the exec > >(tee) wrapper swallowed the aborted output.
+    _OTHER=$(for s in $STUDIES; do if [ "$s" != "$ARG" ]; then echo "$s"; fi; done | head -1)
+    [ -n "$_OTHER" ] || die "cannot find the other study in STUDIES='$STUDIES'"
+    CLEAN_STUDY="$ARG" \
+    CLEAN_UNIFORMITY="$(study_dir "$ARG")/og_uniformity_${ARG}.tsv" \
+    CLEAN_UNIFORMITY_OTHER="$(study_dir "$_OTHER")/og_uniformity_${_OTHER}.tsv" \
+    CLEAN_OTHER_STUDY="$_OTHER" \
+    CLEAN_ORTHOGROUPS="$ORTHOGROUPS" \
+    CLEAN_OG_SPECIES="$(cfg OG_SPECIES "$ARG")" \
+    CLEAN_GENE2GO="$(gene2go_tsv "$ARG")" \
+    CLEAN_IPS_TSV="$(ips_full_tsv "$ARG")" \
+    CLEAN_CROSSWALK="${RESULTS}/conservation/og_crosswalk.tsv" \
+    CLEAN_TF_FILE="${RESULTS}/readouts/get_tfs/${ARG}/TF_in_network.tsv" \
+    CLEAN_OG2GO_OUT="$(og2go_tsv "$ARG")" \
+    CLEAN_OG_NODE_METRICS="${CLEAN}/results_og/${ARG}/network_${ARG}_node_metrics.tsv" \
+    CLEAN_OUT_DIR="$(study_dir "$ARG")" \
+    CLEAN_MAX_OG_COPIES="$INFREPS_MAX_OG_COPIES" \
+    CLEAN_NULL_REPS="$OG_CELL_NULL_REPS" \
+    CLEAN_SEED="$INFREPS_SEED" \
+      "$RSCRIPT_NET" "${SCRIPTS}/72_og_cell_contrast.r"
     ;;
 
   # Do the two species put the same orthogroups in the same module? The one
