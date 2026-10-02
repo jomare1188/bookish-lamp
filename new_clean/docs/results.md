@@ -2806,6 +2806,108 @@ genotype-specific and TAGZ carries most of it.
 
 ---
 
+### What the two orthogroup cells are, and the first positive result in this line
+
+`67`'s 2×2 sorted every multi-copy orthogroup by whether its copies share an expression
+profile and whether the quantifier can separate them. Two cells carry biology —
+`divergent/separable` (13,902 sugarcane / 16,271 purple) and `uniform/separable` (11,740 /
+8,742) — and neither had been characterised. `72` prepares and describes the sets, `73`
+tests what they are for.
+
+#### Divergence is a property of the gene family, not an accident
+
+On the 6,328 orthogroups classified in both species, being divergent in sugarcane predicts
+being divergent in purple: **odds ratio 2.90, Fisher p = 6.7e-93**, against a
+label-permutation null at OR 0.998. A family that lets its copies drift does so in both
+lineages independently. That is what makes the cells worth characterising.
+
+#### Two confounds, and the second was not planned for
+
+**Copy number runs the wrong way.** Uniform groups have *more* copies — mean 3.55 against
+2.82 in sugarcane, Mann-Whitney **p = 5.8e-236**. Almost certainly a power effect:
+concordance is easier to prove above a size-matched null with more members, so "uniform"
+partly means "enough copies to show it". Every test is run twice, raw and on **10,118 pairs
+matched on exact copy number** (asserted indistinguishable afterwards, p = 1.000).
+
+**The annotation gap cannot be matched away.** GO coverage is 57.5% for divergent against
+67.5% for uniform, and the gap survives *inside every copy-number band* — ~10 points at
+n = 2, 3, 4–5 and 6–20 alike. InterPro shows the same gap at a higher baseline (79.1% vs
+88.2%). It is a property of the sets, not of the annotation source. So matching for `73`
+happens **within** the annotated orthogroups, and the gap is reported rather than removed.
+
+> **THE HOMEOLOG CONTROL WAS NOT IN THE PLAN, AND IT DECIDED THE RESULT.** It was run only
+> because purple's enriched domains looked wrong — transposases and reverse transcriptase
+> where gene families were expected. `dispersed` and `unplaced` orthogroups include
+> transposon families, whose many scattered near-identical members OrthoFinder groups into
+> one orthogroup. They are 2.6% of purple's cells and 0.8% of sugarcane's, but **78% and
+> 73% of them land in the divergent cell**, and only **11.5% and 17.3% are homeologs**
+> against 47.1% and 31.3% of the rest. Restricting to `homeolog` class removes **every**
+> transposon domain — and removes **F-box**, which at OR 2.4–9.8 and p.adj 2e-11 would
+> otherwise have been reported as the headline. Everything below is homeolog-only.
+
+#### The answer: dosage balance, on both sides
+
+InterPro, homeolog class, copy-number matched, Fisher with BH:
+
+| domain | sugarcane OR | purple OR | enriched in |
+|---|---|---|---|
+| **Pentatricopeptide repeat (PPR)** | **2.09** | **2.92** | divergent |
+| **Tetratricopeptide-like helical** | **1.98** | **2.10** | divergent |
+| **E motif** (part of PPR architecture) | **2.37** | **5.23** | divergent |
+| **PPR-containing, plant** | **2.37** | **3.87** | divergent |
+| Winged helix-like DNA-binding | 2.75 | — | divergent |
+| ABC transporter type 1 | 0.10 | — | uniform |
+| MFS transporter superfamily | 0.43 | — | uniform |
+
+**Four domains replicate across two independently diverged species**, with closely matching
+odds ratios. GO, same restriction, names the same biology from the other direction:
+
+| | sugarcane | purple |
+|---|---|---|
+| **uniform** | ribosome (CC 1.39×), structural constituent of ribosome (1.47×), translation (1.32×), transmembrane transport (1.27×), transmembrane transporter activity (1.19×), ligase activity, lipid binding | — |
+| **divergent** | protein binding (1.18×) | RNA modification (1.54×), chromatin binding (2.03×), protein binding |
+
+The two annotations agree without being told to: **PPR proteins do RNA modification**, which
+is purple's top divergent term, and winged-helix is a transcription-factor fold, matching
+`transcription regulator complex` in the all-class CC run.
+
+**This is the gene-dosage-balance prediction.** Subunits of stoichiometric complexes —
+ribosomes — and membrane transporters cannot afford to drift: change one copy's expression
+and the complex or the transport stoichiometry is unbalanced, so selection keeps all copies
+co-regulated. A modular repeat family that works one protein at a time carries no such
+constraint, so its copies are free to specialise.
+
+The species are asymmetric in *which* side shows GO signal — sugarcane on the uniform side,
+purple on the divergent — and that tracks cell size: sugarcane's uniform cell is the larger
+of its two, purple's divergent cell is the larger of its. Power, not biology.
+
+#### The strongest covariate is nitrogen
+
+Lockstep orthogroups are **4.5× more likely** to contain a nitrogen-responsive gene — 4.2%
+against 18.9% in sugarcane, OR 0.19, **p = 4.8e-205**, and it survives copy-number matching
+(purple 3.3% vs 8.1%, OR 0.39). Whatever holds copies together also makes a family more
+likely to respond to nitrogen, which is the one place this analysis touches the project's
+own question directly.
+
+#### What did not survive
+
+**ω.** Divergent families look less constrained univariately — 0.193 against 0.162,
+p = 6e-27, replicated in purple at 0.188 against 0.156, p = 3e-38 — and the difference
+survives copy-number matching. But in a model carrying degree, InfRV and annotation status
+it is **not significant in either species** (p = 0.392 sugarcane, 0.315 purple), while
+`log(degree)` dominates (p = 2.6e-19 / 3.3e-127). The ω difference is connectivity: better
+connected genes are more constrained. Replicated, so it is a reliable negative, and the
+earlier reading of ω as a standalone finding was wrong.
+
+**GO at the raw p.** In BP both directions came in *at or below* chance — 31 and 33 of 779
+terms against ~39 expected. This project selects on the raw weight01 p everywhere else, for
+a structural reason, but that convention assumes the list is enriched for signal in the
+first place. Here it is not, so only the BH survivors mean anything. `73` prints the chance
+expectation beside the count so the two situations can be told apart.
+
+**Duplication class, as a predictor.** 95.6% vs 96.7% homeolog (OR 0.74). Near-flat, and
+reported once so it is not re-tested.
+
 ## Open items
 
 - The 47,192 spurious sugarcane edges were present in every downstream result of
@@ -2911,6 +3013,24 @@ genotype-specific and TAGZ carries most of it.
   isolated orthogroup as its own cluster would manufacture agreement, so they are dropped
   rather than counted — which also means the ARI is computed on the better-connected fifth
   of the shared set, not on all 63,271.
+- **The two orthogroup cells are now characterised** (`72`, `73`), and the result rests on a
+  control that was not planned: restricting to `homeolog` class. Without it, F-box (OR
+  2.4-9.8, p.adj 2e-11) and a set of transposon domains read as polyploidy findings, and
+  both are artefacts of `dispersed`/`unplaced` groups where OrthoFinder has collapsed
+  scattered transposon-family members. **Any future contrast over these cells must carry the
+  same restriction**, and the all-class tables are kept beside the homeolog ones only so the
+  difference stays visible.
+- **The uniform side has GO power only in sugarcane and the divergent side only in purple.**
+  That tracks which cell is the larger in each species, so the single-species terms
+  (transporters and ribosome in sugarcane; chromatin binding in purple) are weaker claims
+  than the four InterPro domains that replicate in both.
+- **`protein binding` (GO:0005515) should not be quoted** from these tables. It carries the
+  smallest p anywhere here (4.6e-07 / 5.5e-07) on an enrichment of 1.15-1.18x over 2,785
+  orthogroups: the p-value is term size, not effect.
+- **omega as a predictor of copy divergence is a reliable negative.** Significant
+  univariately in both species and after copy-number matching, not significant in either
+  once degree, InfRV and annotation are in the model. Do not re-report the univariate figure
+  without the adjusted one beside it.
 - **`infrv_gain` is quoted over two different universes** and the numbers differ: 1.287 /
   1.803 in `65`'s summary, over the quantified gene set, and 1.428 / 2.284 in `67`'s, over
   the CV-filtered network-input set. Both are correct for their denominator; neither is

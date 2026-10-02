@@ -1137,6 +1137,104 @@ env $E CLUSTER_SWEEP_TREE=$PWD/results_og_matched \
 
 ---
 
+## 72 · ogcellcontrast — `./run.sh ogcellcontrast <study>`
+
+What kind of gene family lets its copies drift apart, and what kind holds them together.
+Prepares the sets and measures every covariate already on disk; `73` tests function.
+
+| | |
+|---|---|
+| reads | `og_uniformity_<study>.tsv` (both species), `Orthogroups.tsv`, `gene2go_<study>.tsv`, the full InterProScan table, `og_crosswalk.tsv`, `TF_in_network.tsv`, `results_og/<study>/network_<study>_node_metrics.tsv` |
+| writes | `annotation/<study>/og2go_<study>.tsv`, `og_annotation_<study>.tsv`, `og_cell_sets_<study>.tsv`, `og_cell_tests_<study>.tsv`, `og_cell_cross_species_*.tsv` |
+| cost | ~1 min sugarcane, ~2 min purple |
+| env | `r_net_env` |
+
+**It builds the orthogroup-level GO table, which does not exist anywhere else in this
+tree** — `gene2go_<study>.tsv` is gene-keyed. Its first column is named `gene` although it
+holds an orthogroup id, which is exactly what lets `parse_gene2go()`, `63_degree_go.r`'s
+reader and `annFUN.gene2GO` take it with no code change, and what
+`results_og/<study>/network_<study>_node_metrics.tsv` already does.
+
+**An orthogroup inherits the UNION of its members' terms.** The alternative — requiring a
+fraction of copies to carry a term — would discard the signal under study, since a term held
+by one copy and not its sibling *is* copy divergence. The union's hazard is size: purple's
+`OG0000000` has 1,233 copies. `67` caps the classified cells at 20 members so the cells are
+safe, and `73` caps the all-orthogroup background at the same 20.
+
+**Every test runs twice**, raw and on a 1:1 **exact**-copy-number-matched pair of sets, with
+both written. Matching on exact `n` rather than bands, because a band leaves a residual
+gradient inside it and the point is that the matched sets be indistinguishable. The script
+**aborts** if copy number still differs after matching (Mann-Whitney p < 0.5): every matched
+test below that point would otherwise be uninterpretable.
+
+It also pre-matches **within `homeolog` class**, which is the control `73` needs — see below.
+
+> `cell` reads back from `fread` as `""`, not `NA`, for unclassified orthogroups. Filtering
+> on `!is.na(cell)` silently admits ~49,000 single-copy groups; this is the mistake that
+> produced a wrong cross-species odds ratio during development, because
+> `"divergent/inseparable" %like% "separable$"` is also TRUE. Filter on
+> `cell %in% c(...)`.
+
+---
+
+## 73 · ogcellgo — `./run.sh ogcellgo <study> [BP|MF|CC] [homeolog]`
+
+GO and InterPro for the two cells.
+
+| | |
+|---|---|
+| reads | `og_cell_sets_<study>.tsv`, `og2go_<study>.tsv`, the full InterProScan table, `Orthogroups.tsv` |
+| writes | `<study>/og_cell_go/og_cell_GO_<ONT>_<study>[_homeolog].tsv`, `og_cell_InterPro_<study>[_homeolog].tsv` |
+| cost | ~1 min per ontology; InterPro runs once, under `BP` |
+| env | `topGO_env` |
+
+Three contrasts per ontology: the two cells against each other on the matched sets
+(**primary**), and each against all orthogroups (**context**, which largely recovers
+multi-copy-ness and is read as background). Both directions of the primary come off the
+**same** `topGOdata` object via `updateGenes()` — the two directions are one contingency
+seen twice, and a control computed on a different background controls nothing.
+
+**THE `homeolog` ARGUMENT IS THE CONTROL THAT DECIDES THE RESULT.** `dispersed` and
+`unplaced` orthogroups include transposon families, whose many scattered near-identical
+members OrthoFinder groups together. Measured 2026-10-02: those groups are 2.6% of purple's
+cells and 0.8% of sugarcane's, but 78% and 73% of them land in the divergent cell, and only
+11.5% and 17.3% are homeologs against 47.1% and 31.3% of the rest. Restricting to `homeolog`
+removes every transposase, reverse-transcriptase and RNase-H domain from the divergent
+enrichment **and removes F-box**, which at OR 2.4–9.8 and p.adj 2e-11 would otherwise have
+been the headline. PPR, TPR and the E motif survive in both species. **Quote the homeolog
+tables; the all-class ones are kept only so the difference stays visible.**
+
+### The two multiple-testing rules are opposite, deliberately
+
+| | test | selects on |
+|---|---|---|
+| GO | topGO `weight01` + Fisher | the **raw** p |
+| InterPro | plain Fisher per accession | **BH `p.adj`** |
+
+`weight01` conditions each term on its neighbours in the DAG, so its p-values are not an
+exchangeable family and BH's assumptions do not hold — the standing argument at
+`09_go_enrichment.r:173-183`, followed by `18`, `63` and `07`. Flat InterPro accessions have
+no DAG, nothing to condition on, and *are* exchangeable, so BH applies properly and is what
+selects. Without this paragraph the inversion reads as an oversight.
+
+**But the raw-p convention assumes the list is enriched for signal.** In BP both directions
+came in at or below chance here — 31 and 33 of 779 terms against ~39 expected. The stage
+prints the chance expectation beside every count, and says so explicitly when the count is
+at or below it, so a reader can tell "nothing here" from "something here".
+
+**InterPro carries the same minimum occurrence topGO's `nodeSize` applies to GO terms**
+(`CLEAN_IPR_MIN_COUNT`, default 10). Without it the stage tested 6,435 sugarcane accessions
+when only 421 occur in ≥ 10 orthogroups, inflating the BH denominator 15-fold and burying
+the transporter signal at `p.adj` 0.174 from `p` = 1.4e-04. Its absence was an unjustified
+asymmetry with the GO side.
+
+An effect size sits beside every p — `enrichment` = Significant/Expected for GO, the odds
+ratio for InterPro — because at these n a test calls terms significant on small shifts.
+`protein binding` (GO:0005515) is the standing example: p.adj 5e-07 on an enrichment of
+1.15×.
+
+---
+
 ## 09 · go — `./run.sh go BP|MF|CC [conserved|nonconserved]`
 
 topGO **weight01** Fisher, once per ontology, thresholded on the **raw**
