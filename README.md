@@ -157,6 +157,15 @@ The folds are lower than the 2.5× earlier versions of this file reported, and t
 sides in-network (114,681 pairs over 43,390 orthogroups), where the old one included
 genes that could never have matched.
 
+> **These folds are mostly degree, and a later analysis says so.** This null permutes the
+> orthology *assignment*; it never controlled for how many partners a gene has, and a hub
+> with 500 edges has 500 chances to match where a gene with 5 has 5. Rebuilding both
+> networks on a **shared vertex set** (orthogroups, so no projection is needed) and
+> permuting node labels **within degree strata** gives a fold of **1.08–1.21×**, not
+> 1.69–1.71×. See [The orthogroup as the unit of
+> analysis](#the-orthogroup-as-the-unit-of-analysis). The caveat below anticipated this;
+> the numbers in the table above did not.
+
 **Conservation rises with edge strength, monotonically, in both species** — and so does
 the fold over null, which is what rules out the alternative that strong edges merely join
 better-orthologued genes:
@@ -399,6 +408,93 @@ introduced. The annotation gate that motivated this whole comparison was then la
 closed from the other end: GO coverage went from 8% to 63%, and 81% of sugarcane's
 responsive modules are now testable rather than 11%.
 
+### The orthogroup as the unit of analysis
+
+Everything above treats the **gene** as the vertex. Two results forced a second pass: network
+position is not conserved even between 99%-identical copies in one genome, and the two gene
+universes differ (101,990 vs 170,135) so every cross-species comparison needs a many-to-many
+ortholog projection. Stages `64`–`73` redo the comparison with the **orthogroup** as the
+vertex.
+
+**Salmon's inferential replicates were already on disk and unread.** `--numGibbsSamples 30`,
+so every library carries 30 alternative read assignments. Nothing in the pipeline had
+touched them. They settle whether the copy-divergence result is a mapping artefact:
+
+| near-identical copies (CDS ≥ 0.99) | median degree fold-difference |
+|---|---|
+| copies the quantifier **can** separate | **8.59×** sugarcane / **7.40×** purple |
+| copies it **cannot** (reads traded between them) | 5.40× / 6.57× |
+
+The divergence is *larger* where the measurement is cleanest, so the artefact hypothesis is
+refuted rather than merely unsupported.
+
+**One statistic, one grouping, three quantities** — how much of each is a property of the
+gene family rather than of the individual copy (ICC over orthogroups):
+
+| | sugarcane | purple |
+|---|---|---|
+| ω, sequence constraint | **0.940** | **0.939** |
+| nitrogen response | 0.682 | 0.351 |
+| network position (log degree) | **0.242** | **0.226** |
+
+**Evolution protects a family's sequence. It does not fix where those genes sit in the
+network.** That is the comparative result of this project in three numbers.
+
+**On a shared vertex set the conservation signal nearly vanishes.** 63,271 orthogroups with
+an expressed gene in both species, identical rows in both matrices, so conservation is set
+intersection with no projection and the old ortholog-shuffle null has nothing left to
+permute. Against a **degree-matched** node relabelling:
+
+| | \|r\| ≥ 0.8 both species | purple at matched evidence (0.9742) |
+|---|---|---|
+| edges shared | 1,746,359 | 71,407 |
+| **fold over null** | **1.079** | **1.207** |
+| distance in null SDs | 36.5 | 4.8 |
+
+Certain, and negligible. **Module membership does not transfer either**: ARI 0.058 / 0.087,
+an excess of only **+0.015** over the same null in both thresholds. What *does* survive every
+threshold and both directions is the **strength trend** — conservation rises monotonically
+across all ten \|r\| deciles in every combination.
+
+> \|r\| is not evidence. At n = 48 \|r\| ≥ 0.8 is p = 9e-12; at n = 18 it is p = 7e-5. At a
+> shared threshold purple looks 11.8× denser than sugarcane; at shared *evidence* it is 4.6×
+> sparser, and the conservation percentages reverse between the two. Every weak purple result
+> traces back to having 18 libraries.
+
+One thing improved: the orthogroup graph is **2.4× more modular** than the gene graph
+(Q 0.196 against 0.082) at a barely-moved inflation optimum.
+
+#### What kind of family lets its copies drift — the one clearly positive result
+
+Crossing expression concordance with separability sorts multi-copy orthogroups into cells.
+After matching on **exact copy number** and restricting to **homeolog** class, InterPro
+separates the two:
+
+| domain | sugarcane | purple | enriched in |
+|---|---|---|---|
+| **Pentatricopeptide repeat (PPR)** | OR 2.09 | OR 2.92 | copies diverged |
+| **Tetratricopeptide-like helical** | 1.98 | 2.10 | diverged |
+| E motif (PPR architecture) | 2.37 | 5.23 | diverged |
+| PPR-containing, plant | 2.37 | 3.87 | diverged |
+| ABC transporter type 1 | 0.10 | — | **lockstep** |
+| MFS transporter superfamily | 0.43 | — | lockstep |
+
+Four domains replicate across two independently diverged species. GO agrees from the other
+direction — lockstep groups get ribosome, translation and transmembrane transport; diverged
+groups get RNA modification and chromatin binding, and PPR proteins are exactly what performs
+RNA modification.
+
+**This is the gene-dosage-balance prediction.** Subunits of stoichiometric complexes and
+membrane transporters cannot let one copy drift without unbalancing the whole, so selection
+holds them together; a modular repeat family that works one protein at a time carries no such
+constraint.
+
+Divergence is itself a family property: an orthogroup divergent in sugarcane tends to be
+divergent in purple, **OR 2.90** on the 6,328 classified in both, p = 6.7e-93, against a
+label-permutation null at OR 0.998. And lockstep groups are **4.5× more likely** to contain a
+nitrogen-responsive gene (4.2% vs 18.9%, OR 0.19), which is where this touches the project's
+own question.
+
 ## Repository layout
 
 ```
@@ -406,7 +502,9 @@ new_clean/            THE PIPELINE — scripts, config, docs, and results
   run.sh              one command per stage; nothing is edited between runs
   config.sh           every path and parameter
   scripts/            01 export ... 13 conservation null, 14-18 module level,
-                      + H1 readouts
+                      64-73 the orthogroup track (inferential replicates, the
+                      orthogroup as the vertex, and what the copy-divergence
+                      cells are for), + H1 readouts
   docs/               decisions, methods, thresholds, results
   results/            all output (gitignored — regenerable)
 
@@ -455,6 +553,25 @@ cd new_clean
 ./run.sh go BP [conserved|nonconserved]
 ./run.sh gosem
 ./run.sh degreego <study>             # what hubs vs the periphery are for
+
+# the ORTHOGROUP track (64-73). Needs swish_env for the two fishpond stages.
+./run.sh ogcrosswalk                  # bridge the 2sp/3sp orthogroup namespaces
+./run.sh infreps     <study>          # InfRV + read-stealing, from the Gibbs reps
+./run.sh swishtrait  <study>          # the N test with uncertainty propagated
+./run.sh oguniformity <study>         # is an orthogroup one signal or several
+./run.sh ogmatrix                     # both species, ONE shared row set
+./run.sh ogreadout                    # the keystone re-test, and three ICCs
+
+# the orthogroup networks live in a parallel tree, as RESULTS is for
+OGW=/dados04/jorge/tmp/mcl_work_og
+RESULTS=$PWD/results_og MCL_WORK_DIR=$OGW CLUSTER_WORK_DIR=$OGW ./run.sh ognetwork <study>
+RESULTS=$PWD/results_og MCL_WORK_DIR=$OGW CLUSTER_WORK_DIR=$OGW ./run.sh ogmci      <study>
+RESULTS=$PWD/results_og ./run.sh ogconservation   # set intersection, degree-matched null
+RESULTS=$PWD/results_og ./run.sh ogmodules        # do both species cluster alike
+
+# what the copy-divergence cells are for
+./run.sh ogcellcontrast <study>
+./run.sh ogcellgo       <study> BP homeolog   # quote the homeolog tables, not all-class
 ```
 
 `conserve`, `conservenull`, `trait` and `conscor` are the **merged-network** stages,
@@ -521,3 +638,22 @@ resumes.
     in one of two purple genotypes, does not survive genome-wide correction, and its
     network neighbourhood does not corroborate it — see
     [Module 20 in purple](#module-20-in-purple--one-copy-responds-and-not-monotonically).
+13. **The edge-conservation folds of 1.69×/1.71× above are mostly degree.** Their null
+    permutes the orthology assignment and never controlled for how many partners a gene
+    has. On a shared vertex set with a **degree-matched** null the fold is **1.08–1.21×**,
+    and module membership agrees — ARI excess of only +0.015. The *strength trend* survives
+    every threshold; the magnitudes do not.
+14. **Nothing from the copy-divergence cells should be quoted without the homeolog
+    restriction.** `dispersed` and `unplaced` orthogroups include transposon families whose
+    scattered near-identical members OrthoFinder collapses into one group — 2.6% of
+    purple's cells but 78% of them "divergent", and only 11.5% homeologs against 47.1% of
+    the rest. Restricting to homeologs removes every transposon domain **and F-box**, which
+    at OR 2.4–9.8 and p.adj 2e-11 would otherwise read as the headline. It is not one.
+15. **ω does not predict copy divergence.** Divergent families look less constrained
+    univariately (0.193 vs 0.162, p = 6e-27) and after copy-number matching, but the term is
+    not significant in either species once degree, InfRV and annotation are in the model
+    (p = 0.392 / 0.315). The difference is connectivity, not constraint.
+16. **GO alone would have returned a null for the cells.** In BP both directions came in at
+    or below chance (31 and 33 of 779 terms, ~39 expected). The result rests on InterPro,
+    whose 79–92% coverage of these orthogroups against GO's 57–71% is why. Had only the
+    project's default `BP` been run, this would have been reported as nothing.

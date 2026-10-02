@@ -13,6 +13,11 @@
 # a pattern is part of the pattern. Keep every comment on its own line.
 # ==============================================================================
 
+# A 49 MB NCBI reference download, regenerable and never read by the pipeline --
+# exactly the kind of file the rule of thumb below excludes, and it has been sitting
+# untracked and UN-ignored, one `git add .` away from the history.
+ncbi_sorghum_ref.zip
+
 # --- Bulk data trees ----------------------------------------------------------
 # files/   1.2 T  correlation matrices, edge lists, networks, MI output,
 #                 and the pearson_baseline/ archive
